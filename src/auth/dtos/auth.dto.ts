@@ -2,17 +2,18 @@ import { HttpStatus } from '@nestjs/common';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString } from 'class-validator';
+import { Role } from 'src/user/models/user.model';
 
 export class LoginDto {
   @ApiProperty({
     type: String,
-    description: 'Nombre de usuario',
-    example: 'username',
+    description: 'Email',
+    example: 'test@gmail.com',
     required: true,
   })
   @IsString()
-  @IsNotEmpty({ message: 'El nombre de usuario es requerido' })
-  username: string;
+  @IsNotEmpty({ message: 'El email es requerido' })
+  email: string;
 
   @ApiProperty({
     type: String,
@@ -55,7 +56,7 @@ export class SignOutBodyDto {
 
 export interface SignInResponse {
   tokens: { accessToken: string; refreshToken: string };
-  user: { id: string; role: string };
+  user: { id: string; role: Role };
 }
 
 export class SignInResponseDto implements BaseResponseDto {
@@ -82,7 +83,7 @@ export class SignInResponseDto implements BaseResponseDto {
       },
       user: {
         id: '53ec2766-ea95-4dab-ad9a-d1cbf5ca3cbe',
-        role: 'user',
+        role: { id: 'user', name: 'Usuario' },
       },
     },
   })

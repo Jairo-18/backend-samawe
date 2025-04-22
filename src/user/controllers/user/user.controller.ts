@@ -15,10 +15,9 @@ import {
 import {
   GetAllUsersResposeDto,
   GetUserDto,
-  BaseUserDto,
-  CreateOrUpdateUserDto,
-  UpdateUserDto,
   ChangePasswordDto,
+  CreateUserDto,
+  UpdateUserDto,
 } from './../../dtos/user.dto';
 
 import { UserUC } from './../../useCases/user.uc';
@@ -47,8 +46,6 @@ export class UserController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
   async changePassword(@Request() req, @Body() body: ChangePasswordDto) {
-    console.log('holaaaa');
-
     const userId = req.user.id;
     await this.userUC.changePassword(userId, body);
     return {
@@ -74,9 +71,7 @@ export class UserController {
   @UseGuards(AuthGuard())
   @ApiOkResponse({ type: CreatedRecordResponseDto })
   @ApiConflictResponse({ type: DuplicatedResponseDto })
-  async create(
-    @Body() user: CreateOrUpdateUserDto,
-  ): Promise<CreatedRecordResponseDto> {
+  async create(@Body() user: CreateUserDto): Promise<CreatedRecordResponseDto> {
     const rowId = await this.userUC.create(user);
     return {
       message: 'Usuario creado correctamente',
@@ -88,7 +83,9 @@ export class UserController {
   @Post('register')
   @ApiOkResponse({ type: CreatedRecordResponseDto })
   @ApiConflictResponse({ type: DuplicatedResponseDto })
-  async register(@Body() user: BaseUserDto): Promise<CreatedRecordResponseDto> {
+  async register(
+    @Body() user: CreateUserDto,
+  ): Promise<CreatedRecordResponseDto> {
     const rowId = await this.userUC.register(user);
     return {
       message: 'Registro exitoso',

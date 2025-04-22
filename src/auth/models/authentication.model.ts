@@ -1,11 +1,12 @@
 export interface TokenPayloadModel {
   sub?: string;
-  username?: string;
+  email?: string;
   id?: string;
 }
 
 export interface UserAuthModel {
-  username: string;
+  email: string;
   password: string;
   id: string;
+  role: string;
 }

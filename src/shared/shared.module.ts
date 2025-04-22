@@ -8,6 +8,10 @@ import { UserRepository } from './repositories/user.repository';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { Role } from './entities/role.entity';
+import { identificationType } from './entities/identificationType.entity';
+import { RoleRepository } from './repositories/role.repository';
+import { IdentificationTypeRepository } from './repositories/identificationType.repository';
 
 @Module({})
 export class SharedModule {
@@ -24,7 +28,7 @@ export class SharedModule {
             username: configService.get('db.user'),
             password: configService.get('db.password'),
             database: configService.get('db.database'),
-            entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+            entities: [__dirname + '/src/**/*.entity{.ts,.js}'],
             autoLoadEntities: true,
             ssl: {
               rejectUnauthorized: false,
@@ -32,7 +36,14 @@ export class SharedModule {
           }),
         }),
         PassportModule,
-        TypeOrmModule.forFeature([User]),
+        TypeOrmModule.forFeature([
+          User,
+          Role,
+          identificationType,
+          UserRepository,
+          RoleRepository,
+          IdentificationTypeRepository,
+        ]),
         JwtModule.registerAsync({
           inject: [ConfigService],
           useFactory: (configService: ConfigService) => ({
@@ -44,8 +55,15 @@ export class SharedModule {
           defaultStrategy: 'jwt',
         }),
       ],
-      providers: [UserRepository, JwtStrategy, AuthService, UserService],
-      exports: [],
+      providers: [
+        UserRepository,
+        RoleRepository,
+        IdentificationTypeRepository,
+        JwtStrategy,
+        AuthService,
+        UserService,
+      ],
+      exports: [TypeOrmModule],
     };
   }
 }

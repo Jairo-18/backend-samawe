@@ -2,15 +2,24 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  OneToMany,
+  JoinColumn,
+  ManyToOne,
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { identificationType } from './identificationType.entity';
+import { Role } from './role.entity';
 
 @Entity({ name: 'User' })
 export class User {
   @PrimaryColumn('uuid')
   id: string;
+
+  @Column('varchar', {
+    length: 25,
+    nullable: false,
+  })
+  identificationNumber: string;
 
   @Column('varchar', {
     length: 50,
@@ -25,16 +34,16 @@ export class User {
   lastName: string;
 
   @Column('varchar', {
-    length: 10,
-    nullable: false,
-  })
-  role: string;
-
-  @Column('varchar', {
     length: 255,
     nullable: false,
   })
   email: string;
+
+  @Column('varchar', {
+    length: 25,
+    nullable: false,
+  })
+  phone: string;
 
   @Column('varchar', {
     length: 255,
@@ -42,11 +51,16 @@ export class User {
   })
   password: string;
 
-  @Column('varchar', {
-    length: 25,
-    nullable: false,
-  })
-  username: string;
+  @ManyToOne(() => Role, (role) => role.user)
+  @JoinColumn({ name: 'roleId' })
+  role: Role;
+
+  @ManyToOne(
+    () => identificationType,
+    (identificationType) => identificationType.user,
+  )
+  @JoinColumn({ name: 'identificationTypeId' })
+  identificationType: identificationType;
 
   @CreateDateColumn({
     type: 'timestamp',

@@ -1,12 +1,23 @@
 export interface UserModel {
   id?: string;
+  identificationNumber: string;
   firstName: string;
   lastName: string;
-  role?: string;
+  role: Role;
+  identificationType: IdentificationType;
   email: string;
-  username: string;
   password?: string;
   confirmPassword?: string;
+}
+
+export interface IdentificationType {
+  id?: string;
+  name?: string;
+}
+
+export interface Role {
+  id?: string;
+  name?: string;
 }
 
 export interface ChangePasswordModel {
