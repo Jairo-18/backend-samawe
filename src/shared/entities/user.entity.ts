@@ -6,9 +6,6 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Post } from './post.entity';
-import { Like } from './like.entity';
-import { Comment } from './comment.entity';
 
 @Entity({ name: 'User' })
 export class User {
@@ -61,13 +58,4 @@ export class User {
     nullable: true,
   })
   updatedAt?: Date;
-
-  @OneToMany(() => Post, (post) => post.user)
-  posts: Post[];
-
-  @OneToMany(() => Like, (like) => like.user)
-  likes: Like[];
-
-  @OneToMany(() => Comment, (comment) => comment.user)
-  comments: Comment[];
 }

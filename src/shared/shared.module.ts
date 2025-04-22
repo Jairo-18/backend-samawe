@@ -8,9 +8,6 @@ import { UserRepository } from './repositories/user.repository';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { Comment } from './entities/comment.entity';
-import { Post } from './entities/post.entity';
-import { Like } from './entities/like.entity';
 
 @Module({})
 export class SharedModule {
@@ -27,12 +24,15 @@ export class SharedModule {
             username: configService.get('db.user'),
             password: configService.get('db.password'),
             database: configService.get('db.database'),
-            entities: [__dirname + '/src/**/*.entity{.ts,.js}'],
+            entities: [__dirname + '/../**/*.entity{.ts,.js}'],
             autoLoadEntities: true,
+            ssl: {
+              rejectUnauthorized: false,
+            },
           }),
         }),
         PassportModule,
-        TypeOrmModule.forFeature([User, Post, Like, Comment]),
+        TypeOrmModule.forFeature([User]),
         JwtModule.registerAsync({
           inject: [ConfigService],
           useFactory: (configService: ConfigService) => ({
