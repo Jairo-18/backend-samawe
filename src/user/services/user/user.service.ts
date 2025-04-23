@@ -1,3 +1,7 @@
+import { CreateUserDto, ChangePasswordDto } from './../../dtos/user.dto';
+import { IdentificationTypeRepository } from './../../../shared/repositories/identificationType.repository';
+import { RoleRepository } from './../../../shared/repositories/role.repository';
+import { UserRepository } from './../../../shared/repositories/user.repository';
 import { User } from './../../../shared/entities/user.entity';
 import { UserModel } from './../../models/user.model';
 import {
@@ -8,10 +12,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { ChangePasswordDto, CreateUserDto } from 'src/user/dtos/user.dto';
-import { RoleRepository } from 'src/shared/repositories/role.repository';
-import { IdentificationTypeRepository } from 'src/shared/repositories/identificationType.repository';
-import { UserRepository } from 'src/shared/repositories/user.repository';
 
 @Injectable()
 export class UserService {

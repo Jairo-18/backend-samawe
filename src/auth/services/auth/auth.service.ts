@@ -1,3 +1,6 @@
+import { RolesUser } from './../../../shared/roles/RolesUser.enum';
+import { RoleRepository } from './../../../shared/repositories/role.repository';
+import { UserRepository } from './../../../shared/repositories/user.repository';
 import { RefreshTokenBodyDto, SignOutBodyDto } from './../../dtos/auth.dto';
 import {
   TokenPayloadModel,
@@ -12,21 +15,15 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
-import { UserRepository } from 'src/shared/repositories/user.repository';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Role } from 'src/shared/entities/role.entity';
-import { RolesUser } from 'src/shared/roles/RolesUser.enum';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly usersService: UserService, // Servicio de usuarios para la lógica
+    private readonly usersService: UserService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly userRepository: UserRepository,
-    @InjectRepository(Role)
-    private readonly roleRepository: Repository<Role>,
+    private readonly roleRepository: RoleRepository,
   ) {}
 
   // Función de inicio de sesión (login)
