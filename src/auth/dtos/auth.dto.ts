@@ -2,7 +2,6 @@ import { HttpStatus } from '@nestjs/common';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString } from 'class-validator';
-import { Role } from 'src/user/models/user.model';
 
 export class LoginDto {
   @ApiProperty({
@@ -54,9 +53,14 @@ export class SignOutBodyDto {
   accessToken: string;
 }
 
+export interface UserRole {
+  roleId: string;
+  name: string;
+}
+
 export interface SignInResponse {
   tokens: { accessToken: string; refreshToken: string };
-  user: { id: string; role: Role };
+  user: { id: string; role: UserRole };
 }
 
 export class SignInResponseDto implements BaseResponseDto {

@@ -152,7 +152,10 @@ export class AuthService {
       tokens: { ...tokens },
       user: {
         id: user.id,
-        role: user.role,
+        role: {
+          roleId: user.role.roleId, // Suponiendo que `Role` tiene una propiedad `id`
+          name: user.role.name, // Y `Role` tiene una propiedad `name`
+        },
       },
     };
   }
