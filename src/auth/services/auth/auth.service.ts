@@ -26,7 +26,6 @@ export class AuthService {
     private readonly roleRepository: RoleRepository,
   ) {}
 
-  // Función de inicio de sesión (login)
   async signIn(credentials: Partial<UserAuthModel>) {
     // Buscar el usuario por el email
     const user = await this.usersService.findByParams({
@@ -79,7 +78,13 @@ export class AuthService {
     // Retornamos los tokens y el usuario con el rol
     return {
       tokens: { ...tokens },
-      user: { id: user.id, role: user.role },
+      user: {
+        id: user.id,
+        role: {
+          roleId: user.role.roleId,
+          name: user.role.name,
+        },
+      },
     };
   }
 

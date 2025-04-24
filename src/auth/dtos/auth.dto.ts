@@ -87,7 +87,7 @@ export class SignInResponseDto implements BaseResponseDto {
       },
       user: {
         id: '53ec2766-ea95-4dab-ad9a-d1cbf5ca3cbe',
-        role: { id: 'user', name: 'Usuario' },
+        role: { roleId: 'user', name: 'Usuario' },
       },
     },
   })

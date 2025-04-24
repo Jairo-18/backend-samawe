@@ -36,14 +36,7 @@ export class SharedModule {
           }),
         }),
         PassportModule,
-        TypeOrmModule.forFeature([
-          User,
-          Role,
-          identificationType,
-          UserRepository,
-          RoleRepository,
-          IdentificationTypeRepository,
-        ]),
+        TypeOrmModule.forFeature([User, Role, identificationType]),
         JwtModule.registerAsync({
           inject: [ConfigService],
           useFactory: (configService: ConfigService) => ({
@@ -63,7 +56,14 @@ export class SharedModule {
         AuthService,
         UserService,
       ],
-      exports: [TypeOrmModule],
+      exports: [
+        TypeOrmModule,
+        UserRepository,
+        RoleRepository,
+        IdentificationTypeRepository,
+        AuthService,
+        UserService,
+      ],
     };
   }
 }
