@@ -1,3 +1,5 @@
+import { CrudUserUseCase } from './../../useCases/crudUser.UC';
+import { CreateUserRelatedDataReponseDto } from './../../dtos/crudUser.dto';
 import {
   CreatedRecordResponseDto,
   DeleteReCordResponseDto,
@@ -39,7 +41,10 @@ import { AuthGuard } from '@nestjs/passport';
 @Controller('user')
 @ApiTags('Usuarios')
 export class UserController {
-  constructor(private readonly userUC: UserUC) {}
+  constructor(
+    private readonly _userUC: UserUC,
+    private readonly _crudUserUseCase: CrudUserUseCase,
+  ) {}
 
   @Patch('change-password')
   @ApiOkResponse({ description: 'Contraseña actualizada correctamente' })
@@ -47,10 +52,20 @@ export class UserController {
   @UseGuards(AuthGuard())
   async changePassword(@Request() req, @Body() body: ChangePasswordDto) {
     const userId = req.user.id;
-    await this.userUC.changePassword(userId, body);
+    await this._userUC.changePassword(userId, body);
     return {
       statusCode: HttpStatus.OK,
       message: 'Contraseña actualizada correctamente',
+    };
+  }
+
+  @Get('/register/related-data')
+  @ApiOkResponse({ type: CreateUserRelatedDataReponseDto })
+  async getRelatedData(): Promise<CreateUserRelatedDataReponseDto> {
+    const data = await this._crudUserUseCase.getRelatedDataToCreate(true);
+    return {
+      statusCode: HttpStatus.OK,
+      data,
     };
   }
 
@@ -59,7 +74,7 @@ export class UserController {
   @UseGuards(AuthGuard())
   @ApiOkResponse({ type: GetAllUsersResposeDto })
   async findAll(): Promise<GetAllUsersResposeDto> {
-    const users = await this.userUC.findAll();
+    const users = await this._userUC.findAll();
     return {
       statusCode: HttpStatus.OK,
       data: { users },
@@ -72,7 +87,7 @@ export class UserController {
   @ApiOkResponse({ type: CreatedRecordResponseDto })
   @ApiConflictResponse({ type: DuplicatedResponseDto })
   async create(@Body() user: CreateUserDto): Promise<CreatedRecordResponseDto> {
-    const rowId = await this.userUC.create(user);
+    const rowId = await this._userUC.create(user);
     return {
       message: 'Usuario creado correctamente',
       statusCode: HttpStatus.CREATED,
@@ -86,7 +101,7 @@ export class UserController {
   async register(
     @Body() user: CreateUserDto,
   ): Promise<CreatedRecordResponseDto> {
-    const rowId = await this.userUC.register(user);
+    const rowId = await this._userUC.register(user);
     return {
       message: 'Registro exitoso',
       statusCode: HttpStatus.CREATED,
@@ -99,7 +114,7 @@ export class UserController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
   async initData(@Req() req) {
-    const initData = await this.userUC.initData(req.user.id);
+    const initData = await this._userUC.initData(req.user.id);
     return {
       statusCode: HttpStatus.OK,
       data: initData,
@@ -112,7 +127,7 @@ export class UserController {
   @ApiOkResponse({ type: GetUserDto })
   @ApiNotFoundResponse({ type: NotFoundResponseDto })
   async findOne(@Param('id') id: string): Promise<GetUserDto> {
-    const user = await this.userUC.findOne(id);
+    const user = await this._userUC.findOne(id);
     return {
       statusCode: HttpStatus.OK,
       data: user,
@@ -128,7 +143,7 @@ export class UserController {
     @Param('id') id: string,
     @Body() userData: UpdateUserDto,
   ): Promise<UpdateRecordResponseDto> {
-    await this.userUC.update(id, userData);
+    await this._userUC.update(id, userData);
 
     return {
       message: 'Usuario actualizado correctamente',
@@ -142,7 +157,7 @@ export class UserController {
   @ApiOkResponse({ type: DeleteReCordResponseDto })
   @ApiNotFoundResponse({ type: NotFoundResponseDto })
   async delete(@Param('id') id: string): Promise<DeleteReCordResponseDto> {
-    await this.userUC.delete(id);
+    await this._userUC.delete(id);
     return {
       statusCode: HttpStatus.OK,
       message: 'Usuario eliminado exitosamente',

@@ -69,14 +69,12 @@ export class UserService {
 
     this.validatePasswordMatch(user.password, user.confirmPassword);
 
-    // Asignar rol predeterminado si no se proporciona
     let role;
     if (user.role && user.role.trim() !== '') {
       role = await this.roleRepository.findOne({
         where: { roleId: user.role },
       });
     } else {
-      // Asigna el UUID predeterminado para el rol "Usuario"
       role = await this.roleRepository.findOne({
         where: { roleId: '4a96be8d-308f-434f-9846-54e5db3e7d95' },
       });
