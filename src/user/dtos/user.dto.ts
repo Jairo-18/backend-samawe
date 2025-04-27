@@ -2,7 +2,14 @@ import { User } from './../../shared/entities/user.entity';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { NOT_EMPTY_MESSAGE_ID } from './../../shared/constants/validator-messages.const';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsEmail, IsNotEmpty, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsNotEmpty,
+  IsUUID,
+  IsOptional,
+  ValidateIf,
+} from 'class-validator';
 import { HttpStatus } from '@nestjs/common';
 import { GET_ALL_USER_EXAMPLE } from '../constants/examples.conts';
 
@@ -79,13 +86,14 @@ export class CreateUserDto {
   confirmPassword: string;
 
   @ApiProperty({
-    example: 'f50a0b3c-d091-4e56-a1f1-3bdb64cf1229',
+    example: '',
     description: 'UUID del rol asignado',
-    required: true,
+    required: false,
   })
+  @ValidateIf((o) => o.role && o.role.trim() !== '')
   @IsUUID()
-  @IsNotEmpty({ message: 'El rol es requerido' })
-  role: string;
+  @IsOptional()
+  role?: string;
 }
 
 export interface GetAllUsersRespose {
