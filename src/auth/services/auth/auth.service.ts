@@ -7,7 +7,7 @@ import {
   UserAuthModel,
 } from '../../models/authentication.model';
 import { JwtService } from '@nestjs/jwt';
-import { UserService } from './../../../user/services/user/user.service';
+import { UserService } from '../../../user/services/user.service';
 import {
   Injectable,
   UnauthorizedException,

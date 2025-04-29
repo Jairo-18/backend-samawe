@@ -1,9 +1,10 @@
-import { CreateUserDto, ChangePasswordDto } from './../../dtos/user.dto';
-import { IdentificationTypeRepository } from './../../../shared/repositories/identificationType.repository';
-import { RoleRepository } from './../../../shared/repositories/role.repository';
-import { UserRepository } from './../../../shared/repositories/user.repository';
-import { User } from './../../../shared/entities/user.entity';
-import { UserModel } from './../../models/user.model';
+import { UpdateUserDto } from './../dtos/user.dto';
+import { Role, IdentificationType } from './../models/user.model';
+import { CreateUserDto, ChangePasswordDto } from '../dtos/user.dto';
+import { IdentificationTypeRepository } from '../../shared/repositories/identificationType.repository';
+import { RoleRepository } from '../../shared/repositories/role.repository';
+import { UserRepository } from '../../shared/repositories/user.repository';
+import { User } from '../../shared/entities/user.entity';
 import {
   BadRequestException,
   HttpException,
@@ -109,7 +110,7 @@ export class UserService {
     return { rowId: res.identifiers[0].id };
   }
 
-  async update(id: string, userData: Partial<UserModel>) {
+  async update(id: string, userData: UpdateUserDto) {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');
@@ -121,41 +122,44 @@ export class UserService {
         where: { email: userData.email },
       });
       if (emailExists) {
-        throw new BadRequestException(
-          'El email ya está en uso por otro usuario',
-        );
+        throw new BadRequestException('El email ya está en uso');
       }
     }
 
     // Resolver Role si se envía
-    if (userData.role && typeof userData.role === 'string') {
-      const roleEntity = await this.roleRepository.findOne({
+    let roleEntity: Role | undefined;
+    if (userData.role && typeof userData.role === 'object') {
+      roleEntity = await this.roleRepository.findOne({
         where: { roleId: userData.role },
       });
-      if (!roleEntity) throw new NotFoundException('Rol no encontrado');
-      userData.role = roleEntity;
+      if (!roleEntity) {
+        throw new NotFoundException('Rol no encontrado');
+      }
     }
 
     // Resolver IdentificationType si se envía
+    let identificationTypeEntity: IdentificationType | undefined;
     if (
       userData.identificationType &&
-      typeof userData.identificationType === 'string'
+      typeof userData.identificationType === 'object'
     ) {
-      const identificationTypeEntity =
+      identificationTypeEntity =
         await this.identificationTypeRepository.findOne({
           where: { identificationTypeId: userData.identificationType },
         });
       if (!identificationTypeEntity) {
         throw new NotFoundException('Tipo de identificación no encontrado');
       }
-      userData.identificationType = identificationTypeEntity;
     }
 
-    // Aplicar los cambios al usuario
-    Object.assign(user, userData);
-    await this.userRepository.update(id, user);
+    // Actualizar propiedades
+    const updatedUser = this.userRepository.merge(user, {
+      ...userData,
+      role: roleEntity ?? user.role,
+      identificationType: identificationTypeEntity ?? user.identificationType,
+    });
 
-    return { message: 'Usuario actualizado correctamente' };
+    return await this.userRepository.save(updatedUser);
   }
 
   private validatePasswordMatch(password: string, confirmPassword: string) {

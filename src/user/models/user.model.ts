@@ -1,11 +1,24 @@
 export interface UserModel {
   id?: string;
+  identificationType: IdentificationType;
   identificationNumber: string;
   firstName: string;
   lastName: string;
-  role: Role;
-  identificationType: IdentificationType;
   email: string;
+  phone: string;
+  role: Role;
+  password?: string;
+  confirmPassword?: string;
+}
+
+export interface UpdateUserModel {
+  identificationType: IdentificationType;
+  identificationNumber: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  role: Role;
   password?: string;
   confirmPassword?: string;
 }

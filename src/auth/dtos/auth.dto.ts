@@ -17,7 +17,7 @@ export class LoginDto {
   @ApiProperty({
     type: String,
     description: 'Contraseña',
-    example: 'password',
+    example: 'Test@123',
     required: true,
   })
   @IsString()

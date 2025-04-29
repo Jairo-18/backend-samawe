@@ -1,8 +1,8 @@
-import { RepositoryService } from '../../../shared/services/repositoriry.service';
-import { Role } from '../../../shared/entities/role.entity';
-import { IdentificationType } from '../../../shared/entities/identificationType.entity';
+import { RepositoryService } from '../../shared/services/repositoriry.service';
+import { Role } from '../../shared/entities/role.entity';
+import { IdentificationType } from '../../shared/entities/identificationType.entity';
 import { Injectable } from '@nestjs/common';
-import { CreateUserRelatedDataDto } from '../../dtos/crudUser.dto';
+import { CreateUserRelatedDataDto } from '../dtos/crudUser.dto';
 
 @Injectable()
 export class CrudUserService {

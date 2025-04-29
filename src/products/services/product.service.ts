@@ -2,12 +2,13 @@ import { AvailableTypeRepository } from './../../shared/repositories/available.r
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { Product } from './../../shared/entities/product.entity';
-import { CreateProductDto } from './../dtos/product.dto';
+import { CreateProductDto, UpdateProductDto } from './../dtos/product.dto';
 import {
   BadRequestException,
   HttpException,
   HttpStatus,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 
 @Injectable()
@@ -48,6 +49,48 @@ export class ProductService {
       console.error('Error creando producto:', error);
       throw new BadRequestException('No se pudo crear el producto');
     }
+  }
+
+  async update(
+    productId: string,
+    updateProductDto: UpdateProductDto,
+  ): Promise<Product> {
+    const id = parseInt(productId, 10);
+    if (isNaN(id)) {
+      throw new BadRequestException('El ID del producto debe ser un número');
+    }
+
+    const product = await this._productRepository.findOne({
+      where: { productId: id },
+    });
+
+    if (!product) {
+      throw new NotFoundException(`Producto con ID ${id} no encontrado`);
+    }
+
+    if (updateProductDto.categoryTypeId) {
+      const category = await this._categoryTypeRepository.findOne({
+        where: { categoryTypeId: updateProductDto.categoryTypeId },
+      });
+      if (!category) {
+        throw new NotFoundException('Categoría no encontrada');
+      }
+      product.categoryType = category;
+    }
+
+    if (updateProductDto.availableTypeId) {
+      const available = await this._availableTypeRepository.findOne({
+        where: { availableTypeId: updateProductDto.availableTypeId },
+      });
+      if (!available) {
+        throw new NotFoundException('Tipo de disponibilidad no encontrado');
+      }
+      product.availableType = available;
+    }
+
+    Object.assign(product, updateProductDto);
+
+    return await this._productRepository.save(product);
   }
 
   async findAll(): Promise<Product[]> {

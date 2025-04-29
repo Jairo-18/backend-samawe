@@ -1,10 +1,9 @@
+import { UserService } from './../services/user.service';
 import {
   ChangePasswordDto,
   CreateUserDto,
   UpdateUserDto,
 } from '../dtos/user.dto';
-
-import { UserService } from './../services/user/user.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

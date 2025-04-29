@@ -127,33 +127,48 @@ export class GetUserDto implements BaseResponseDto {
 }
 
 export class UpdateUserDto {
-  @ApiProperty({ example: 'Jheferson' })
+  @ApiProperty({
+    example: 'Cédula de ciudadania',
+    required: true,
+  })
   @IsString()
-  @IsNotEmpty({ message: 'El nombre es requerido' })
-  firstName: string;
-
-  @ApiProperty({ example: 'Checa' })
-  @IsString()
-  @IsNotEmpty({ message: 'El apellido es requerido' })
-  lastName: string;
-
-  @ApiProperty({ example: '3102103660' })
-  @IsString()
-  @IsNotEmpty({ message: 'El número de teléfono es requerido' })
-  phone: string;
+  @IsNotEmpty({ message: 'El tipo de identificación es requerido' })
+  identificationType: string;
 
   @ApiProperty({ example: '1120066430' })
   @IsString()
   @IsNotEmpty({ message: 'El número de identificación es requerido' })
   identificationNumber: string;
 
+  @ApiProperty({ example: 'Test' })
+  @IsString()
+  @IsNotEmpty({ message: 'El nombre es requerido' })
+  firstName: string;
+
+  @ApiProperty({ example: 'Test Apellido' })
+  @IsString()
+  @IsNotEmpty({ message: 'El apellido es requerido' })
+  lastName: string;
+
+  @ApiProperty({ example: 'test@gmail.com' })
+  @IsString()
+  @IsNotEmpty({ message: 'El email es requerido' })
+  email: string;
+
+  @ApiProperty({ example: '3102103660' })
+  @IsString()
+  @IsNotEmpty({ message: 'El número de teléfono es requerido' })
+  phone: string;
+
   @ApiProperty({
-    example: 'f50a0b3c-d091-4e56-a1f1-3bdb64cf1229',
+    example: '',
     description: 'UUID del rol asignado',
+    required: false,
   })
+  @ValidateIf((o) => o.role && o.role.trim() !== '')
   @IsUUID()
-  @IsNotEmpty({ message: 'El rol es requerido' })
-  roleId: string;
+  @IsOptional()
+  role?: string;
 }
 
 export class ChangePasswordDto {

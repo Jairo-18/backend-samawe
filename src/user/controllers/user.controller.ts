@@ -1,12 +1,12 @@
-import { CrudUserUseCase } from './../../useCases/crudUser.UC';
-import { CreateUserRelatedDataReponseDto } from './../../dtos/crudUser.dto';
+import { CrudUserUseCase } from '../useCases/crudUser.UC';
+import { CreateUserRelatedDataReponseDto } from '../dtos/crudUser.dto';
 import {
   CreatedRecordResponseDto,
   DeleteReCordResponseDto,
   DuplicatedResponseDto,
   NotFoundResponseDto,
   UpdateRecordResponseDto,
-} from './../../../shared/dtos/response.dto';
+} from '../../shared/dtos/response.dto';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
@@ -20,9 +20,9 @@ import {
   ChangePasswordDto,
   CreateUserDto,
   UpdateUserDto,
-} from './../../dtos/user.dto';
+} from '../dtos/user.dto';
 
-import { UserUC } from './../../useCases/user.uc';
+import { UserUC } from '../useCases/user.uc';
 import {
   Body,
   Controller,

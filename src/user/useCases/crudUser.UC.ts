@@ -1,5 +1,5 @@
+import { CrudUserService } from './../services/crudUser.service';
 import { Injectable } from '@nestjs/common';
-import { CrudUserService } from '../services/user/crudUser.service';
 
 @Injectable()
 export class CrudUserUseCase {

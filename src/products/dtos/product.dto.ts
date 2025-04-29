@@ -1,4 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
+import {
+  GET_ALL_PRODUCTS_EXAMPLE,
+  GET_PRODUCT_EXAMPLE,
+} from './../constants/examplesProduct.conts';
+import { HttpStatus } from '@nestjs/common';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsNotEmpty,
   IsString,
@@ -7,6 +12,8 @@ import {
   IsInt,
   IsNumber,
 } from 'class-validator';
+import { BaseResponseDto } from 'src/shared/dtos/response.dto';
+import { Product } from 'src/shared/entities/product.entity';
 
 export class CreateProductDto {
   @ApiProperty({ example: 1, description: 'ID del producto', required: true })
@@ -67,4 +74,76 @@ export class CreateProductDto {
   @IsNumber()
   @IsNotEmpty({ message: 'El tipo de disponibilidad es requerido' })
   availableTypeId: number;
+}
+
+export class UpdateProductDto {
+  @ApiPropertyOptional({
+    example: 'Coca Cola 1L',
+    description: 'Nombre del producto',
+  })
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @ApiPropertyOptional({
+    example: 'Bebida gaseosa de 1 litro',
+    description: 'Descripción del producto',
+  })
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @ApiPropertyOptional({ example: 10, description: 'Cantidad disponible' })
+  @IsInt()
+  @IsOptional()
+  amount?: number;
+
+  @ApiPropertyOptional({ example: 2000.0, description: 'Precio del producto' })
+  @IsNumber()
+  @IsPositive()
+  @IsOptional()
+  price?: number;
+
+  @ApiPropertyOptional({ example: 1, description: 'ID del tipo de categoría' })
+  @IsNumber()
+  @IsOptional()
+  categoryTypeId?: number;
+
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'ID del tipo de disponibilidad',
+  })
+  @IsNumber()
+  @IsOptional()
+  availableTypeId?: number;
+}
+
+export interface GetAllProductsRespose {
+  products: Product[];
+}
+
+export class GetAllProductsResposeDto implements BaseResponseDto {
+  @ApiProperty({
+    example: HttpStatus.OK,
+  })
+  statusCode: number;
+
+  @ApiProperty({
+    type: Array,
+    example: GET_ALL_PRODUCTS_EXAMPLE,
+  })
+  data: GetAllProductsRespose;
+}
+
+export class GetProductDto implements BaseResponseDto {
+  @ApiProperty({
+    example: HttpStatus.OK,
+  })
+  statusCode: number;
+
+  @ApiProperty({
+    type: Object,
+    example: GET_PRODUCT_EXAMPLE,
+  })
+  data: Product;
 }

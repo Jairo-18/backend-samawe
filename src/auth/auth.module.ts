@@ -1,5 +1,5 @@
 import { UserRepository } from './../shared/repositories/user.repository';
-import { UserService } from './../user/services/user/user.service';
+import { UserService } from '../user/services/user.service';
 import { SharedModule } from './../shared/shared.module';
 import { Module } from '@nestjs/common';
 import { AuthController } from './controllers/auth/auth.controller';
