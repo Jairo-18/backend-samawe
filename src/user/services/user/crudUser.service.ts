@@ -1,6 +1,6 @@
 import { RepositoryService } from '../../../shared/services/repositoriry.service';
 import { Role } from '../../../shared/entities/role.entity';
-import { identificationType } from '../../../shared/entities/identificationType.entity';
+import { IdentificationType } from '../../../shared/entities/identificationType.entity';
 import { Injectable } from '@nestjs/common';
 import { CreateUserRelatedDataDto } from '../../dtos/crudUser.dto';
 
@@ -12,7 +12,7 @@ export class CrudUserService {
     isRegister: boolean,
   ): Promise<CreateUserRelatedDataDto> {
     const identificationType =
-      await this._repositoriesService.getEntities<identificationType>(
+      await this._repositoriesService.getEntities<IdentificationType>(
         this._repositoriesService.repositories.identificationType,
       );
     if (!isRegister) {

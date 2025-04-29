@@ -2,7 +2,7 @@ import { RepositoryService } from 'src/shared/services/repositoriry.service';
 import { CrudUserService } from './services/user/crudUser.service';
 import { IdentificationTypeRepository } from './../shared/repositories/identificationType.repository';
 import { RoleRepository } from './../shared/repositories/role.repository';
-import { identificationType } from './../shared/entities/identificationType.entity';
+import { IdentificationType } from './../shared/entities/identificationType.entity';
 import { Role } from './../shared/entities/role.entity';
 import { User } from './../shared/entities/user.entity';
 import { SharedModule } from './../shared/shared.module';
@@ -20,15 +20,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   imports: [
     SharedModule.forRoot(),
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    TypeOrmModule.forFeature([User, Role, identificationType]),
+    TypeOrmModule.forFeature([User, Role, IdentificationType]),
   ],
   providers: [
-    UserService,
-    CrudUserService,
-    UserRepository,
     CrudUserUseCase,
     UserUC,
     UserService,
+    CrudUserService,
+    UserService,
+    UserRepository,
     RoleRepository,
     IdentificationTypeRepository,
     RepositoryService,

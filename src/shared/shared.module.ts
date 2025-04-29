@@ -1,3 +1,10 @@
+import { ProductService } from './../products/services/product.service';
+import { CategoryTypeRepository } from './repositories/categoryType.repository';
+import { ProductRepository } from './repositories/product.repository';
+import { AvailableTypeRepository } from './repositories/available.repository';
+import { AvailableType } from './entities/availableType.entity';
+import { CategoryType } from './entities/categoryType.entity';
+import { Product } from './entities/product.entity';
 import { UserService } from './../user/services/user/user.service';
 import { AuthService } from './../auth/services/auth/auth.service';
 import { DynamicModule, Module } from '@nestjs/common';
@@ -9,7 +16,7 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { Role } from './entities/role.entity';
-import { identificationType } from './entities/identificationType.entity';
+import { IdentificationType } from './entities/identificationType.entity';
 import { RoleRepository } from './repositories/role.repository';
 import { IdentificationTypeRepository } from './repositories/identificationType.repository';
 
@@ -36,7 +43,14 @@ export class SharedModule {
           }),
         }),
         PassportModule,
-        TypeOrmModule.forFeature([User, Role, identificationType]),
+        TypeOrmModule.forFeature([
+          User,
+          Role,
+          IdentificationType,
+          Product,
+          CategoryType,
+          AvailableType,
+        ]),
         JwtModule.registerAsync({
           inject: [ConfigService],
           useFactory: (configService: ConfigService) => ({
@@ -52,17 +66,25 @@ export class SharedModule {
         UserRepository,
         RoleRepository,
         IdentificationTypeRepository,
+        ProductRepository,
+        CategoryTypeRepository,
+        AvailableTypeRepository,
         JwtStrategy,
         AuthService,
         UserService,
+        ProductService,
       ],
       exports: [
         TypeOrmModule,
         UserRepository,
         RoleRepository,
         IdentificationTypeRepository,
+        ProductRepository,
+        CategoryTypeRepository,
+        AvailableTypeRepository,
         AuthService,
         UserService,
+        ProductService,
       ],
     };
   }

@@ -7,7 +7,7 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { identificationType } from './identificationType.entity';
+import { IdentificationType } from './identificationType.entity';
 import { Role } from './role.entity';
 
 @Entity({ name: 'User' })
@@ -56,11 +56,11 @@ export class User {
   role: Role;
 
   @ManyToOne(
-    () => identificationType,
+    () => IdentificationType,
     (identificationType) => identificationType.user,
   )
   @JoinColumn({ name: 'identificationTypeId' })
-  identificationType: identificationType;
+  identificationType: IdentificationType;
 
   @CreateDateColumn({
     type: 'timestamp',

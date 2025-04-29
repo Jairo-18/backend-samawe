@@ -25,8 +25,8 @@ async function bootstrap() {
     }),
   );
   const config = new DocumentBuilder()
-    .setTitle('IPUC 4TA API')
-    .setDescription('API for managing the web app from "IPUC 4TA"')
+    .setTitle('SAMAWE API')
+    .setDescription('API for managing the web app from "SAMAWE"')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

@@ -1,12 +1,12 @@
 import { Role } from './../../shared/entities/role.entity';
-import { identificationType } from './../../shared/entities/identificationType.entity';
+import { IdentificationType } from './../../shared/entities/identificationType.entity';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { HttpStatus } from '@nestjs/common';
 
 export interface CreateUserRelatedDataDto {
   role?: Role[];
-  identificationType: identificationType[];
+  identificationType: IdentificationType[];
 }
 
 export class CreateUserRelatedDataReponseDto implements BaseResponseDto {
