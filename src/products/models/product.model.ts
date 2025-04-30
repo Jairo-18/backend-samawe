@@ -4,6 +4,7 @@ export interface ProductModel {
   description?: string;
   amount: number;
   price: number;
+  taxe: number;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date;

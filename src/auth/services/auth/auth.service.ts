@@ -49,28 +49,28 @@ export class AuthService {
 
     // Si el usuario no tiene un rol asignado, le asignamos el rol por defecto
     if (
-      !user.role ||
-      !Object.values(RolesUser).includes(user.role?.name as RolesUser)
+      !user.roleType ||
+      !Object.values(RolesUser).includes(user.roleType?.name as RolesUser)
     ) {
-      const defaultRole = await this.roleRepository.findOne({
+      const defaultRoleType = await this.roleRepository.findOne({
         where: { name: RolesUser.USER },
       });
 
-      if (!defaultRole) {
+      if (!defaultRoleType) {
         throw new NotFoundException(
           'El rol por defecto no existe en la base de datos',
         );
       }
 
       // Asignar el rol por defecto
-      user.role = defaultRole;
+      user.roleType = defaultRoleType;
 
       // Guardar el usuario con el rol actualizado
       await this.userRepository.save(user);
     }
 
     // Crear el payload con el email del usuario
-    const payload = { email: user.email, sub: user.id, id: user.id };
+    const payload = { email: user.email, sub: user.userId, id: user.userId };
 
     // Generamos los tokens de acceso y refresco
     const tokens = this.generateTokens(payload);
@@ -79,10 +79,10 @@ export class AuthService {
     return {
       tokens: { ...tokens },
       user: {
-        id: user.id,
+        id: user.userId,
         role: {
-          roleId: user.role.roleId,
-          name: user.role.name,
+          roleId: user.roleType.roleTypeId,
+          name: user.roleType.name,
         },
       },
     };
@@ -149,17 +149,17 @@ export class AuthService {
 
     const tokens = this.generateTokens({
       email: user.email,
-      id: user.id,
-      sub: user.id,
+      id: user.userId,
+      sub: user.userId,
     });
 
     return {
       tokens: { ...tokens },
       user: {
-        id: user.id,
+        id: user.userId,
         role: {
-          roleId: user.role.roleId, // Suponiendo que `Role` tiene una propiedad `id`
-          name: user.role.name, // Y `Role` tiene una propiedad `name`
+          roleId: user.roleType.roleTypeId, // Suponiendo que `Role` tiene una propiedad `id`
+          name: user.roleType.name, // Y `Role` tiene una propiedad `name`
         },
       },
     };

@@ -1,5 +1,5 @@
 export interface UserModel {
-  id?: string;
+  userId?: string;
   identificationType: IdentificationType;
   identificationNumber: string;
   firstName: string;

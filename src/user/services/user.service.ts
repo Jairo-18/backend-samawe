@@ -24,7 +24,7 @@ export class UserService {
 
   async create(user: CreateUserDto): Promise<{ rowId: string }> {
     const userExist = await this.findByParams({
-      id: user.id,
+      id: user.userId,
       email: user.email,
     });
 
@@ -34,15 +34,15 @@ export class UserService {
       throw new HttpException('El usuario ya existe', HttpStatus.CONFLICT);
     }
 
-    const role = await this.roleRepository.findOne({
-      where: { roleId: user.role },
+    const roleType = await this.roleRepository.findOne({
+      where: { roleTypeId: user.roleType },
     });
 
     const identificationType = await this.identificationTypeRepository.findOne({
       where: { identificationTypeId: user.identificationType },
     });
 
-    if (!role || !identificationType) {
+    if (!roleType || !identificationType) {
       throw new HttpException(
         'Rol o tipo de identificación inválido',
         HttpStatus.BAD_REQUEST,
@@ -54,7 +54,7 @@ export class UserService {
     const res = await this.userRepository.insert({
       ...user,
       password: hashedPassword,
-      role,
+      roleType,
       identificationType,
     });
 
@@ -65,19 +65,19 @@ export class UserService {
     const salt = await bcrypt.genSalt();
 
     const userExist = await this.userRepository.findOne({
-      where: [{ id: user.id }, { email: user.email }],
+      where: [{ userId: user.userId }, { email: user.email }],
     });
 
     this.validatePasswordMatch(user.password, user.confirmPassword);
 
-    let role;
-    if (user.role && user.role.trim() !== '') {
-      role = await this.roleRepository.findOne({
-        where: { roleId: user.role },
+    let roleType;
+    if (user.roleType && user.roleType.trim() !== '') {
+      roleType = await this.roleRepository.findOne({
+        where: { roleTypeId: user.roleType },
       });
     } else {
-      role = await this.roleRepository.findOne({
-        where: { roleId: '4a96be8d-308f-434f-9846-54e5db3e7d95' },
+      roleType = await this.roleRepository.findOne({
+        where: { roleTypeId: '4a96be8d-308f-434f-9846-54e5db3e7d95' },
       });
     }
 
@@ -88,7 +88,7 @@ export class UserService {
           })
         : user.identificationType;
 
-    if (!role || !identificationType) {
+    if (!roleType || !identificationType) {
       throw new HttpException(
         'Rol o tipo de identificación inválido',
         HttpStatus.NOT_FOUND,
@@ -98,7 +98,7 @@ export class UserService {
     const userConfirm = {
       ...user,
       password: await bcrypt.hash(user.password, salt),
-      role,
+      roleType,
       identificationType,
     };
 
@@ -110,8 +110,8 @@ export class UserService {
     return { rowId: res.identifiers[0].id };
   }
 
-  async update(id: string, userData: UpdateUserDto) {
-    const user = await this.userRepository.findOne({ where: { id } });
+  async update(userId: string, userData: UpdateUserDto) {
+    const user = await this.userRepository.findOne({ where: { userId } });
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');
     }
@@ -130,7 +130,7 @@ export class UserService {
     let roleEntity: Role | undefined;
     if (userData.role && typeof userData.role === 'object') {
       roleEntity = await this.roleRepository.findOne({
-        where: { roleId: userData.role },
+        where: { roleTypeId: userData.role },
       });
       if (!roleEntity) {
         throw new NotFoundException('Rol no encontrado');
@@ -155,7 +155,7 @@ export class UserService {
     // Actualizar propiedades
     const updatedUser = this.userRepository.merge(user, {
       ...userData,
-      role: roleEntity ?? user.role,
+      roleType: roleEntity ?? user.roleType,
       identificationType: identificationTypeEntity ?? user.identificationType,
     });
 
@@ -175,8 +175,8 @@ export class UserService {
     return await this.userRepository.find();
   }
 
-  async findOne(id: string): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { id } });
+  async findOne(userId: string): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { userId } });
     if (!user) {
       throw new HttpException('El usuario no existe', HttpStatus.NOT_FOUND);
     }
@@ -190,7 +190,9 @@ export class UserService {
   }
 
   async initData(userId: string) {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const user = await this.userRepository.findOne({
+      where: { userId: userId },
+    });
 
     if (!user) {
       throw new HttpException('El usuario no existe', HttpStatus.NOT_FOUND);

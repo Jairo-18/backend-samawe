@@ -3,7 +3,7 @@ import { CrudUserService } from './services/crudUser.service';
 import { IdentificationTypeRepository } from './../shared/repositories/identificationType.repository';
 import { RoleRepository } from './../shared/repositories/role.repository';
 import { IdentificationType } from './../shared/entities/identificationType.entity';
-import { Role } from './../shared/entities/role.entity';
+import { RoleType } from '../shared/entities/roleType.entity';
 import { User } from './../shared/entities/user.entity';
 import { SharedModule } from './../shared/shared.module';
 import { CrudUserUseCase } from './useCases/crudUser.UC';
@@ -20,7 +20,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   imports: [
     SharedModule.forRoot(),
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    TypeOrmModule.forFeature([User, Role, IdentificationType]),
+    TypeOrmModule.forFeature([User, RoleType, IdentificationType]),
   ],
   providers: [
     CrudUserUseCase,

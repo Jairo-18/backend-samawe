@@ -9,10 +9,10 @@ import {
 } from 'typeorm';
 import { User } from './user.entity';
 
-@Entity({ name: 'Role' })
-export class Role {
+@Entity({ name: 'RoleType' })
+export class RoleType {
   @PrimaryGeneratedColumn('uuid')
-  roleId: string;
+  roleTypeId: string;
 
   @Column('varchar', { length: 50 })
   name: string;
@@ -34,7 +34,7 @@ export class Role {
   })
   deletedAt?: Date;
 
-  @OneToMany(() => User, (user) => user.role, {
+  @OneToMany(() => User, (user) => user.roleType, {
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',
   })

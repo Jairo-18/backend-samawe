@@ -8,12 +8,12 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { IdentificationType } from './identificationType.entity';
-import { Role } from './role.entity';
+import { RoleType } from './roleType.entity';
 
 @Entity({ name: 'User' })
 export class User {
   @PrimaryColumn('uuid')
-  id: string;
+  userId: string;
 
   @Column('varchar', {
     length: 25,
@@ -51,9 +51,9 @@ export class User {
   })
   password: string;
 
-  @ManyToOne(() => Role, (role) => role.user)
-  @JoinColumn({ name: 'roleId' })
-  role: Role;
+  @ManyToOne(() => RoleType, (roleType) => roleType.user)
+  @JoinColumn({ name: 'roleTypeId' })
+  roleType: RoleType;
 
   @ManyToOne(
     () => IdentificationType,

@@ -20,7 +20,7 @@ export class CreateUserDto {
   })
   @IsUUID()
   @IsNotEmpty({ message: NOT_EMPTY_MESSAGE_ID })
-  id: string;
+  userId: string;
 
   @ApiProperty({
     example: 'Cédula de ciudadania',
@@ -90,10 +90,10 @@ export class CreateUserDto {
     description: 'UUID del rol asignado',
     required: false,
   })
-  @ValidateIf((o) => o.role && o.role.trim() !== '')
+  @ValidateIf((o) => o.roleType && o.roleType.trim() !== '')
   @IsUUID()
   @IsOptional()
-  role?: string;
+  roleType?: string;
 }
 
 export interface GetAllUsersRespose {

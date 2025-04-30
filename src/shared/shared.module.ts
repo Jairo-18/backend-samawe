@@ -15,7 +15,7 @@ import { UserRepository } from './repositories/user.repository';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { Role } from './entities/role.entity';
+import { RoleType } from './entities/roleType.entity';
 import { IdentificationType } from './entities/identificationType.entity';
 import { RoleRepository } from './repositories/role.repository';
 import { IdentificationTypeRepository } from './repositories/identificationType.repository';
@@ -45,7 +45,7 @@ export class SharedModule {
         PassportModule,
         TypeOrmModule.forFeature([
           User,
-          Role,
+          RoleType,
           IdentificationType,
           Product,
           CategoryType,
