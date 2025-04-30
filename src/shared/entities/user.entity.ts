@@ -4,11 +4,13 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { IdentificationType } from './identificationType.entity';
 import { RoleType } from './roleType.entity';
+import { Invoice } from './invoice.entity';
 
 @Entity({ name: 'User' })
 export class User {
@@ -16,7 +18,7 @@ export class User {
   userId: string;
 
   @Column('varchar', {
-    length: 25,
+    length: 50,
     nullable: false,
   })
   identificationNumber: string;
@@ -34,7 +36,7 @@ export class User {
   lastName: string;
 
   @Column('varchar', {
-    length: 255,
+    length: 150,
     nullable: false,
   })
   email: string;
@@ -61,6 +63,9 @@ export class User {
   )
   @JoinColumn({ name: 'identificationTypeId' })
   identificationType: IdentificationType;
+
+  @OneToMany(() => Invoice, (invoice) => invoice.user)
+  invoices: Invoice[];
 
   @CreateDateColumn({
     type: 'timestamp',

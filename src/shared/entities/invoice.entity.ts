@@ -1,4 +1,6 @@
+import { User } from './user.entity';
 import { InvoiceProduct } from './invoiceProduct.entity';
+import { PayType } from './payType.entity';
 import {
   Column,
   CreateDateColumn,
@@ -8,40 +10,32 @@ import {
   UpdateDateColumn,
   JoinColumn,
   ManyToOne,
+  OneToMany,
 } from 'typeorm';
 import { CategoryType } from './categoryType.entity';
-import { TaxeType } from './taxeType.entity';
 
-@Entity({ name: 'Product' })
-export class Product {
+@Entity({ name: 'Invoice' })
+export class Invoice {
   @PrimaryGeneratedColumn()
-  productId: number;
+  invoiceId: number;
 
   @Column('varchar', { length: 50, nullable: true })
   name: string;
 
-  @Column('varchar', { length: 150, nullable: true })
-  description?: string;
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  totalAmount: number;
 
-  @Column({
-    type: 'int',
-    nullable: false,
-  })
-  amount?: number;
+  @ManyToOne(() => User, (user) => user.invoices)
+  @JoinColumn({ name: 'userId' })
+  user: User;
 
-  @Column('decimal', { precision: 10, scale: 2 })
-  priceBuy: number;
-
-  @Column('decimal', { precision: 10, scale: 2 })
-  priceSale: number;
-
-  @ManyToOne(() => InvoiceProduct, (invoiceProduct) => invoiceProduct.product)
-  @JoinColumn({ name: 'InvoiceProductId' })
+  @OneToMany(() => InvoiceProduct, (invoiceProduct) => invoiceProduct.invoice)
+  @JoinColumn({ name: 'invoiceProductId' })
   invoiceProduct: InvoiceProduct;
 
-  @ManyToOne(() => TaxeType, (taxeType) => taxeType.product)
-  @JoinColumn({ name: 'taxeTypeId' })
-  taxeType: TaxeType;
+  @ManyToOne(() => PayType, (payType) => payType.invoice)
+  @JoinColumn({ name: 'payTipeId' })
+  payType: PayType;
 
   @ManyToOne(() => CategoryType, (categoryType) => categoryType.product)
   @JoinColumn({ name: 'categoryTypeId' })

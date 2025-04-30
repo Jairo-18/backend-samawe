@@ -1,27 +1,19 @@
-import { Experience } from './experience.entity';
 import {
   Column,
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
-  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
-@Entity({ name: 'AvailableType' })
-export class AvailableType {
+@Entity({ name: 'PaidType' })
+export class PaidType {
   @PrimaryGeneratedColumn()
-  availableTypeId: number;
+  paidTypeId: number;
 
   @Column('varchar', { length: 50, nullable: true })
   name: string;
-
-  @OneToMany(() => Experience, (experience) => experience.availableType, {
-    onDelete: 'CASCADE',
-    onUpdate: 'CASCADE',
-  })
-  experience: Experience[];
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt?: Date;

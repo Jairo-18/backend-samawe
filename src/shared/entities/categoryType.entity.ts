@@ -14,8 +14,14 @@ export class CategoryType {
   @PrimaryGeneratedColumn()
   categoryTypeId: number;
 
-  @Column()
+  @Column('varchar', { length: 50, nullable: true })
   name: string;
+
+  @OneToMany(() => Product, (product) => product.categoryType, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
+  product: Product[];
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt?: Date;
@@ -25,10 +31,4 @@ export class CategoryType {
 
   @DeleteDateColumn({ type: 'timestamp', nullable: true })
   deletedAt?: Date;
-
-  @OneToMany(() => Product, (product) => product.categoryType, {
-    onDelete: 'CASCADE',
-    onUpdate: 'CASCADE',
-  })
-  product: Product[];
 }

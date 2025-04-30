@@ -1,9 +1,11 @@
+import { BaseResponseDto } from './../../shared/dtos/response.dto';
+import { Product } from './../../shared/entities/product.entity';
 import {
   GET_ALL_PRODUCTS_EXAMPLE,
   GET_PRODUCT_EXAMPLE,
 } from './../constants/examplesProduct.conts';
 import { HttpStatus } from '@nestjs/common';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsNotEmpty,
   IsString,
@@ -12,8 +14,6 @@ import {
   IsInt,
   IsNumber,
 } from 'class-validator';
-import { BaseResponseDto } from 'src/shared/dtos/response.dto';
-import { Product } from 'src/shared/entities/product.entity';
 
 export class CreateProductDto {
   @ApiProperty({ example: 1, description: 'ID del producto', required: true })
@@ -49,13 +49,22 @@ export class CreateProductDto {
   amount: number;
 
   @ApiProperty({
-    example: 2000.0,
-    description: 'Precio del producto',
+    example: 1500.0,
+    description: 'Precio de compra',
     required: true,
   })
   @IsNumber()
   @IsPositive()
-  price: number;
+  priceBuy: number;
+
+  @ApiProperty({
+    example: 2000.0,
+    description: 'Precio de venta',
+    required: true,
+  })
+  @IsNumber()
+  @IsPositive()
+  priceSale: number;
 
   @ApiProperty({
     example: 0.19,
@@ -64,7 +73,7 @@ export class CreateProductDto {
   })
   @IsNumber()
   @IsPositive()
-  taxe: number;
+  TaxeType: number;
 
   @ApiProperty({
     example: 1,
@@ -74,57 +83,57 @@ export class CreateProductDto {
   @IsNumber()
   @IsNotEmpty({ message: 'La categoría es requerida' })
   categoryTypeId: number;
-
-  @ApiProperty({
-    example: 1,
-    description: 'ID del tipo de disponibilidad (relación con AvailableType)',
-    required: true,
-  })
-  @IsNumber()
-  @IsNotEmpty({ message: 'El tipo de disponibilidad es requerido' })
-  availableTypeId: number;
 }
 
 export class UpdateProductDto {
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 'Coca Cola 1L',
     description: 'Nombre del producto',
   })
   @IsString()
-  @IsOptional()
   name?: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 'Bebida gaseosa de 1 litro',
     description: 'Descripción del producto',
   })
   @IsString()
-  @IsOptional()
   description?: string;
 
-  @ApiPropertyOptional({ example: 10, description: 'Cantidad disponible' })
-  @IsInt()
-  @IsOptional()
+  @ApiProperty({ example: 10, description: 'Cantidad disponible' })
+  @IsNumber()
   amount?: number;
 
-  @ApiPropertyOptional({ example: 2000.0, description: 'Precio del producto' })
+  @ApiProperty({ example: 1500.0, description: 'Precio de compra' })
   @IsNumber()
   @IsPositive()
-  @IsOptional()
-  price?: number;
+  priceBuy?: number;
 
-  @ApiPropertyOptional({ example: 1, description: 'ID del tipo de categoría' })
+  @ApiProperty({ example: 2000.0, description: 'Precio de venta' })
   @IsNumber()
-  @IsOptional()
-  categoryTypeId?: number;
+  @IsPositive()
+  priceSale?: number;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 1,
-    description: 'ID del tipo de disponibilidad',
+    description: 'ID del tipo de categoría',
+    required: true,
   })
   @IsNumber()
-  @IsOptional()
-  availableTypeId?: number;
+  @IsNotEmpty()
+  // @MaxLength(200, { message: 'Máximos carácteres de 200' })
+  categoryTypeId?: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID del tipo de categoría',
+    required: true,
+  })
+  @IsNotEmpty()
+  @IsNumber()
+  // @IsOptional()
+  // @MaxLength(200, { message: 'Máximos carácteres de 200' })
+  TaxeTypeId?: number;
 }
 
 export interface GetAllProductsRespose {

@@ -1,27 +1,26 @@
-import { Experience } from './experience.entity';
+import { Invoice } from './invoice.entity';
 import {
   Column,
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
-  OneToMany,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
-@Entity({ name: 'AvailableType' })
-export class AvailableType {
+@Entity({ name: 'PayType' })
+export class PayType {
   @PrimaryGeneratedColumn()
-  availableTypeId: number;
+  payTypeId: number;
+
+  @ManyToOne(() => Invoice, (invoice) => invoice.payType)
+  @JoinColumn({ name: 'invoicesId' })
+  invoice: Invoice;
 
   @Column('varchar', { length: 50, nullable: true })
   name: string;
-
-  @OneToMany(() => Experience, (experience) => experience.availableType, {
-    onDelete: 'CASCADE',
-    onUpdate: 'CASCADE',
-  })
-  experience: Experience[];
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt?: Date;

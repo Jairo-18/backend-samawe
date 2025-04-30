@@ -1,4 +1,5 @@
-import { InvoiceProduct } from './invoiceProduct.entity';
+import { AdditionalType } from './additionalType.entity';
+import { AvailableType } from './availableType.entity';
 import {
   Column,
   CreateDateColumn,
@@ -12,10 +13,10 @@ import {
 import { CategoryType } from './categoryType.entity';
 import { TaxeType } from './taxeType.entity';
 
-@Entity({ name: 'Product' })
-export class Product {
+@Entity({ name: 'Experience' })
+export class Experience {
   @PrimaryGeneratedColumn()
-  productId: number;
+  experienceId: number;
 
   @Column('varchar', { length: 50, nullable: true })
   name: string;
@@ -27,17 +28,36 @@ export class Product {
     type: 'int',
     nullable: false,
   })
-  amount?: number;
+  amountPerson?: number;
 
-  @Column('decimal', { precision: 10, scale: 2 })
-  priceBuy: number;
+  @Column({
+    type: 'int',
+    nullable: false,
+  })
+  amount?: number;
 
   @Column('decimal', { precision: 10, scale: 2 })
   priceSale: number;
 
-  @ManyToOne(() => InvoiceProduct, (invoiceProduct) => invoiceProduct.product)
-  @JoinColumn({ name: 'InvoiceProductId' })
-  invoiceProduct: InvoiceProduct;
+  @Column({ type: 'date', nullable: true })
+  checkInDate: Date;
+
+  @Column({ type: 'date', nullable: true })
+  checkOutDate: Date;
+
+  @Column({ type: 'date', nullable: true })
+  reservationDate: Date;
+
+  @ManyToOne(
+    () => AdditionalType,
+    (additionalType) => additionalType.experience,
+  )
+  @JoinColumn({ name: 'additionalTypeId' })
+  additionalType: AdditionalType;
+
+  @ManyToOne(() => AvailableType, (availableType) => availableType.experience)
+  @JoinColumn({ name: 'availableTypeId' })
+  availableType: AvailableType;
 
   @ManyToOne(() => TaxeType, (taxeType) => taxeType.product)
   @JoinColumn({ name: 'taxeTypeId' })

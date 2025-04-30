@@ -9,15 +9,18 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-@Entity({ name: 'AvailableType' })
-export class AvailableType {
+@Entity({ name: 'AdditionalType' })
+export class AdditionalType {
   @PrimaryGeneratedColumn()
-  availableTypeId: number;
+  additionalTypeId: number;
 
-  @Column('varchar', { length: 50, nullable: true })
-  name: string;
+  @Column({
+    type: 'int',
+    nullable: false,
+  })
+  amountAdditional?: number;
 
-  @OneToMany(() => Experience, (experience) => experience.availableType, {
+  @OneToMany(() => Experience, (experience) => experience.additionalType, {
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',
   })

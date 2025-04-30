@@ -128,9 +128,9 @@ export class UserService {
 
     // Resolver Role si se envía
     let roleEntity: Role | undefined;
-    if (userData.role && typeof userData.role === 'object') {
+    if (userData.RoleType && typeof userData.RoleType === 'object') {
       roleEntity = await this.roleRepository.findOne({
-        where: { roleTypeId: userData.role },
+        where: { roleTypeId: userData.RoleType },
       });
       if (!roleEntity) {
         throw new NotFoundException('Rol no encontrado');

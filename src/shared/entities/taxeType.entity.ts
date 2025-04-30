@@ -7,26 +7,26 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
 } from 'typeorm';
-import { User } from './user.entity';
+import { Product } from './product.entity';
 
-@Entity({ name: 'IdentificationType' })
-export class IdentificationType {
-  @PrimaryGeneratedColumn('uuid')
-  identificationTypeId: string;
+@Entity({ name: 'TaxeType' })
+export class TaxeType {
+  @PrimaryGeneratedColumn()
+  taxeTypeId: number;
 
-  @Column('varchar', { length: 75, nullable: true })
-  name: string;
-
-  @OneToMany(() => User, (user) => user.identificationType, {
-    onDelete: 'CASCADE',
-    onUpdate: 'CASCADE',
-  })
-  user: User[];
+  @Column('decimal', { precision: 5, scale: 2, default: 0.0 })
+  name: number;
 
   @CreateDateColumn({
     type: 'timestamp',
   })
   createdAt?: Date;
+
+  @OneToMany(() => Product, (product) => product.taxeType, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
+  product: Product[];
 
   @UpdateDateColumn({
     type: 'timestamp',

@@ -14,7 +14,7 @@ export class RoleType {
   @PrimaryGeneratedColumn('uuid')
   roleTypeId: string;
 
-  @Column('varchar', { length: 50 })
+  @Column('varchar', { length: 50, nullable: true })
   name: string;
 
   @CreateDateColumn({

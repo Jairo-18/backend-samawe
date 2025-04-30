@@ -1,3 +1,10 @@
+import { InvoiceProduct } from './entities/invoiceProduct.entity';
+import { Invoice } from './entities/invoice.entity';
+import { AdditionalType } from './entities/additionalType.entity';
+import { Experience } from './entities/experience.entity';
+import { PaidType } from './entities/paidType.entity';
+import { PayType } from './entities/payType.entity';
+import { TaxeType } from './entities/taxeType.entity';
 import { ProductService } from './../products/services/product.service';
 import { CategoryTypeRepository } from './repositories/categoryType.repository';
 import { ProductRepository } from './repositories/product.repository';
@@ -50,6 +57,13 @@ export class SharedModule {
           Product,
           CategoryType,
           AvailableType,
+          TaxeType,
+          PayType,
+          PaidType,
+          Experience,
+          AdditionalType,
+          Invoice,
+          InvoiceProduct,
         ]),
         JwtModule.registerAsync({
           inject: [ConfigService],

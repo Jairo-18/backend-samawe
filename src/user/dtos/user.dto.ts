@@ -165,10 +165,10 @@ export class UpdateUserDto {
     description: 'UUID del rol asignado',
     required: false,
   })
-  @ValidateIf((o) => o.role && o.role.trim() !== '')
+  @ValidateIf((o) => o.RoleType && o.RoleType.trim() !== '')
   @IsUUID()
   @IsOptional()
-  role?: string;
+  RoleType?: string;
 }
 
 export class ChangePasswordDto {

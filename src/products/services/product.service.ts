@@ -21,27 +21,20 @@ export class ProductService {
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     try {
-      const { categoryTypeId, availableTypeId, ...productData } =
-        createProductDto;
+      const { categoryTypeId, ...productData } = createProductDto;
 
       // Carga las entidades relacionadas
       const categoryType = await this._categoryTypeRepository.findOne({
         where: { categoryTypeId: categoryTypeId },
       });
-      const availableType = await this._availableTypeRepository.findOne({
-        where: { availableTypeId: availableTypeId },
-      });
 
-      if (!categoryType || !availableType) {
-        throw new BadRequestException(
-          'Tipo de categoría o disponibilidad no encontrado',
-        );
+      if (!categoryType) {
+        throw new BadRequestException('Tipo de categoría no encontrado');
       }
 
       const newProduct = this._productRepository.create({
         ...productData,
         categoryType,
-        availableType,
       });
 
       return await this._productRepository.save(newProduct);
@@ -76,16 +69,6 @@ export class ProductService {
         throw new NotFoundException('Categoría no encontrada');
       }
       product.categoryType = category;
-    }
-
-    if (updateProductDto.availableTypeId) {
-      const available = await this._availableTypeRepository.findOne({
-        where: { availableTypeId: updateProductDto.availableTypeId },
-      });
-      if (!available) {
-        throw new NotFoundException('Tipo de disponibilidad no encontrado');
-      }
-      product.availableType = available;
     }
 
     Object.assign(product, updateProductDto);
