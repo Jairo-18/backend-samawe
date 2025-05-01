@@ -59,6 +59,18 @@ export class UserController {
     };
   }
 
+  @Get('/create/related-data')
+  @ApiOkResponse({ type: CreateUserRelatedDataReponseDto })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async getRelatedDataForCreate(): Promise<CreateUserRelatedDataReponseDto> {
+    const data = await this._crudUserUseCase.getRelatedDataToCreate(false);
+    return {
+      statusCode: HttpStatus.OK,
+      data,
+    };
+  }
+
   @Get('/register/related-data')
   @ApiOkResponse({ type: CreateUserRelatedDataReponseDto })
   async getRelatedData(): Promise<CreateUserRelatedDataReponseDto> {
