@@ -68,19 +68,23 @@ export class UserService {
       where: [{ userId: user.userId }, { email: user.email }],
     });
 
-    this.validatePasswordMatch(user.password, user.confirmPassword);
-
-    let roleType;
-    if (user.roleType && user.roleType.trim() !== '') {
-      roleType = await this.roleRepository.findOne({
-        where: { roleTypeId: user.roleType },
-      });
-    } else {
-      roleType = await this.roleRepository.findOne({
-        where: { roleTypeId: '4a96be8d-308f-434f-9846-54e5db3e7d95' },
-      });
+    if (userExist) {
+      throw new HttpException('El usuario ya existe', HttpStatus.CONFLICT);
     }
 
+    this.validatePasswordMatch(user.password, user.confirmPassword);
+
+    // Buscar el rol asignado o usar el rol por defecto
+    const roleType =
+      user.roleType && user.roleType.trim() !== ''
+        ? await this.roleRepository.findOne({
+            where: { roleTypeId: user.roleType },
+          })
+        : await this.roleRepository.findOne({
+            where: { roleTypeId: '4a96be8d-308f-434f-9846-54e5db3e7d95' },
+          }); // ID por defecto
+
+    // Buscar tipo de identificación
     const identificationType =
       typeof user.identificationType === 'string'
         ? await this.identificationTypeRepository.findOne({
@@ -101,10 +105,6 @@ export class UserService {
       roleType,
       identificationType,
     };
-
-    if (userExist) {
-      throw new HttpException('El usuario ya existe', HttpStatus.CONFLICT);
-    }
 
     const res = await this.userRepository.insert(userConfirm);
     return { rowId: res.identifiers[0].id };
@@ -186,6 +186,7 @@ export class UserService {
   async findByParams(params: Record<string, any>): Promise<User> {
     return await this.userRepository.findOne({
       where: [params],
+      relations: ['roleType'],
     });
   }
 

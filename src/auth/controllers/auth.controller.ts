@@ -4,8 +4,8 @@ import {
   RefreshTokenResponseDto,
   SignInResponseDto,
   SignOutBodyDto,
-} from './../../dtos/auth.dto';
-import { AuthUC } from '../../useCases/auth.UC';
+} from '../dtos/auth.dto';
+import { AuthUC } from '../useCases/auth.UC';
 import {
   Body,
   Controller,

@@ -1,5 +1,5 @@
 import { TokenPayloadModel } from './../../auth/models/authentication.model';
-import { AuthService } from './../../auth/services/auth/auth.service';
+import { AuthService } from '../../auth/services/auth.service';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
