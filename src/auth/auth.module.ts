@@ -1,3 +1,5 @@
+import { AccessSessionsService } from './services/accessSessions.service';
+import { AccessSessionsRepository } from './../shared/repositories/accessSessions.repository';
 import { UserRepository } from './../shared/repositories/user.repository';
 import { UserService } from '../user/services/user.service';
 import { SharedModule } from './../shared/shared.module';
@@ -22,7 +24,15 @@ import { PassportModule } from '@nestjs/passport';
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AuthUC, JwtService, UserService, UserRepository],
+  providers: [
+    AuthService,
+    AuthUC,
+    JwtService,
+    UserService,
+    AccessSessionsService,
+    UserRepository,
+    AccessSessionsRepository,
+  ],
   exports: [],
 })
 export class AuthModule {}

@@ -1,9 +1,11 @@
 import {
+  InvalidAccessDataResponseDto,
   LoginDto,
   RefreshTokenBodyDto,
   RefreshTokenResponseDto,
   SignInResponseDto,
   SignOutBodyDto,
+  SignOutResponseDto,
 } from '../dtos/auth.dto';
 import { AuthUC } from '../useCases/auth.UC';
 import {
@@ -21,21 +23,30 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { INVALID_ACCESS_DATA_MESSAGE } from '../constants/messages.constants';
 
 @Controller('auth')
 @ApiTags('Autenticación')
 export class AuthController {
   constructor(private readonly authUC: AuthUC) {}
 
-  @Post('sign-in')
+  @Post('/sign-in')
   @ApiOkResponse({ type: SignInResponseDto })
-  @ApiUnauthorizedResponse({ type: UnauthorizedException })
-  async signIn(@Body() user: LoginDto): Promise<SignInResponseDto> {
-    const data = await this.authUC.login(user);
+  @ApiUnauthorizedResponse({
+    description: INVALID_ACCESS_DATA_MESSAGE,
+    type: InvalidAccessDataResponseDto,
+  })
+  async signIn(@Body() body: LoginDto): Promise<SignInResponseDto> {
+    const data = await this.authUC.login(body);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Bienvenid@',
-      data,
+      data: {
+        statusCode: HttpStatus.OK,
+        message: 'Bienvenid@',
+        tokens: data.tokens,
+        user: data.user,
+        accessSessionId: data.session?.accessSessionId,
+      },
     };
   }
 
@@ -52,12 +63,16 @@ export class AuthController {
     };
   }
 
-  @Post('sign-out')
+  @Post('/sign-out')
   @ApiOkResponse()
-  @ApiUnauthorizedResponse({ type: UnauthorizedException })
+  @ApiUnauthorizedResponse()
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
-  async signOut(@Body() body: SignOutBodyDto) {
-    return await this.authUC.signOut(body);
+  async signOut(@Body() body: SignOutBodyDto): Promise<SignOutResponseDto> {
+    await this.authUC.signOut(body);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Sesión finalizada correctamente',
+    };
   }
 }

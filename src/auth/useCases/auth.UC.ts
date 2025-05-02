@@ -10,8 +10,8 @@ import {
 export class AuthUC {
   constructor(private readonly authService: AuthService) {}
 
-  async login(user: LoginDto) {
-    return this.authService.signIn(user);
+  async login(body: LoginDto) {
+    return await this.authService.signIn(body);
   }
 
   async refreshToken(body: RefreshTokenBodyDto) {
@@ -19,6 +19,6 @@ export class AuthUC {
   }
 
   async signOut(body: SignOutBodyDto) {
-    return this.authService.signOut(body);
+    return await this.authService.signOut(body);
   }
 }

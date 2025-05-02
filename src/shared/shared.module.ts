@@ -1,3 +1,6 @@
+import { AccessSessionsService } from './../auth/services/accessSessions.service';
+import { AccessSessionsRepository } from './repositories/accessSessions.repository';
+import { AccessSessions } from './entities/accessSessions.entity';
 import { InvoiceProduct } from './entities/invoiceProduct.entity';
 import { Invoice } from './entities/invoice.entity';
 import { AdditionalType } from './entities/additionalType.entity';
@@ -64,6 +67,7 @@ export class SharedModule {
           AdditionalType,
           Invoice,
           InvoiceProduct,
+          AccessSessions,
         ]),
         JwtModule.registerAsync({
           inject: [ConfigService],
@@ -83,10 +87,12 @@ export class SharedModule {
         ProductRepository,
         CategoryTypeRepository,
         AvailableTypeRepository,
+        AccessSessionsRepository,
         JwtStrategy,
         AuthService,
         UserService,
         ProductService,
+        AccessSessionsService,
       ],
       exports: [
         TypeOrmModule,
@@ -96,9 +102,11 @@ export class SharedModule {
         ProductRepository,
         CategoryTypeRepository,
         AvailableTypeRepository,
+        AccessSessionsRepository,
         AuthService,
         UserService,
         ProductService,
+        AccessSessionsService,
       ],
     };
   }

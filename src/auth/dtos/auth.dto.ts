@@ -1,7 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({
@@ -51,6 +51,13 @@ export class SignOutBodyDto {
   @IsString()
   @IsNotEmpty()
   accessToken: string;
+  @ApiProperty({
+    example: '75394f7c-429f-4f07-9f9e-9214eae0b398',
+    required: true,
+  })
+  @IsString()
+  @IsNotEmpty()
+  accessSessionId: string;
 }
 
 export interface UserRole {
@@ -70,6 +77,26 @@ export class SignInResponseDto implements BaseResponseDto {
   })
   statusCode: number;
 
+  data: AuthTokenResponseDto;
+}
+
+export class InvalidAccessDataResponseDto implements BaseResponseDto {
+  @ApiProperty({
+    type: Number,
+    example: HttpStatus.UNAUTHORIZED,
+  })
+  statusCode: number;
+
+  //data: AuthTokenResponseDto;
+}
+
+export class AuthTokenResponseDto {
+  @ApiProperty({
+    type: Number,
+    example: HttpStatus.OK,
+  })
+  statusCode: number;
+
   @ApiProperty({
     type: String,
     example: 'Bienvenid@',
@@ -77,21 +104,40 @@ export class SignInResponseDto implements BaseResponseDto {
   message: string;
 
   @ApiProperty({
-    type: Object,
     example: {
-      tokens: {
-        accessToken:
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IkpoZWZmIiwic3ViIjoiNTNlYzI3NjYtZWE5NS00ZGFiLWFkOWEtZDFjYmY1Y2EzY2JlIiwiaWQiOiI1M2VjMjc2Ni1lYTk1LTRkYWItYWQ5YS1kMWNiZjVjYTNjYmUiLCJpYXQiOjE3NDIxNjQxODUsImV4cCI6MTc0MjIwMDE4NX0.4YGuGi6jiH9NCpQIsZV6RTQxuQ9Sg57sphciWAWkIsY',
-        refreshToken:
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IkpoZWZmIiwic3ViIjoiNTNlYzI3NjYtZWE5NS00ZGFiLWFkOWEtZDFjYmY1Y2EzY2JlIiwiaWQiOiI1M2VjMjc2Ni1lYTk1LTRkYWItYWQ5YS1kMWNiZjVjYTNjYmUiLCJpYXQiOjE3NDIxNjQxODUsImV4cCI6MTc0Mjc2ODk4NX0.Ow3FAW_pm60V4qf73aA8JN4P0qJCqDTJ7EEOQX5VeYQ',
-      },
-      user: {
-        id: '53ec2766-ea95-4dab-ad9a-d1cbf5ca3cbe',
-        role: { roleId: 'user', name: 'Usuario' },
+      accessToken: 'access-token-example',
+      refreshToken: 'refresh-token-example',
+    },
+  })
+  tokens: {
+    accessToken: string;
+    refreshToken: string;
+  };
+
+  @ApiProperty({
+    example: {
+      id: '53ec2766-ea95-4dab-ad9a-d1cbf5ca3cbe',
+      role: {
+        roleId: 'user',
+        name: 'Usuario',
       },
     },
   })
-  data: SignInResponse;
+  user: {
+    id: string;
+    role: {
+      roleId: string;
+      name: string;
+    };
+  };
+
+  @ApiProperty({
+    type: String,
+    required: false,
+    example: '75394f7c-429f-4f07-9f9e-9214eae0b398',
+  })
+  @IsOptional()
+  accessSessionId?: string;
 }
 
 export class RefreshTokenResponseDto implements BaseResponseDto {
@@ -117,4 +163,17 @@ export class RefreshTokenResponseDto implements BaseResponseDto {
     },
   })
   data: SignInResponse;
+}
+
+export class SignOutResponseDto implements BaseResponseDto {
+  @ApiProperty({
+    type: Number,
+    example: HttpStatus.OK,
+  })
+  statusCode: number;
+  @ApiProperty({
+    type: String,
+    example: 'Logged out successfully',
+  })
+  message?: string;
 }
