@@ -40,9 +40,8 @@ export class AuthController {
     const data = await this.authUC.login(body);
     return {
       statusCode: HttpStatus.OK,
+      message: 'Bienvenid@',
       data: {
-        statusCode: HttpStatus.OK,
-        message: 'Bienvenid@',
         tokens: data.tokens,
         user: data.user,
         accessSessionId: data.session?.accessSessionId,

@@ -77,6 +77,12 @@ export class SignInResponseDto implements BaseResponseDto {
   })
   statusCode: number;
 
+  @ApiProperty({
+    type: String,
+    example: 'Bienvenid@',
+  })
+  message: string;
+
   data: AuthTokenResponseDto;
 }
 
@@ -91,18 +97,6 @@ export class InvalidAccessDataResponseDto implements BaseResponseDto {
 }
 
 export class AuthTokenResponseDto {
-  @ApiProperty({
-    type: Number,
-    example: HttpStatus.OK,
-  })
-  statusCode: number;
-
-  @ApiProperty({
-    type: String,
-    example: 'Bienvenid@',
-  })
-  message: string;
-
   @ApiProperty({
     example: {
       accessToken: 'access-token-example',
