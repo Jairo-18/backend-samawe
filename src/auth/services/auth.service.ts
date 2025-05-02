@@ -1,3 +1,4 @@
+import { NOT_FOUND_RESPONSE } from './../../shared/constants/response.constant';
 import { RefreshTokenBodyDto } from '../dtos/auth.dto';
 import {
   TokenPayloadModel,
@@ -13,7 +14,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { AccessSessionsService } from './accessSessions.service';
-import { NOT_FOUND_RESPONSE } from 'src/shared/constants/response.constant';
+
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()

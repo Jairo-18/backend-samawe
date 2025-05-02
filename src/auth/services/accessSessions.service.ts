@@ -1,3 +1,4 @@
+import { NOT_FOUND_MESSAGE } from './../../shared/constants/messages.constant';
 import { AccessSessions } from './../../shared/entities/accessSessions.entity';
 import { AccessSessionsRepository } from './../../shared/repositories/accessSessions.repository';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
@@ -5,8 +6,6 @@ import {
   AccessSessionsFiltersModel,
   AccessSessionsModel,
 } from '../models/accessSessions.model';
-
-import { NOT_FOUND_MESSAGE } from 'src/shared/constants/messages.constant';
 
 @Injectable()
 export class AccessSessionsService {
