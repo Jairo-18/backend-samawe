@@ -5,7 +5,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { HttpStatus } from '@nestjs/common';
 
 export interface CreateUserRelatedDataDto {
-  role?: RoleType[];
+  roleType?: RoleType[];
   identificationType: IdentificationType[];
 }
 
@@ -17,7 +17,7 @@ export class CreateUserRelatedDataReponseDto implements BaseResponseDto {
   statusCode: number;
   @ApiProperty({
     type: Object,
-    example: '',
+    example: 'Datos de select',
   })
   data: CreateUserRelatedDataDto;
 }

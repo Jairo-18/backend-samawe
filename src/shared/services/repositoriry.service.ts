@@ -6,7 +6,7 @@ import { Repository } from 'typeorm';
 @Injectable()
 export class RepositoryService {
   public repositories: {
-    role: RoleRepository;
+    roleType: RoleRepository;
     identificationType: IdentificationTypeRepository;
   };
 
@@ -15,7 +15,7 @@ export class RepositoryService {
     private readonly _identificationTipeRepository: IdentificationTypeRepository,
   ) {
     this.repositories = {
-      role: _roleRepository,
+      roleType: _roleRepository,
       identificationType: _identificationTipeRepository,
     };
   }

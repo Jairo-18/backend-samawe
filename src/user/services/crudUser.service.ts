@@ -16,10 +16,10 @@ export class CrudUserService {
         this._repositoriesService.repositories.identificationType,
       );
     if (!isRegister) {
-      const role = await this._repositoriesService.getEntities<RoleType>(
-        this._repositoriesService.repositories.role,
+      const roleType = await this._repositoriesService.getEntities<RoleType>(
+        this._repositoriesService.repositories.roleType,
       );
-      return { identificationType, role };
+      return { identificationType, roleType };
     }
     return { identificationType };
   }
