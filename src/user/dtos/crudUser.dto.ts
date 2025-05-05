@@ -1,3 +1,4 @@
+import { PhoneCode } from './../../shared/entities/phoneCode.entity';
 import { RoleType } from '../../shared/entities/roleType.entity';
 import { IdentificationType } from './../../shared/entities/identificationType.entity';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
@@ -7,6 +8,7 @@ import { HttpStatus } from '@nestjs/common';
 export interface CreateUserRelatedDataDto {
   roleType?: RoleType[];
   identificationType: IdentificationType[];
+  phoneCode: PhoneCode[];
 }
 
 export class CreateUserRelatedDataReponseDto implements BaseResponseDto {

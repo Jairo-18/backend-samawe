@@ -1,3 +1,5 @@
+import { PhoneCodeRepository } from './repositories/phoneCode.repository';
+import { PhoneCode } from './entities/phoneCode.entity';
 import { AccessSessionsService } from './../auth/services/accessSessions.service';
 import { AccessSessionsRepository } from './repositories/accessSessions.repository';
 import { AccessSessions } from './entities/accessSessions.entity';
@@ -68,6 +70,7 @@ export class SharedModule {
           Invoice,
           InvoiceProduct,
           AccessSessions,
+          PhoneCode,
         ]),
         JwtModule.registerAsync({
           inject: [ConfigService],
@@ -88,6 +91,7 @@ export class SharedModule {
         CategoryTypeRepository,
         AvailableTypeRepository,
         AccessSessionsRepository,
+        PhoneCodeRepository,
         JwtStrategy,
         AuthService,
         UserService,
@@ -103,6 +107,7 @@ export class SharedModule {
         CategoryTypeRepository,
         AvailableTypeRepository,
         AccessSessionsRepository,
+        PhoneCodeRepository,
         AuthService,
         UserService,
         ProductService,

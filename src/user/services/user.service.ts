@@ -1,3 +1,4 @@
+import { PhoneCodeRepository } from './../../shared/repositories/phoneCode.repository';
 import { UpdateUserDto } from './../dtos/user.dto';
 import { Role, IdentificationType } from './../models/user.model';
 import { CreateUserDto, ChangePasswordDto } from '../dtos/user.dto';
@@ -20,19 +21,50 @@ export class UserService {
     private userRepository: UserRepository,
     private readonly roleRepository: RoleRepository,
     private readonly identificationTypeRepository: IdentificationTypeRepository,
+    private readonly phoneCodeRepository: PhoneCodeRepository,
   ) {}
 
   async create(user: CreateUserDto): Promise<{ rowId: string }> {
-    const userExist = await this.findByParams({
-      id: user.userId,
-      email: user.email,
+    // Validación por email
+    const existingUserByEmail = await this.userRepository.findOne({
+      where: { email: user.email },
     });
 
-    this.validatePasswordMatch(user.password, user.confirmPassword);
-
-    if (userExist) {
-      throw new HttpException('El usuario ya existe', HttpStatus.CONFLICT);
+    if (existingUserByEmail) {
+      throw new HttpException('El email ya está en uso', HttpStatus.CONFLICT);
     }
+
+    // Validación por tipo + número de identificación
+    const existingUserByIdentification = await this.userRepository.findOne({
+      where: {
+        identificationType: { identificationTypeId: user.identificationType },
+        identificationNumber: user.identificationNumber,
+      },
+    });
+
+    if (existingUserByIdentification) {
+      throw new HttpException(
+        'El usuario ya existe con esta identificación',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    // Validación por código de teléfono + número
+    const existingPhoneUser = await this.userRepository.findOne({
+      where: {
+        phoneCode: { phoneCodeId: user.phoneCode },
+        phone: user.phone,
+      },
+    });
+
+    if (existingPhoneUser) {
+      throw new HttpException(
+        'Este número ya está en uso',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    this.validatePasswordMatch(user.password, user.confirmPassword);
 
     const roleType = await this.roleRepository.findOne({
       where: { roleTypeId: user.roleType },
@@ -42,9 +74,13 @@ export class UserService {
       where: { identificationTypeId: user.identificationType },
     });
 
-    if (!roleType || !identificationType) {
+    const phoneCode = await this.phoneCodeRepository.findOne({
+      where: { phoneCodeId: user.phoneCode },
+    });
+
+    if (!roleType || !identificationType || !phoneCode) {
       throw new HttpException(
-        'Rol o tipo de identificación inválido',
+        'Rol, tipo de identificación o código telefónico inválido',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -56,6 +92,7 @@ export class UserService {
       password: hashedPassword,
       roleType,
       identificationType,
+      phoneCode,
     });
 
     return { rowId: res.identifiers[0].id };
@@ -64,17 +101,47 @@ export class UserService {
   async register(user: CreateUserDto): Promise<{ rowId: string }> {
     const salt = await bcrypt.genSalt();
 
-    const userExist = await this.userRepository.findOne({
-      where: [{ userId: user.userId }, { email: user.email }],
+    // Validación por email
+    const existingUserByEmail = await this.userRepository.findOne({
+      where: { email: user.email },
     });
 
-    if (userExist) {
-      throw new HttpException('El usuario ya existe', HttpStatus.CONFLICT);
+    if (existingUserByEmail) {
+      throw new HttpException('El email ya está en uso', HttpStatus.CONFLICT);
+    }
+
+    // Validación por tipo + número de identificación
+    const existingUserByIdentification = await this.userRepository.findOne({
+      where: {
+        identificationType: { identificationTypeId: user.identificationType },
+        identificationNumber: user.identificationNumber,
+      },
+    });
+
+    if (existingUserByIdentification) {
+      throw new HttpException(
+        'El usuario ya existe con esta identificación',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    // Validación por código de teléfono + número
+    const existingPhoneUser = await this.userRepository.findOne({
+      where: {
+        phoneCode: { phoneCodeId: user.phoneCode },
+        phone: user.phone,
+      },
+    });
+
+    if (existingPhoneUser) {
+      throw new HttpException(
+        'Este número ya está en uso',
+        HttpStatus.CONFLICT,
+      );
     }
 
     this.validatePasswordMatch(user.password, user.confirmPassword);
 
-    // Buscar el rol asignado o usar el rol por defecto
     const roleType =
       user.roleType && user.roleType.trim() !== ''
         ? await this.roleRepository.findOne({
@@ -82,9 +149,8 @@ export class UserService {
           })
         : await this.roleRepository.findOne({
             where: { roleTypeId: '4a96be8d-308f-434f-9846-54e5db3e7d95' },
-          }); // ID por defecto
+          });
 
-    // Buscar tipo de identificación
     const identificationType =
       typeof user.identificationType === 'string'
         ? await this.identificationTypeRepository.findOne({
@@ -92,9 +158,13 @@ export class UserService {
           })
         : user.identificationType;
 
-    if (!roleType || !identificationType) {
+    const phoneCode = await this.phoneCodeRepository.findOne({
+      where: { phoneCodeId: user.phoneCode },
+    });
+
+    if (!roleType || !identificationType || !phoneCode) {
       throw new HttpException(
-        'Rol o tipo de identificación inválido',
+        'Rol, tipo de identificación o código de teléfono inválido',
         HttpStatus.NOT_FOUND,
       );
     }
@@ -104,6 +174,7 @@ export class UserService {
       password: await bcrypt.hash(user.password, salt),
       roleType,
       identificationType,
+      phoneCode,
     };
 
     const res = await this.userRepository.insert(userConfirm);

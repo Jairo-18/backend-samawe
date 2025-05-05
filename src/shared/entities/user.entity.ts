@@ -1,3 +1,4 @@
+import { PhoneCode } from './phoneCode.entity';
 import {
   Column,
   CreateDateColumn,
@@ -52,6 +53,10 @@ export class User {
     nullable: false,
   })
   password: string;
+
+  @ManyToOne(() => PhoneCode, (phoneCode) => phoneCode.user)
+  @JoinColumn({ name: 'phoneCodeId' })
+  phoneCode: PhoneCode;
 
   @ManyToOne(() => RoleType, (roleType) => roleType.user)
   @JoinColumn({ name: 'roleTypeId' })

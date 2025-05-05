@@ -15,7 +15,7 @@ import { GET_ALL_USER_EXAMPLE } from '../constants/examples.conts';
 
 export class CreateUserDto {
   @ApiProperty({
-    example: 'uuid',
+    example: 'Id de usuario - uuid',
     required: true,
   })
   @IsUUID()
@@ -23,7 +23,7 @@ export class CreateUserDto {
   userId: string;
 
   @ApiProperty({
-    example: 'Cédula de ciudadania',
+    example: 'Cédula de ciudadania / uuid',
     required: true,
   })
   @IsString()
@@ -63,6 +63,14 @@ export class CreateUserDto {
   email: string;
 
   @ApiProperty({
+    example: 'Sufijo - uuid',
+    required: true,
+  })
+  @IsString()
+  @IsNotEmpty({ message: 'El prefijo es requerido' })
+  phoneCode: string;
+
+  @ApiProperty({
     example: '3102103660',
     required: true,
   })
@@ -87,7 +95,7 @@ export class CreateUserDto {
 
   @ApiProperty({
     example: '',
-    description: 'UUID del rol asignado',
+    description: 'Rol aignado / uuid',
     required: false,
   })
   @ValidateIf((o) => o.roleType && o.roleType.trim() !== '')
