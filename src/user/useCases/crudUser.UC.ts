@@ -1,3 +1,4 @@
+import { PaginatedListUsersParamsDto } from '../dtos/crudUser.dto';
 import { CrudUserService } from './../services/crudUser.service';
 import { Injectable } from '@nestjs/common';
 
@@ -7,5 +8,9 @@ export class CrudUserUseCase {
 
   async getRelatedDataToCreate(isRegister: boolean) {
     return await this.userService.getRelatedDataToCreate(isRegister);
+  }
+
+  async paginatedList(params: PaginatedListUsersParamsDto) {
+    return await this.userService.paginatedList(params);
   }
 }

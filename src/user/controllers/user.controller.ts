@@ -1,5 +1,9 @@
+import { User } from 'src/shared/entities/user.entity';
 import { CrudUserUseCase } from '../useCases/crudUser.UC';
-import { CreateUserRelatedDataReponseDto } from '../dtos/crudUser.dto';
+import {
+  CreateUserRelatedDataReponseDto,
+  PaginatedListUsersParamsDto,
+} from '../dtos/crudUser.dto';
 import {
   CreatedRecordResponseDto,
   DeleteReCordResponseDto,
@@ -32,11 +36,13 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   Request,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { ResponsePaginationDto } from 'src/shared/dtos/pagination.dto';
 
 @Controller('user')
 @ApiTags('Usuarios')
@@ -119,6 +125,16 @@ export class UserController {
       statusCode: HttpStatus.CREATED,
       data: rowId,
     };
+  }
+
+  @Get('/paginated-list')
+  @ApiOkResponse({ type: ResponsePaginationDto<User> })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async getPaginatedList(
+    @Query() params: PaginatedListUsersParamsDto,
+  ): Promise<ResponsePaginationDto<User>> {
+    return await this._crudUserUseCase.paginatedList(params);
   }
 
   @Get('init-data')
