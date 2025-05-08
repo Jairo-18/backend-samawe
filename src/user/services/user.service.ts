@@ -240,10 +240,16 @@ export class UserService {
       { userId },
       {
         ...userData,
-        phoneCode: { phoneCodeId: userData.phoneCode },
-        roleType: { roleTypeId: userData.roleType },
+        phoneCode: {
+          phoneCodeId: userData.phoneCode || userExist.phoneCode.phoneCodeId,
+        },
+        roleType: {
+          roleTypeId: userData.roleType || userExist.roleType.roleTypeId,
+        },
         identificationType: {
-          identificationTypeId: userData.identificationType,
+          identificationTypeId:
+            userData.identificationType ||
+            userExist.identificationType.identificationTypeId,
         },
       },
     );
