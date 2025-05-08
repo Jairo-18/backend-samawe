@@ -1,14 +1,35 @@
 export interface UserModel {
   userId?: string;
+  identificationType: string;
+  identificationNumber: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneCode: string;
+  phone: string;
+  roleType: string;
+  password?: string;
+  confirmPassword?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date;
+}
+
+export interface UserModelComplete {
+  userId?: string;
   identificationType: IdentificationType;
   identificationNumber: string;
   firstName: string;
   lastName: string;
   email: string;
+  phoneCode: PhoneCOde;
   phone: string;
-  role: Role;
+  roleType: RoleType;
   password?: string;
   confirmPassword?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date;
 }
 
 export interface UpdateUserModel {
@@ -18,19 +39,34 @@ export interface UpdateUserModel {
   lastName: string;
   email: string;
   phone: string;
-  role: Role;
+  role: RoleType;
   password?: string;
   confirmPassword?: string;
 }
 
 export interface IdentificationType {
-  id?: string;
+  identificationTypeId?: string;
   name?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  deletedAt?: Date;
 }
 
-export interface Role {
-  id?: string;
+export interface RoleType {
+  roleTypeId?: string;
   name?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  deletedAt?: Date;
+}
+
+export interface PhoneCOde {
+  phoneCodeId?: string;
+  code: string;
+  name?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  deletedAt?: Date;
 }
 
 export interface ChangePasswordModel {

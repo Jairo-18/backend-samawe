@@ -93,3 +93,15 @@ export class PaginatedListUsersParamsDto extends ParamsPaginationDto {
   @IsUUID()
   roleType?: string;
 }
+
+// export interface UserDataResponse {
+//   userId: string;
+//   identificationType: number;
+//   identificationNumber: string;
+//   roleId: number;
+//   username: string;
+//   email: string;
+//   createdAt: Date;
+//   phone: string;
+//   avatarUrl: string;
+// }

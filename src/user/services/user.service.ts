@@ -1,6 +1,8 @@
+import { RoleType } from './../../shared/entities/roleType.entity';
+import { PhoneCode } from './../../shared/entities/phoneCode.entity';
 import { PhoneCodeRepository } from './../../shared/repositories/phoneCode.repository';
 import { UpdateUserDto } from './../dtos/user.dto';
-import { Role, IdentificationType } from './../models/user.model';
+import { IdentificationType } from './../models/user.model';
 import { CreateUserDto, ChangePasswordDto } from '../dtos/user.dto';
 import { IdentificationTypeRepository } from '../../shared/repositories/identificationType.repository';
 import { RoleRepository } from '../../shared/repositories/role.repository';
@@ -14,7 +16,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-
+import { Not } from 'typeorm';
+import { hash } from 'bcrypt';
 @Injectable()
 export class UserService {
   constructor(
@@ -187,6 +190,11 @@ export class UserService {
       throw new NotFoundException('Usuario no encontrado');
     }
 
+    // Encriptar contraseña si se envía
+    if (userData.password) {
+      userData.password = await hash(userData.password, 10); // Encriptar la contraseña con bcrypt
+    }
+
     // Validación de email único
     if (userData.email && userData.email !== user.email) {
       const emailExists = await this.userRepository.findOne({
@@ -198,13 +206,24 @@ export class UserService {
     }
 
     // Resolver Role si se envía
-    let roleEntity: Role | undefined;
-    if (userData.RoleType && typeof userData.RoleType === 'object') {
+    let roleEntity: RoleType | undefined;
+    if (userData.roleType && typeof userData.roleType === 'object') {
       roleEntity = await this.roleRepository.findOne({
-        where: { roleTypeId: userData.RoleType },
+        where: { roleTypeId: userData.roleType },
       });
       if (!roleEntity) {
         throw new NotFoundException('Rol no encontrado');
+      }
+    }
+
+    // Resolver PhoneCode si se envía
+    let phoneCodeEntity: PhoneCode | undefined;
+    if (userData.phoneCode) {
+      phoneCodeEntity = await this.phoneCodeRepository.findOne({
+        where: { phoneCodeId: userData.phoneCode },
+      });
+      if (!phoneCodeEntity) {
+        throw new NotFoundException('Código telefónico no encontrado');
       }
     }
 
@@ -223,9 +242,63 @@ export class UserService {
       }
     }
 
+    // Validar número de identificación único si se envía
+    if (userData.identificationNumber && identificationTypeEntity) {
+      // Log de depuración
+      console.log('identificationNumber:', userData.identificationNumber);
+      console.log(
+        'identificationTypeId:',
+        identificationTypeEntity?.identificationTypeId,
+      );
+
+      // Usamos QueryBuilder para mayor flexibilidad en la consulta
+      const existingIdentification = await this.userRepository
+        .createQueryBuilder('user')
+        .leftJoinAndSelect('user.identificationType', 'identificationType')
+        .where('user.identificationNumber = :identificationNumber', {
+          identificationNumber: userData.identificationNumber,
+        })
+        .andWhere(
+          'identificationType.identificationTypeId = :identificationTypeId',
+          {
+            identificationTypeId: identificationTypeEntity.identificationTypeId,
+          },
+        )
+        .andWhere('user.userId != :userId', { userId }) // Asegurarnos de que no sea el mismo usuario
+        .getOne();
+
+      if (existingIdentification) {
+        console.log(
+          'Ya existe un usuario con este número de identificación y tipo.',
+        );
+        throw new BadRequestException(
+          'Ya existe un usuario con este número de identificación y tipo.',
+        );
+      }
+    }
+
+    // Validación de número de teléfono único (por código)
+    if (userData.phone && phoneCodeEntity) {
+      const existingPhone = await this.userRepository.findOne({
+        where: {
+          phone: userData.phone,
+          phoneCode: { phoneCodeId: phoneCodeEntity.phoneCodeId },
+          userId: Not(userId), // Asegurarnos de que no sea el mismo usuario
+        },
+        relations: ['phoneCode'],
+      });
+
+      if (existingPhone) {
+        throw new BadRequestException(
+          'Ya existe un usuario con este número de teléfono y código.',
+        );
+      }
+    }
+
     // Actualizar propiedades
     const updatedUser = this.userRepository.merge(user, {
       ...userData,
+      phoneCode: phoneCodeEntity ?? user.phoneCode,
       roleType: roleEntity ?? user.roleType,
       identificationType: identificationTypeEntity ?? user.identificationType,
     });
@@ -247,10 +320,15 @@ export class UserService {
   }
 
   async findOne(userId: string): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { userId } });
+    const user = await this.userRepository.findOne({
+      where: { userId },
+      relations: ['roleType', 'identificationType', 'phoneCode'],
+    });
+
     if (!user) {
       throw new HttpException('El usuario no existe', HttpStatus.NOT_FOUND);
     }
+
     return user;
   }
 

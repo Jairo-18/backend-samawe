@@ -1,3 +1,5 @@
+import { UserModelComplete } from './../models/user.model';
+import { GET_USER_EXAMPLE } from './../constants/examples.conts';
 import { User } from './../../shared/entities/user.entity';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { NOT_EMPTY_MESSAGE_ID } from './../../shared/constants/validator-messages.const';
@@ -9,6 +11,7 @@ import {
   IsUUID,
   IsOptional,
   ValidateIf,
+  MinLength,
 } from 'class-validator';
 import { HttpStatus } from '@nestjs/common';
 import { GET_ALL_USER_EXAMPLE } from '../constants/examples.conts';
@@ -121,26 +124,25 @@ export class GetAllUsersResposeDto implements BaseResponseDto {
   data: GetAllUsersRespose;
 }
 
-export class GetUserDto implements BaseResponseDto {
+export class GetUserResponseDto implements BaseResponseDto {
   @ApiProperty({
+    type: Number,
     example: HttpStatus.OK,
   })
   statusCode: number;
-
   @ApiProperty({
     type: Object,
-    example: GET_ALL_USER_EXAMPLE,
+    example: GET_USER_EXAMPLE,
   })
-  data: User;
+  data: UserModelComplete;
 }
 
 export class UpdateUserDto {
   @ApiProperty({
-    example: 'Cédula de ciudadania',
+    example: 'uuid-del-tipo-identificacion',
     required: true,
   })
-  @IsString()
-  @IsNotEmpty({ message: 'El tipo de identificación es requerido' })
+  @IsUUID('4', { message: 'El tipo de identificación debe ser un UUID válido' })
   identificationType: string;
 
   @ApiProperty({ example: '1120066430' })
@@ -159,9 +161,12 @@ export class UpdateUserDto {
   lastName: string;
 
   @ApiProperty({ example: 'test@gmail.com' })
-  @IsString()
-  @IsNotEmpty({ message: 'El email es requerido' })
+  @IsEmail({}, { message: 'Debe ser un correo válido' })
   email: string;
+
+  @ApiProperty({ example: 'uuid-del-phone-code' })
+  @IsUUID('4', { message: 'El código de país debe ser un UUID válido' })
+  phoneCode: string;
 
   @ApiProperty({ example: '3102103660' })
   @IsString()
@@ -169,14 +174,31 @@ export class UpdateUserDto {
   phone: string;
 
   @ApiProperty({
-    example: '',
+    example: 'uuid-del-role',
     description: 'UUID del rol asignado',
+    required: true,
+  })
+  @IsUUID('4', { message: 'El ID del rol no es válido' })
+  roleType: string;
+
+  @ApiProperty({
+    example: 'NuevaContraseña123!',
     required: false,
   })
-  @ValidateIf((o) => o.RoleType && o.RoleType.trim() !== '')
-  @IsUUID()
   @IsOptional()
-  RoleType?: string;
+  @IsString()
+  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
+  password?: string;
+
+  @ApiProperty({
+    example: 'NuevaContraseña123!',
+    required: false,
+  })
+  @ValidateIf((o) => o.password)
+  @IsString()
+  @MinLength(8)
+  @IsNotEmpty({ message: 'Debe confirmar la contraseña' })
+  confirmPassword?: string;
 }
 
 export class ChangePasswordDto {

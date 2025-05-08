@@ -20,10 +20,10 @@ import {
 } from '@nestjs/swagger';
 import {
   GetAllUsersResposeDto,
-  GetUserDto,
   ChangePasswordDto,
   CreateUserDto,
   UpdateUserDto,
+  GetUserResponseDto,
 } from '../dtos/user.dto';
 
 import { UserUC } from '../useCases/user.uc';
@@ -152,13 +152,27 @@ export class UserController {
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: GetUserDto })
+  @ApiOkResponse({ type: GetUserResponseDto })
   @ApiNotFoundResponse({ type: NotFoundResponseDto })
-  async findOne(@Param('id') id: string): Promise<GetUserDto> {
+  async findOne(@Param('id') id: string): Promise<GetUserResponseDto> {
     const user = await this._userUC.findOne(id);
     return {
       statusCode: HttpStatus.OK,
-      data: user,
+      data: {
+        userId: user.userId,
+        identificationType: user.identificationType,
+        identificationNumber: user.identificationNumber,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phoneCode: user.phoneCode,
+        phone: user.phone,
+        roleType: user.roleType,
+        password: '',
+        confirmPassword: '',
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
     };
   }
 
