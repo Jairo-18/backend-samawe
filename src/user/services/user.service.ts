@@ -17,7 +17,7 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { Not } from 'typeorm';
-import { hash } from 'bcrypt';
+
 @Injectable()
 export class UserService {
   constructor(
@@ -188,11 +188,6 @@ export class UserService {
     const user = await this.userRepository.findOne({ where: { userId } });
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');
-    }
-
-    // Encriptar contraseña si se envía
-    if (userData.password) {
-      userData.password = await hash(userData.password, 10); // Encriptar la contraseña con bcrypt
     }
 
     // Validación de email único

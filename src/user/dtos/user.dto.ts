@@ -11,7 +11,6 @@ import {
   IsUUID,
   IsOptional,
   ValidateIf,
-  MinLength,
 } from 'class-validator';
 import { HttpStatus } from '@nestjs/common';
 import { GET_ALL_USER_EXAMPLE } from '../constants/examples.conts';
@@ -180,25 +179,6 @@ export class UpdateUserDto {
   })
   @IsUUID('4', { message: 'El ID del rol no es válido' })
   roleType: string;
-
-  @ApiProperty({
-    example: 'NuevaContraseña123!',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
-  password?: string;
-
-  @ApiProperty({
-    example: 'NuevaContraseña123!',
-    required: false,
-  })
-  @ValidateIf((o) => o.password)
-  @IsString()
-  @MinLength(8)
-  @IsNotEmpty({ message: 'Debe confirmar la contraseña' })
-  confirmPassword?: string;
 }
 
 export class ChangePasswordDto {

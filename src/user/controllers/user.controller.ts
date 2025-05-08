@@ -168,8 +168,6 @@ export class UserController {
         phoneCode: user.phoneCode,
         phone: user.phone,
         roleType: user.roleType,
-        password: '',
-        confirmPassword: '',
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
