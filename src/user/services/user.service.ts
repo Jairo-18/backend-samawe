@@ -1,8 +1,5 @@
-import { RoleType } from './../../shared/entities/roleType.entity';
-import { PhoneCode } from './../../shared/entities/phoneCode.entity';
+import { UpdateUserModel } from './../models/user.model';
 import { PhoneCodeRepository } from './../../shared/repositories/phoneCode.repository';
-import { UpdateUserDto } from './../dtos/user.dto';
-import { IdentificationType } from './../models/user.model';
 import { CreateUserDto, ChangePasswordDto } from '../dtos/user.dto';
 import { IdentificationTypeRepository } from '../../shared/repositories/identificationType.repository';
 import { RoleRepository } from '../../shared/repositories/role.repository';
@@ -184,121 +181,72 @@ export class UserService {
     return { rowId: res.identifiers[0].id };
   }
 
-  async update(userId: string, userData: UpdateUserDto) {
-    const user = await this.userRepository.findOne({ where: { userId } });
-    if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
-
-    // Validación de email único
-    if (userData.email && userData.email !== user.email) {
-      const emailExists = await this.userRepository.findOne({
-        where: { email: userData.email },
+  async update(userId: string, userData: UpdateUserModel) {
+    const userExist = await this.findOne(userId);
+    if (userData.email) {
+      const emailExist = await this.userRepository.findOne({
+        where: { userId: Not(userId), email: userData.email },
       });
-      if (emailExists) {
-        throw new BadRequestException('El email ya está en uso');
-      }
-    }
 
-    // Resolver Role si se envía
-    let roleEntity: RoleType | undefined;
-    if (userData.roleType && typeof userData.roleType === 'object') {
-      roleEntity = await this.roleRepository.findOne({
-        where: { roleTypeId: userData.roleType },
-      });
-      if (!roleEntity) {
-        throw new NotFoundException('Rol no encontrado');
-      }
-    }
-
-    // Resolver PhoneCode si se envía
-    let phoneCodeEntity: PhoneCode | undefined;
-    if (userData.phoneCode) {
-      phoneCodeEntity = await this.phoneCodeRepository.findOne({
-        where: { phoneCodeId: userData.phoneCode },
-      });
-      if (!phoneCodeEntity) {
-        throw new NotFoundException('Código telefónico no encontrado');
-      }
-    }
-
-    // Resolver IdentificationType si se envía
-    let identificationTypeEntity: IdentificationType | undefined;
-    if (
-      userData.identificationType &&
-      typeof userData.identificationType === 'object'
-    ) {
-      identificationTypeEntity =
-        await this.identificationTypeRepository.findOne({
-          where: { identificationTypeId: userData.identificationType },
-        });
-      if (!identificationTypeEntity) {
-        throw new NotFoundException('Tipo de identificación no encontrado');
-      }
-    }
-
-    // Validar número de identificación único si se envía
-    if (userData.identificationNumber && identificationTypeEntity) {
-      // Log de depuración
-      console.log('identificationNumber:', userData.identificationNumber);
-      console.log(
-        'identificationTypeId:',
-        identificationTypeEntity?.identificationTypeId,
-      );
-
-      // Usamos QueryBuilder para mayor flexibilidad en la consulta
-      const existingIdentification = await this.userRepository
-        .createQueryBuilder('user')
-        .leftJoinAndSelect('user.identificationType', 'identificationType')
-        .where('user.identificationNumber = :identificationNumber', {
-          identificationNumber: userData.identificationNumber,
-        })
-        .andWhere(
-          'identificationType.identificationTypeId = :identificationTypeId',
-          {
-            identificationTypeId: identificationTypeEntity.identificationTypeId,
-          },
-        )
-        .andWhere('user.userId != :userId', { userId }) // Asegurarnos de que no sea el mismo usuario
-        .getOne();
-
-      if (existingIdentification) {
-        console.log(
-          'Ya existe un usuario con este número de identificación y tipo.',
-        );
-        throw new BadRequestException(
-          'Ya existe un usuario con este número de identificación y tipo.',
+      if (emailExist) {
+        throw new HttpException(
+          'Ya existe un usuario con este correo',
+          HttpStatus.BAD_REQUEST,
         );
       }
     }
 
-    // Validación de número de teléfono único (por código)
-    if (userData.phone && phoneCodeEntity) {
-      const existingPhone = await this.userRepository.findOne({
+    if (userData.identificationType || userData.identificationNumber) {
+      const identificationNumberExist = await this.userRepository.findOne({
         where: {
-          phone: userData.phone,
-          phoneCode: { phoneCodeId: phoneCodeEntity.phoneCodeId },
-          userId: Not(userId), // Asegurarnos de que no sea el mismo usuario
+          userId: Not(userId),
+          identificationNumber: userData.identificationNumber,
+          identificationType: {
+            identificationTypeId: userData.identificationType,
+          },
         },
-        relations: ['phoneCode'],
       });
-
-      if (existingPhone) {
-        throw new BadRequestException(
-          'Ya existe un usuario con este número de teléfono y código.',
+      if (identificationNumberExist) {
+        throw new HttpException(
+          'Ya existe un usuario con ese tipo y número de identificación',
+          HttpStatus.BAD_REQUEST,
         );
       }
     }
 
-    // Actualizar propiedades
-    const updatedUser = this.userRepository.merge(user, {
-      ...userData,
-      phoneCode: phoneCodeEntity ?? user.phoneCode,
-      roleType: roleEntity ?? user.roleType,
-      identificationType: identificationTypeEntity ?? user.identificationType,
-    });
+    if (userData.phoneCode || userData.phone) {
+      const phoneExist = await this.userRepository.findOne({
+        where: {
+          userId: Not(userId),
+          phone: userData.phone,
+          phoneCode: {
+            phoneCodeId: userData.phoneCode,
+          },
+        },
+      });
+      if (phoneExist) {
+        throw new HttpException(
+          'Ya existe un usuario con ese tipo y número de teléfono',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
 
-    return await this.userRepository.save(updatedUser);
+    if (!userExist) {
+      throw new HttpException('El usuario no existe', HttpStatus.NOT_FOUND);
+    }
+
+    return await this.userRepository.update(
+      { userId },
+      {
+        ...userData,
+        phoneCode: { phoneCodeId: userData.phoneCode },
+        roleType: { roleTypeId: userData.roleType },
+        identificationType: {
+          identificationTypeId: userData.identificationType,
+        },
+      },
+    );
   }
 
   private validatePasswordMatch(password: string, confirmPassword: string) {
@@ -314,8 +262,9 @@ export class UserService {
     return await this.userRepository.find();
   }
 
-  async findOne(userId: string): Promise<User> {
-    const user = await this.userRepository.findOne({
+  async findOne(userId: string): Promise<Partial<User>> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...user } = await this.userRepository.findOne({
       where: { userId },
       relations: ['roleType', 'identificationType', 'phoneCode'],
     });

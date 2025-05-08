@@ -158,19 +158,7 @@ export class UserController {
     const user = await this._userUC.findOne(id);
     return {
       statusCode: HttpStatus.OK,
-      data: {
-        userId: user.userId,
-        identificationType: user.identificationType,
-        identificationNumber: user.identificationNumber,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phoneCode: user.phoneCode,
-        phone: user.phone,
-        roleType: user.roleType,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      },
+      data: user,
     };
   }
 

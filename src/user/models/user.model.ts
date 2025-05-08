@@ -33,15 +33,14 @@ export interface UserModelComplete {
 }
 
 export interface UpdateUserModel {
-  identificationType: IdentificationType;
+  identificationType: string;
   identificationNumber: string;
   firstName: string;
   lastName: string;
   email: string;
+  phoneCode: string;
   phone: string;
-  role: RoleType;
-  password?: string;
-  confirmPassword?: string;
+  roleType: string;
 }
 
 export interface IdentificationType {

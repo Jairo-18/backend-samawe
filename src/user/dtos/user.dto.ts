@@ -1,4 +1,3 @@
-import { UserModelComplete } from './../models/user.model';
 import { GET_USER_EXAMPLE } from './../constants/examples.conts';
 import { User } from './../../shared/entities/user.entity';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
@@ -133,50 +132,54 @@ export class GetUserResponseDto implements BaseResponseDto {
     type: Object,
     example: GET_USER_EXAMPLE,
   })
-  data: UserModelComplete;
+  data: Partial<User>;
 }
 
 export class UpdateUserDto {
   @ApiProperty({
     example: 'uuid-del-tipo-identificacion',
-    required: true,
+    required: false,
   })
+  @IsOptional()
   @IsUUID('4', { message: 'El tipo de identificación debe ser un UUID válido' })
   identificationType: string;
 
   @ApiProperty({ example: '1120066430' })
   @IsString()
-  @IsNotEmpty({ message: 'El número de identificación es requerido' })
+  @IsOptional()
   identificationNumber: string;
 
   @ApiProperty({ example: 'Test' })
   @IsString()
-  @IsNotEmpty({ message: 'El nombre es requerido' })
+  @IsOptional()
   firstName: string;
 
   @ApiProperty({ example: 'Test Apellido' })
   @IsString()
-  @IsNotEmpty({ message: 'El apellido es requerido' })
+  @IsOptional()
   lastName: string;
 
-  @ApiProperty({ example: 'test@gmail.com' })
+  @ApiProperty({ example: 'test@gmail.com', required: false })
+  @IsOptional()
   @IsEmail({}, { message: 'Debe ser un correo válido' })
   email: string;
 
   @ApiProperty({ example: 'uuid-del-phone-code' })
+  @IsOptional()
   @IsUUID('4', { message: 'El código de país debe ser un UUID válido' })
   phoneCode: string;
 
   @ApiProperty({ example: '3102103660' })
   @IsString()
-  @IsNotEmpty({ message: 'El número de teléfono es requerido' })
+  @IsOptional()
   phone: string;
 
   @ApiProperty({
     example: 'uuid-del-role',
     description: 'UUID del rol asignado',
-    required: true,
+    required: false,
   })
+  @IsOptional()
   @IsUUID('4', { message: 'El ID del rol no es válido' })
   roleType: string;
 }
