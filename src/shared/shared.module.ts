@@ -1,3 +1,4 @@
+import { TaxeTypeRepository } from './repositories/taxeType.repository';
 import { PhoneCodeRepository } from './repositories/phoneCode.repository';
 import { PhoneCode } from './entities/phoneCode.entity';
 import { AccessSessionsService } from './../auth/services/accessSessions.service';
@@ -89,6 +90,7 @@ export class SharedModule {
         IdentificationTypeRepository,
         ProductRepository,
         CategoryTypeRepository,
+        TaxeTypeRepository,
         AvailableTypeRepository,
         AccessSessionsRepository,
         PhoneCodeRepository,
@@ -108,6 +110,7 @@ export class SharedModule {
         AvailableTypeRepository,
         AccessSessionsRepository,
         PhoneCodeRepository,
+        TaxeTypeRepository,
         AuthService,
         UserService,
         ProductService,

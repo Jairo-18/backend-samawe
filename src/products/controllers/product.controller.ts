@@ -1,4 +1,11 @@
 import {
+  CreatedRecordResponseDto,
+  DeleteReCordResponseDto,
+  DuplicatedResponseDto,
+  NotFoundResponseDto,
+  UpdateRecordResponseDto,
+} from './../../shared/dtos/response.dto';
+import {
   CreateProductDto,
   UpdateProductDto,
   GetProductDto,
@@ -23,19 +30,18 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ProductUC } from '../useCases/product.uc';
-import {
-  CreatedRecordResponseDto,
-  DeleteReCordResponseDto,
-  DuplicatedResponseDto,
-  NotFoundResponseDto,
-  UpdateRecordResponseDto,
-} from 'src/shared/dtos/response.dto';
+
 import { AuthGuard } from '@nestjs/passport';
+import { CrudProductUseCase } from '../useCases/crudProduct.uc';
+import { CreateProductRelatedDataReponseDto } from '../dtos/crudProduct.dto';
 
 @Controller('product')
 @ApiTags('Productos')
 export class ProductController {
-  constructor(private readonly _productUC: ProductUC) {}
+  constructor(
+    private readonly _productUC: ProductUC,
+    private readonly _crudProductUseCase: CrudProductUseCase,
+  ) {}
 
   @Post('create')
   @ApiBearerAuth()
@@ -54,6 +60,18 @@ export class ProductController {
         rowId: createdProduct.productId.toString(),
         ...createdProduct,
       },
+    };
+  }
+
+  @Get('/create/related-data')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({ type: CreateProductRelatedDataReponseDto })
+  async getRelatedData(): Promise<CreateProductRelatedDataReponseDto> {
+    const data = await this._crudProductUseCase.getRelatedDataToCreate();
+    return {
+      statusCode: HttpStatus.OK,
+      data,
     };
   }
 

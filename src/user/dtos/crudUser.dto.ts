@@ -21,7 +21,7 @@ export class CreateUserRelatedDataReponseDto implements BaseResponseDto {
   statusCode: number;
   @ApiProperty({
     type: Object,
-    example: 'Datos de select',
+    example: 'Select usuario',
   })
   data: CreateUserRelatedDataDto;
 }

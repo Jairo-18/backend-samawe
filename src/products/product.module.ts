@@ -1,3 +1,8 @@
+import { RepositoryService } from './../shared/services/repositoriry.service';
+import { TaxeType } from './../shared/entities/taxeType.entity';
+import { CrudProductUseCase } from './useCases/crudProduct.uc';
+import { CrudProductService } from './services/crudProduct.service';
+import { TaxeTypeRepository } from './../shared/repositories/taxeType.repository';
 import { ProductUC } from './useCases/product.uc';
 import { ProductService } from './services/product.service';
 import { ProductController } from './controllers/product.controller';
@@ -17,14 +22,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   imports: [
     SharedModule.forRoot(),
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    TypeOrmModule.forFeature([Product, CategoryType, AvailableType]),
+    TypeOrmModule.forFeature([Product, CategoryType, AvailableType, TaxeType]),
   ],
   providers: [
     ProductService,
+    CrudProductService,
+    CrudProductUseCase,
     ProductUC,
     CategoryTypeRepository,
     AvailableTypeRepository,
     ProductRepository,
+    TaxeTypeRepository,
+    RepositoryService,
   ],
 })
 export class ProductModule {}
