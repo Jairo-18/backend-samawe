@@ -17,7 +17,7 @@ export class CreateProductRelatedDataReponseDto implements BaseResponseDto {
   statusCode: number;
   @ApiProperty({
     type: Object,
-    example: 'Datos de producto',
+    example: 'Datos relacionados con producto',
   })
   data: CreateProductRelatedDataDto;
 }

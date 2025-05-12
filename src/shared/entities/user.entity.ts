@@ -6,7 +6,7 @@ import {
   JoinColumn,
   ManyToOne,
   OneToMany,
-  PrimaryColumn,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { IdentificationType } from './identificationType.entity';
@@ -15,7 +15,7 @@ import { Invoice } from './invoice.entity';
 
 @Entity({ name: 'User' })
 export class User {
-  @PrimaryColumn('uuid')
+  @PrimaryGeneratedColumn('uuid')
   userId: string;
 
   @Column('varchar', {

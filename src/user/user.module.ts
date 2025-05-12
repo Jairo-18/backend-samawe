@@ -1,7 +1,7 @@
+import { RoleTypeRepository } from './../shared/repositories/roleType.repository';
 import { RepositoryService } from './../shared/services/repositoriry.service';
 import { CrudUserService } from './services/crudUser.service';
 import { IdentificationTypeRepository } from './../shared/repositories/identificationType.repository';
-import { RoleRepository } from './../shared/repositories/role.repository';
 import { IdentificationType } from './../shared/entities/identificationType.entity';
 import { RoleType } from '../shared/entities/roleType.entity';
 import { User } from './../shared/entities/user.entity';
@@ -29,7 +29,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     CrudUserService,
     UserService,
     UserRepository,
-    RoleRepository,
+    RoleTypeRepository,
     IdentificationTypeRepository,
     RepositoryService,
   ],

@@ -1,9 +1,17 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
+  DeleteDateColumn,
+} from 'typeorm';
 import { User } from './user.entity';
 
 @Entity()
 export class PhoneCode {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn()
   phoneCodeId: string;
 
   @Column({ unique: true })
@@ -17,4 +25,21 @@ export class PhoneCode {
     onUpdate: 'CASCADE',
   })
   user: User[];
+
+  @CreateDateColumn({
+    type: 'timestamp',
+  })
+  createdAt?: Date;
+
+  @UpdateDateColumn({
+    type: 'timestamp',
+    nullable: true,
+  })
+  updatedAt?: Date;
+
+  @DeleteDateColumn({
+    type: 'timestamp',
+    nullable: true,
+  })
+  deletedAt?: Date;
 }

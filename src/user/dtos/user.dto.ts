@@ -40,7 +40,7 @@ export class CreateUserDto {
   identificationNumber: string;
 
   @ApiProperty({
-    example: 'Jheferson',
+    example: 'Jhon',
     required: true,
   })
   @IsString()
@@ -48,7 +48,7 @@ export class CreateUserDto {
   firstName: string;
 
   @ApiProperty({
-    example: 'Checa',
+    example: 'Legarda',
     required: true,
   })
   @IsString()
@@ -56,7 +56,7 @@ export class CreateUserDto {
   lastName: string;
 
   @ApiProperty({
-    example: 'jheferson@gmail.com',
+    example: 'test@gmail.com',
     required: true,
   })
   @IsEmail()
@@ -64,7 +64,7 @@ export class CreateUserDto {
   email: string;
 
   @ApiProperty({
-    example: 'Sufijo - uuid',
+    example: '1',
     required: true,
   })
   @IsString()
@@ -79,7 +79,7 @@ export class CreateUserDto {
   phone: string;
 
   @ApiProperty({
-    example: '123456',
+    example: 'Test@123',
     required: true,
   })
   @IsString()
@@ -87,7 +87,7 @@ export class CreateUserDto {
   password: string;
 
   @ApiProperty({
-    example: '123456',
+    example: 'Test@123',
     required: true,
   })
   @IsString()
@@ -95,7 +95,7 @@ export class CreateUserDto {
   confirmPassword: string;
 
   @ApiProperty({
-    example: '',
+    example: 'UUID DEL ROL',
     description: 'Rol aignado / uuid',
     required: false,
   })
@@ -149,7 +149,7 @@ export class UpdateUserDto {
   @IsOptional()
   identificationNumber: string;
 
-  @ApiProperty({ example: 'Test' })
+  @ApiProperty({ example: 'Test Nombre' })
   @IsString()
   @IsOptional()
   firstName: string;
@@ -164,9 +164,9 @@ export class UpdateUserDto {
   @IsEmail({}, { message: 'Debe ser un correo válido' })
   email: string;
 
-  @ApiProperty({ example: 'uuid-del-phone-code' })
+  @ApiProperty({ example: '2' })
   @IsOptional()
-  @IsUUID('4', { message: 'El código de país debe ser un UUID válido' })
+  @IsUUID('4', { message: 'El código de país debe ser un número válido' })
   phoneCode: string;
 
   @ApiProperty({ example: '3102103660' })

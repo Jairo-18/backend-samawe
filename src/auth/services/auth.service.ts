@@ -68,9 +68,9 @@ export class AuthService {
     return {
       tokens: { ...tokens },
       user: {
-        id: user.userId,
-        role: {
-          roleId: user.roleType.roleTypeId,
+        userId: user.userId,
+        roleType: {
+          roleTypeId: user.roleType.roleTypeId,
           name: user.roleType.name,
         },
       },
@@ -148,7 +148,7 @@ export class AuthService {
     return {
       tokens: { ...tokens },
       user: {
-        id: user.userId,
+        userId: user.userId,
         role: {
           roleId: user.roleType.roleTypeId, // Suponiendo que `Role` tiene una propiedad `id`
           name: user.roleType.name, // Y `Role` tiene una propiedad `name`

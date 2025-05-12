@@ -1,15 +1,15 @@
+import { RoleTypeRepository } from './../repositories/roleType.repository';
 import { TaxeTypeRepository } from './../repositories/taxeType.repository';
 import { CategoryTypeRepository } from './../repositories/categoryType.repository';
 import { PhoneCodeRepository } from './../repositories/phoneCode.repository';
 import { Injectable } from '@nestjs/common';
 import { IdentificationTypeRepository } from '../repositories/identificationType.repository';
-import { RoleRepository } from '../repositories/role.repository';
 import { Repository } from 'typeorm';
 
 @Injectable()
 export class RepositoryService {
   public repositories: {
-    roleType: RoleRepository;
+    roleType: RoleTypeRepository;
     identificationType: IdentificationTypeRepository;
     phoneCode: PhoneCodeRepository;
     categoryType: CategoryTypeRepository;
@@ -17,7 +17,7 @@ export class RepositoryService {
   };
 
   constructor(
-    private readonly _roleRepository: RoleRepository,
+    private readonly _roleRepository: RoleTypeRepository,
     private readonly _identificationTipeRepository: IdentificationTypeRepository,
     private readonly _phoneCodeRepository: PhoneCodeRepository,
     private readonly _categoryTypeRepository: CategoryTypeRepository,

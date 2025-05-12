@@ -11,7 +11,7 @@ import { User } from './user.entity';
 
 @Entity({ name: 'IdentificationType' })
 export class IdentificationType {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn()
   identificationTypeId: string;
 
   @Column('varchar', { length: 75, nullable: true })

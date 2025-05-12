@@ -23,12 +23,20 @@ export class CategoryType {
   })
   product: Product[];
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({
+    type: 'timestamp',
+  })
   createdAt?: Date;
 
-  @UpdateDateColumn({ type: 'timestamp', nullable: true })
+  @UpdateDateColumn({
+    type: 'timestamp',
+    nullable: true,
+  })
   updatedAt?: Date;
 
-  @DeleteDateColumn({ type: 'timestamp', nullable: true })
+  @DeleteDateColumn({
+    type: 'timestamp',
+    nullable: true,
+  })
   deletedAt?: Date;
 }

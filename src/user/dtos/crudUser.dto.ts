@@ -21,7 +21,7 @@ export class CreateUserRelatedDataReponseDto implements BaseResponseDto {
   statusCode: number;
   @ApiProperty({
     type: Object,
-    example: 'Select usuario',
+    example: 'Data relacionada para creación y registro del usuario',
   })
   data: CreateUserRelatedDataDto;
 }
@@ -45,7 +45,7 @@ export class PaginatedListUsersParamsDto extends ParamsPaginationDto {
   identificationNumber?: string;
 
   @ApiProperty({
-    example: 'Jheferson',
+    example: 'Jhon',
     required: false,
   })
   @IsOptional()
@@ -53,7 +53,7 @@ export class PaginatedListUsersParamsDto extends ParamsPaginationDto {
   firstName?: string;
 
   @ApiProperty({
-    example: 'Checa',
+    example: 'Legarda',
     required: false,
   })
   @IsOptional()
@@ -61,7 +61,7 @@ export class PaginatedListUsersParamsDto extends ParamsPaginationDto {
   lastName?: string;
 
   @ApiProperty({
-    example: 'jheferson@gmail.com',
+    example: 'test@gmail.com',
     required: false,
   })
   @IsOptional()
@@ -69,7 +69,7 @@ export class PaginatedListUsersParamsDto extends ParamsPaginationDto {
   email?: string;
 
   @ApiProperty({
-    example: '+57 codigo',
+    example: '+57 Colombia',
     required: false,
   })
   @IsOptional()

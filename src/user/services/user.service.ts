@@ -1,8 +1,8 @@
+import { RoleTypeRepository } from './../../shared/repositories/roleType.repository';
 import { UpdateUserModel } from './../models/user.model';
 import { PhoneCodeRepository } from './../../shared/repositories/phoneCode.repository';
 import { CreateUserDto, ChangePasswordDto } from '../dtos/user.dto';
 import { IdentificationTypeRepository } from '../../shared/repositories/identificationType.repository';
-import { RoleRepository } from '../../shared/repositories/role.repository';
 import { UserRepository } from '../../shared/repositories/user.repository';
 import { User } from '../../shared/entities/user.entity';
 import {
@@ -19,7 +19,7 @@ import { Not } from 'typeorm';
 export class UserService {
   constructor(
     private userRepository: UserRepository,
-    private readonly roleRepository: RoleRepository,
+    private readonly roleRepository: RoleTypeRepository,
     private readonly identificationTypeRepository: IdentificationTypeRepository,
     private readonly phoneCodeRepository: PhoneCodeRepository,
   ) {}

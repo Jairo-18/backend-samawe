@@ -9,7 +9,6 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
-import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -23,7 +22,6 @@ import { AdminModule } from './admin/admin.module';
     SharedModule.forRoot(),
     AuthModule,
     UserModule,
-    AdminModule,
     ProductModule,
   ],
   controllers: [AppController],

@@ -22,12 +22,20 @@ export class PayType {
   @Column('varchar', { length: 50, nullable: true })
   name: string;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({
+    type: 'timestamp',
+  })
   createdAt?: Date;
 
-  @UpdateDateColumn({ type: 'timestamp', nullable: true })
+  @UpdateDateColumn({
+    type: 'timestamp',
+    nullable: true,
+  })
   updatedAt?: Date;
 
-  @DeleteDateColumn({ type: 'timestamp', nullable: true })
+  @DeleteDateColumn({
+    type: 'timestamp',
+    nullable: true,
+  })
   deletedAt?: Date;
 }

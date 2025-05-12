@@ -37,7 +37,6 @@ import {
   Patch,
   Post,
   Query,
-  Req,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -135,18 +134,6 @@ export class UserController {
     @Query() params: PaginatedListUsersParamsDto,
   ): Promise<ResponsePaginationDto<User>> {
     return await this._crudUserUseCase.paginatedList(params);
-  }
-
-  @Get('init-data')
-  @ApiOkResponse()
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  async initData(@Req() req) {
-    const initData = await this._userUC.initData(req.user.id);
-    return {
-      statusCode: HttpStatus.OK,
-      data: initData,
-    };
   }
 
   @Get(':id')

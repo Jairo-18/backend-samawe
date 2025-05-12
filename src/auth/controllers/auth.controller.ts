@@ -58,7 +58,16 @@ export class AuthController {
     const data = await this.authUC.refreshToken(body);
     return {
       statusCode: HttpStatus.OK,
-      data,
+      data: {
+        tokens: data.tokens,
+        user: {
+          userId: data.user.userId, // Asegúrate de que data.user.id sea el campo correcto
+          roleType: {
+            roleTypeId: data.user.role.roleId, // Asegúrate de usar los nombres correctos de los campos
+            name: data.user.role.name,
+          },
+        },
+      },
     };
   }
 

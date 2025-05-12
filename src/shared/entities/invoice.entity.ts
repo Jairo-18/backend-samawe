@@ -1,5 +1,6 @@
+import { InvoiceDetaill } from './invoiceDetaill.entity';
 import { User } from './user.entity';
-import { InvoiceProduct } from './invoiceProduct.entity';
+
 import { PayType } from './payType.entity';
 import {
   Column,
@@ -29,9 +30,9 @@ export class Invoice {
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @OneToMany(() => InvoiceProduct, (invoiceProduct) => invoiceProduct.invoice)
-  @JoinColumn({ name: 'invoiceProductId' })
-  invoiceProduct: InvoiceProduct;
+  @OneToMany(() => InvoiceDetaill, (invoiceDetaill) => invoiceDetaill.invoice)
+  @JoinColumn({ name: 'invoiceDetaillId' })
+  invoiceDetaill: InvoiceDetaill;
 
   @ManyToOne(() => PayType, (payType) => payType.invoice)
   @JoinColumn({ name: 'payTipeId' })
@@ -41,12 +42,20 @@ export class Invoice {
   @JoinColumn({ name: 'categoryTypeId' })
   categoryType: CategoryType;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({
+    type: 'timestamp',
+  })
   createdAt?: Date;
 
-  @UpdateDateColumn({ type: 'timestamp', nullable: true })
+  @UpdateDateColumn({
+    type: 'timestamp',
+    nullable: true,
+  })
   updatedAt?: Date;
 
-  @DeleteDateColumn({ type: 'timestamp', nullable: true })
+  @DeleteDateColumn({
+    type: 'timestamp',
+    nullable: true,
+  })
   deletedAt?: Date;
 }

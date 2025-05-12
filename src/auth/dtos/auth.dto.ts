@@ -60,14 +60,14 @@ export class SignOutBodyDto {
   accessSessionId: string;
 }
 
-export interface UserRole {
-  roleId: string;
+export interface RoleType {
+  roleTypeId: string;
   name: string;
 }
 
 export interface SignInResponse {
   tokens: { accessToken: string; refreshToken: string };
-  user: { id: string; role: UserRole };
+  user: { userId: string; roleType: RoleType };
 }
 
 export class SignInResponseDto implements BaseResponseDto {
@@ -110,17 +110,19 @@ export class AuthTokenResponseDto {
 
   @ApiProperty({
     example: {
-      id: '53ec2766-ea95-4dab-ad9a-d1cbf5ca3cbe',
-      role: {
-        roleId: 'user',
+      user: {
+        userId: '53ec2766-ea95-4dab-ad9a--4dab-ad9a',
+      },
+      roleType: {
+        roleTypeId: '53ec2766-ea95-4dab-ad9a-',
         name: 'Usuario',
       },
     },
   })
   user: {
-    id: string;
-    role: {
-      roleId: string;
+    userId: string;
+    roleType: {
+      roleTypeId: string;
       name: string;
     };
   };
@@ -151,8 +153,11 @@ export class RefreshTokenResponseDto implements BaseResponseDto {
           'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IkpoZWZmIiwic3ViIjoiNTNlYzI3NjYtZWE5NS00ZGFiLWFkOWEtZDFjYmY1Y2EzY2JlIiwiaWQiOiI1M2VjMjc2Ni1lYTk1LTRkYWItYWQ5YS1kMWNiZjVjYTNjYmUiLCJpYXQiOjE3NDIxNjQxODUsImV4cCI6MTc0Mjc2ODk4NX0.Ow3FAW_pm60V4qf73aA8JN4P0qJCqDTJ7EEOQX5VeYQ',
       },
       user: {
-        id: '53ec2766-ea95-4dab-ad9a-d1cbf5ca3cbe',
-        role: 'user',
+        userId: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2Vyb',
+        roleType: {
+          roleTypeId: 'eyJhbGUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2Vyb',
+          name: 'Usuario',
+        },
       },
     },
   })

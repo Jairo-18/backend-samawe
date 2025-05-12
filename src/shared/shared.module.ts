@@ -1,10 +1,12 @@
+import { RoleTypeRepository } from './repositories/roleType.repository';
+import { InvoiceDetaill } from './entities/invoiceDetaill.entity';
 import { TaxeTypeRepository } from './repositories/taxeType.repository';
 import { PhoneCodeRepository } from './repositories/phoneCode.repository';
 import { PhoneCode } from './entities/phoneCode.entity';
 import { AccessSessionsService } from './../auth/services/accessSessions.service';
 import { AccessSessionsRepository } from './repositories/accessSessions.repository';
 import { AccessSessions } from './entities/accessSessions.entity';
-import { InvoiceProduct } from './entities/invoiceProduct.entity';
+
 import { Invoice } from './entities/invoice.entity';
 import { AdditionalType } from './entities/additionalType.entity';
 import { Experience } from './entities/experience.entity';
@@ -30,7 +32,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RoleType } from './entities/roleType.entity';
 import { IdentificationType } from './entities/identificationType.entity';
-import { RoleRepository } from './repositories/role.repository';
+
 import { IdentificationTypeRepository } from './repositories/identificationType.repository';
 
 @Module({})
@@ -69,7 +71,7 @@ export class SharedModule {
           Experience,
           AdditionalType,
           Invoice,
-          InvoiceProduct,
+          InvoiceDetaill,
           AccessSessions,
           PhoneCode,
         ]),
@@ -86,7 +88,7 @@ export class SharedModule {
       ],
       providers: [
         UserRepository,
-        RoleRepository,
+        RoleTypeRepository,
         IdentificationTypeRepository,
         ProductRepository,
         CategoryTypeRepository,
@@ -103,7 +105,7 @@ export class SharedModule {
       exports: [
         TypeOrmModule,
         UserRepository,
-        RoleRepository,
+        RoleTypeRepository,
         IdentificationTypeRepository,
         ProductRepository,
         CategoryTypeRepository,

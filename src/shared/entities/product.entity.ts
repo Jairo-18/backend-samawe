@@ -1,4 +1,4 @@
-import { InvoiceProduct } from './invoiceProduct.entity';
+import { InvoiceDetaill } from './invoiceDetaill.entity';
 import {
   Column,
   CreateDateColumn,
@@ -8,6 +8,7 @@ import {
   UpdateDateColumn,
   JoinColumn,
   ManyToOne,
+  OneToMany,
 } from 'typeorm';
 import { CategoryType } from './categoryType.entity';
 import { TaxeType } from './taxeType.entity';
@@ -35,9 +36,9 @@ export class Product {
   @Column('decimal', { precision: 10, scale: 2 })
   priceSale: number;
 
-  @ManyToOne(() => InvoiceProduct, (invoiceProduct) => invoiceProduct.product)
-  @JoinColumn({ name: 'InvoiceProductId' })
-  invoiceProduct: InvoiceProduct;
+  @OneToMany(() => InvoiceDetaill, (invoiceDetaill) => invoiceDetaill.product)
+  @JoinColumn({ name: 'invoiceDetaillId' })
+  invoiceDetaill: InvoiceDetaill;
 
   @ManyToOne(() => TaxeType, (taxeType) => taxeType.product)
   @JoinColumn({ name: 'taxeTypeId' })

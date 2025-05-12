@@ -67,13 +67,13 @@ export class CreateProductDto {
   priceSale: number;
 
   @ApiProperty({
-    example: 0.19,
-    description: 'Impuesto del producto',
+    example: 1,
+    description: 'ID del tipo de taxa (relación con taxaType)',
     required: true,
   })
   @IsNumber()
-  @IsPositive()
-  TaxeType: number;
+  @IsNotEmpty({ message: 'La taxa es requerida' })
+  taxeTypeId: number;
 
   @ApiProperty({
     example: 1,

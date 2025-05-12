@@ -17,16 +17,16 @@ export class TaxeType {
   @Column('decimal', { precision: 5, scale: 2, default: 0.0 })
   name: number;
 
-  @CreateDateColumn({
-    type: 'timestamp',
-  })
-  createdAt?: Date;
-
   @OneToMany(() => Product, (product) => product.taxeType, {
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',
   })
   product: Product[];
+
+  @CreateDateColumn({
+    type: 'timestamp',
+  })
+  createdAt?: Date;
 
   @UpdateDateColumn({
     type: 'timestamp',

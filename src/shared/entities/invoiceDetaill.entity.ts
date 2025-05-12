@@ -11,10 +11,10 @@ import {
   ManyToOne,
 } from 'typeorm';
 
-@Entity({ name: 'InvoiceProduct' })
-export class InvoiceProduct {
+@Entity({ name: 'InvoiceDetaill' })
+export class InvoiceDetaill {
   @PrimaryGeneratedColumn()
-  invoiceProductId: number;
+  invoiceDetaillId: number;
 
   @Column({ type: 'int', nullable: false })
   amount: number;
@@ -25,20 +25,28 @@ export class InvoiceProduct {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   subtotal: number;
 
-  @ManyToOne(() => Invoice, (invoice) => invoice.invoiceProduct)
+  @ManyToOne(() => Invoice, (invoice) => invoice.invoiceDetaill)
   @JoinColumn({ name: 'invoiceId' })
   invoice: Invoice;
 
-  @ManyToOne(() => Product, (product) => product.invoiceProduct)
+  @ManyToOne(() => Product, (product) => product.invoiceDetaill)
   @JoinColumn({ name: 'productId' })
   product: Product;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({
+    type: 'timestamp',
+  })
   createdAt?: Date;
 
-  @UpdateDateColumn({ type: 'timestamp', nullable: true })
+  @UpdateDateColumn({
+    type: 'timestamp',
+    nullable: true,
+  })
   updatedAt?: Date;
 
-  @DeleteDateColumn({ type: 'timestamp', nullable: true })
+  @DeleteDateColumn({
+    type: 'timestamp',
+    nullable: true,
+  })
   deletedAt?: Date;
 }
