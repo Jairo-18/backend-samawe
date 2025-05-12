@@ -10,6 +10,7 @@ import {
   IsUUID,
   IsOptional,
   ValidateIf,
+  IsNumber,
 } from 'class-validator';
 import { HttpStatus } from '@nestjs/common';
 import { GET_ALL_USER_EXAMPLE } from '../constants/examples.conts';
@@ -141,7 +142,7 @@ export class UpdateUserDto {
     required: false,
   })
   @IsOptional()
-  @IsUUID('4', { message: 'El tipo de identificación debe ser un UUID válido' })
+  @IsString()
   identificationType: string;
 
   @ApiProperty({ example: '1120066430' })
@@ -166,7 +167,7 @@ export class UpdateUserDto {
 
   @ApiProperty({ example: '2' })
   @IsOptional()
-  @IsUUID('4', { message: 'El código de país debe ser un número válido' })
+  @IsString()
   phoneCode: string;
 
   @ApiProperty({ example: '3102103660' })
