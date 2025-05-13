@@ -10,7 +10,6 @@ import {
   IsUUID,
   IsOptional,
   ValidateIf,
-  IsNumber,
 } from 'class-validator';
 import { HttpStatus } from '@nestjs/common';
 import { GET_ALL_USER_EXAMPLE } from '../constants/examples.conts';

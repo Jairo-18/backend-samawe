@@ -11,7 +11,6 @@ import {
   ManyToOne,
 } from 'typeorm';
 import { CategoryType } from './categoryType.entity';
-import { TaxeType } from './taxeType.entity';
 
 @Entity({ name: 'Experience' })
 export class Experience {
@@ -58,10 +57,6 @@ export class Experience {
   @ManyToOne(() => AvailableType, (availableType) => availableType.experience)
   @JoinColumn({ name: 'availableTypeId' })
   availableType: AvailableType;
-
-  @ManyToOne(() => TaxeType, (taxeType) => taxeType.product)
-  @JoinColumn({ name: 'taxeTypeId' })
-  taxeType: TaxeType;
 
   @ManyToOne(() => CategoryType, (categoryType) => categoryType.product)
   @JoinColumn({ name: 'categoryTypeId' })

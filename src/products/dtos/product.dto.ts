@@ -68,15 +68,6 @@ export class CreateProductDto {
 
   @ApiProperty({
     example: 1,
-    description: 'ID del tipo de taxa (relación con taxaType)',
-    required: true,
-  })
-  @IsNumber()
-  @IsNotEmpty({ message: 'La taxa es requerida' })
-  taxeTypeId: number;
-
-  @ApiProperty({
-    example: 1,
     description: 'ID del tipo de categoría (relación con CategoryType)',
     required: true,
   })
@@ -91,6 +82,7 @@ export class UpdateProductDto {
     description: 'Nombre del producto',
   })
   @IsString()
+  @IsOptional()
   name?: string;
 
   @ApiProperty({
@@ -98,20 +90,24 @@ export class UpdateProductDto {
     description: 'Descripción del producto',
   })
   @IsString()
+  @IsOptional()
   description?: string;
 
   @ApiProperty({ example: 10, description: 'Cantidad disponible' })
+  @IsOptional()
   @IsNumber()
   amount?: number;
 
   @ApiProperty({ example: 1500.0, description: 'Precio de compra' })
   @IsNumber()
   @IsPositive()
+  @IsOptional()
   priceBuy?: number;
 
   @ApiProperty({ example: 2000.0, description: 'Precio de venta' })
   @IsNumber()
   @IsPositive()
+  @IsOptional()
   priceSale?: number;
 
   @ApiProperty({
@@ -120,20 +116,9 @@ export class UpdateProductDto {
     required: true,
   })
   @IsNumber()
+  @IsOptional()
   @IsNotEmpty()
-  // @MaxLength(200, { message: 'Máximos carácteres de 200' })
   categoryTypeId?: number;
-
-  @ApiProperty({
-    example: 1,
-    description: 'ID del tipo de categoría',
-    required: true,
-  })
-  @IsNotEmpty()
-  @IsNumber()
-  // @IsOptional()
-  // @MaxLength(200, { message: 'Máximos carácteres de 200' })
-  TaxeTypeId?: number;
 }
 
 export interface GetAllProductsRespose {

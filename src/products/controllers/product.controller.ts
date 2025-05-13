@@ -54,7 +54,7 @@ export class ProductController {
     const createdProduct = await this._productUC.create(productDto);
 
     return {
-      message: 'Registro exitoso',
+      message: 'Registro de producto exitoso',
       statusCode: HttpStatus.CREATED,
       data: {
         rowId: createdProduct.productId.toString(),

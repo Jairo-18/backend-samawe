@@ -2,12 +2,10 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
   DeleteDateColumn,
 } from 'typeorm';
-import { Product } from './product.entity';
 
 @Entity({ name: 'TaxeType' })
 export class TaxeType {
@@ -16,12 +14,6 @@ export class TaxeType {
 
   @Column('decimal', { precision: 5, scale: 2, default: 0.0 })
   name: number;
-
-  @OneToMany(() => Product, (product) => product.taxeType, {
-    onDelete: 'CASCADE',
-    onUpdate: 'CASCADE',
-  })
-  product: Product[];
 
   @CreateDateColumn({
     type: 'timestamp',

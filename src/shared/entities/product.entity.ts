@@ -11,7 +11,6 @@ import {
   OneToMany,
 } from 'typeorm';
 import { CategoryType } from './categoryType.entity';
-import { TaxeType } from './taxeType.entity';
 
 @Entity({ name: 'Product' })
 export class Product {
@@ -39,10 +38,6 @@ export class Product {
   @OneToMany(() => InvoiceDetaill, (invoiceDetaill) => invoiceDetaill.product)
   @JoinColumn({ name: 'invoiceDetaillId' })
   invoiceDetaill: InvoiceDetaill;
-
-  @ManyToOne(() => TaxeType, (taxeType) => taxeType.product)
-  @JoinColumn({ name: 'taxeTypeId' })
-  taxeType: TaxeType;
 
   @ManyToOne(() => CategoryType, (categoryType) => categoryType.product)
   @JoinColumn({ name: 'categoryTypeId' })

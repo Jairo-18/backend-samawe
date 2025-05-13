@@ -1,4 +1,3 @@
-import { TaxeTypeRepository } from './../../shared/repositories/taxeType.repository';
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { Product } from './../../shared/entities/product.entity';
@@ -16,34 +15,24 @@ export class ProductService {
   constructor(
     private readonly _productRepository: ProductRepository,
     private readonly _categoryTypeRepository: CategoryTypeRepository,
-    private readonly _taxeTypeRepository: TaxeTypeRepository,
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     try {
-      const { categoryTypeId, taxeTypeId, ...productData } = createProductDto;
+      const { categoryTypeId, ...productData } = createProductDto;
 
       // Carga las entidades relacionadas
       const categoryType = await this._categoryTypeRepository.findOne({
         where: { categoryTypeId: categoryTypeId },
       });
 
-      const taxeType = await this._taxeTypeRepository.findOne({
-        where: { taxeTypeId: taxeTypeId },
-      });
-
       if (!categoryType) {
         throw new BadRequestException('Tipo de categoría no encontrado');
-      }
-
-      if (!taxeType) {
-        throw new BadRequestException('Tipo de taxa no encontrado');
       }
 
       const newProduct = this._productRepository.create({
         ...productData,
         categoryType,
-        taxeType,
       });
 
       return await this._productRepository.save(newProduct);
