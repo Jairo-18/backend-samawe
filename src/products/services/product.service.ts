@@ -18,6 +18,14 @@ export class ProductService {
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
+    const codeExist = await this._productRepository.findOne({
+      where: { code: createProductDto.code },
+    });
+
+    if (codeExist) {
+      throw new HttpException('El código ya está en uso', HttpStatus.CONFLICT);
+    }
+
     try {
       const { categoryTypeId, ...productData } = createProductDto;
 
@@ -49,6 +57,14 @@ export class ProductService {
     const id = parseInt(productId, 10);
     if (isNaN(id)) {
       throw new BadRequestException('El ID del producto debe ser un número');
+    }
+
+    const codeExist = await this._productRepository.findOne({
+      where: { code: updateProductDto.code },
+    });
+
+    if (codeExist) {
+      throw new HttpException('El código ya está en uso', HttpStatus.CONFLICT);
     }
 
     const product = await this._productRepository.findOne({

@@ -17,10 +17,16 @@ export class Product {
   @PrimaryGeneratedColumn()
   productId: number;
 
+  @Column({
+    type: 'int',
+    nullable: false,
+  })
+  code?: number;
+
   @Column('varchar', { length: 50, nullable: true })
   name: string;
 
-  @Column('varchar', { length: 150, nullable: true })
+  @Column('varchar', { length: 250, nullable: true })
   description?: string;
 
   @Column({

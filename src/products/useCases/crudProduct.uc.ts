@@ -1,3 +1,4 @@
+import { PaginatedListProductsParamsDto } from './../dtos/crudProduct.dto';
 import { CrudProductService } from './../services/crudProduct.service';
 import { Injectable } from '@nestjs/common';
 
@@ -7,5 +8,9 @@ export class CrudProductUseCase {
 
   async getRelatedDataToCreate() {
     return await this.productService.getRelatedDataToCreate();
+  }
+
+  async paginatedList(params: PaginatedListProductsParamsDto) {
+    return await this.productService.paginatedList(params);
   }
 }

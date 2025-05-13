@@ -22,6 +22,15 @@ export class CreateProductDto {
   productId: number;
 
   @ApiProperty({
+    example: 123,
+    description: 'Código de producto',
+    required: true,
+  })
+  @IsNumber()
+  @IsNotEmpty({ message: 'El código de producto es requerido' })
+  code: number;
+
+  @ApiProperty({
     example: 'Coca Cola 1L',
     description: 'Nombre del producto',
     required: true,
@@ -77,6 +86,15 @@ export class CreateProductDto {
 }
 
 export class UpdateProductDto {
+  @ApiProperty({
+    example: 123,
+    description: 'Código de producto',
+  })
+  @IsNumber()
+  @IsOptional()
+  @IsNotEmpty({ message: 'El código de producto es requerido' })
+  code: number;
+
   @ApiProperty({
     example: 'Coca Cola 1L',
     description: 'Nombre del producto',

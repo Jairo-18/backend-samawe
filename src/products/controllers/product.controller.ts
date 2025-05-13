@@ -1,3 +1,6 @@
+import { PaginatedListProductsParamsDto } from './../dtos/crudProduct.dto';
+import { Product } from './../../shared/entities/product.entity';
+import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import {
   CreatedRecordResponseDto,
   DeleteReCordResponseDto,
@@ -20,6 +23,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -102,6 +106,16 @@ export class ProductController {
       message: 'Producto actualizado correctamente',
       statusCode: HttpStatus.OK,
     };
+  }
+
+  @Get('/paginated-list')
+  @ApiOkResponse({ type: ResponsePaginationDto<Product> })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async getPaginatedList(
+    @Query() params: PaginatedListProductsParamsDto,
+  ): Promise<ResponsePaginationDto<Product>> {
+    return await this._crudProductUseCase.paginatedList(params);
   }
 
   @Get(':id')
