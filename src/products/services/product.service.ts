@@ -95,13 +95,18 @@ export class ProductService {
   }
 
   async findOne(productId: string): Promise<Product> {
-    const id = parseInt(productId, 10);
-    if (isNaN(id)) {
-      throw new BadRequestException('El ID del producto debe ser un número');
+    const parsedId = parseInt(productId, 10);
+
+    if (isNaN(parsedId)) {
+      throw new HttpException(
+        'ID de producto inválido',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const product = await this._productRepository.findOne({
-      where: { productId: id },
+      where: { productId: parsedId },
+      relations: ['categoryType'],
     });
 
     if (!product) {

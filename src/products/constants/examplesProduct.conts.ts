@@ -58,7 +58,6 @@ export const GET_PRODUCT_EXAMPLE = {
   price: '$ 6.000',
   taxe: '0.19',
   categoryType: '2 / Mecato',
-  availableType: '1 / Disponible',
   createdAt: '2025-03-11T08:09:04.363Z',
   updatedAt: '2025-03-11T08:09:04.363Z',
 };
