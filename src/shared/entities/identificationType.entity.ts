@@ -17,10 +17,7 @@ export class IdentificationType {
   @Column('varchar', { length: 75, nullable: true })
   name: string;
 
-  @OneToMany(() => User, (user) => user.identificationType, {
-    onDelete: 'CASCADE',
-    onUpdate: 'CASCADE',
-  })
+  @OneToMany(() => User, (user) => user.identificationType)
   user: User[];
 
   @CreateDateColumn({

@@ -1,4 +1,5 @@
-import { Experience } from './experience.entity';
+import { Accommodation } from './accommodation.entity';
+import { Excursion } from './excursion.entity';
 import {
   Column,
   CreateDateColumn,
@@ -9,19 +10,25 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-@Entity({ name: 'AvailableType' })
-export class AvailableType {
+@Entity({ name: 'StateType' })
+export class StateType {
   @PrimaryGeneratedColumn()
-  availableTypeId: number;
+  stateTypeId: number;
 
   @Column('varchar', { length: 50, nullable: true })
   name: string;
 
-  @OneToMany(() => Experience, (experience) => experience.availableType, {
+  @OneToMany(() => Excursion, (excursion) => excursion.stateType, {
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',
   })
-  experience: Experience[];
+  excursion: Excursion[];
+
+  @OneToMany(() => Accommodation, (accommodation) => accommodation.stateType, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
+  accommodation: Accommodation[];
 
   @CreateDateColumn({
     type: 'timestamp',

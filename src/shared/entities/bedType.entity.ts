@@ -5,18 +5,23 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
+import { Accommodation } from './accommodation.entity';
 
-@Entity({ name: 'AdditionalType' })
-export class AdditionalType {
+@Entity({ name: 'BedType' })
+export class BedType {
   @PrimaryGeneratedColumn()
-  additionalTypeId: number;
+  bedTypeId: number;
 
-  @Column({
-    type: 'int',
-    nullable: false,
+  @Column('varchar', { length: 50, nullable: false })
+  name: string;
+
+  @OneToMany(() => Accommodation, (accommodation) => accommodation.bedType, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
   })
-  amountAdditional?: number;
+  accommodation: Accommodation[];
 
   @CreateDateColumn({
     type: 'timestamp',

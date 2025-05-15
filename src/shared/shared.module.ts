@@ -1,3 +1,4 @@
+import { StateType } from './entities/stateType.entity';
 import { RoleTypeRepository } from './repositories/roleType.repository';
 import { InvoiceDetaill } from './entities/invoiceDetaill.entity';
 import { TaxeTypeRepository } from './repositories/taxeType.repository';
@@ -6,18 +7,14 @@ import { PhoneCode } from './entities/phoneCode.entity';
 import { AccessSessionsService } from './../auth/services/accessSessions.service';
 import { AccessSessionsRepository } from './repositories/accessSessions.repository';
 import { AccessSessions } from './entities/accessSessions.entity';
-
 import { Invoice } from './entities/invoice.entity';
 import { AdditionalType } from './entities/additionalType.entity';
-import { Experience } from './entities/experience.entity';
 import { PaidType } from './entities/paidType.entity';
 import { PayType } from './entities/payType.entity';
 import { TaxeType } from './entities/taxeType.entity';
 import { ProductService } from './../products/services/product.service';
 import { CategoryTypeRepository } from './repositories/categoryType.repository';
 import { ProductRepository } from './repositories/product.repository';
-import { AvailableTypeRepository } from './repositories/available.repository';
-import { AvailableType } from './entities/availableType.entity';
 import { CategoryType } from './entities/categoryType.entity';
 import { Product } from './entities/product.entity';
 import { UserService } from '../user/services/user.service';
@@ -32,8 +29,11 @@ import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RoleType } from './entities/roleType.entity';
 import { IdentificationType } from './entities/identificationType.entity';
-
 import { IdentificationTypeRepository } from './repositories/identificationType.repository';
+import { BedType } from './entities/bedType.entity';
+import { Accommodation } from './entities/accommodation.entity';
+import { Excursion } from './entities/excursion.entity';
+import { Booking } from './entities/booking.entity';
 
 @Module({})
 export class SharedModule {
@@ -64,16 +64,19 @@ export class SharedModule {
           IdentificationType,
           Product,
           CategoryType,
-          AvailableType,
           TaxeType,
           PayType,
           PaidType,
-          Experience,
           AdditionalType,
           Invoice,
           InvoiceDetaill,
           AccessSessions,
           PhoneCode,
+          StateType,
+          BedType,
+          Accommodation,
+          Excursion,
+          Booking,
         ]),
         JwtModule.registerAsync({
           inject: [ConfigService],
@@ -93,7 +96,6 @@ export class SharedModule {
         ProductRepository,
         CategoryTypeRepository,
         TaxeTypeRepository,
-        AvailableTypeRepository,
         AccessSessionsRepository,
         PhoneCodeRepository,
         JwtStrategy,
@@ -109,7 +111,6 @@ export class SharedModule {
         IdentificationTypeRepository,
         ProductRepository,
         CategoryTypeRepository,
-        AvailableTypeRepository,
         AccessSessionsRepository,
         PhoneCodeRepository,
         TaxeTypeRepository,

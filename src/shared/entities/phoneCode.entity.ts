@@ -20,10 +20,7 @@ export class PhoneCode {
   @Column('varchar', { length: 50, nullable: true })
   name: string;
 
-  @OneToMany(() => User, (user) => user.phoneCode, {
-    onDelete: 'CASCADE',
-    onUpdate: 'CASCADE',
-  })
+  @OneToMany(() => User, (user) => user.phoneCode)
   user: User[];
 
   @CreateDateColumn({

@@ -34,9 +34,6 @@ export class RoleType {
   })
   deletedAt?: Date;
 
-  @OneToMany(() => User, (user) => user.roleType, {
-    onDelete: 'CASCADE',
-    onUpdate: 'CASCADE',
-  })
+  @OneToMany(() => User, (user) => user.roleType)
   user: User[];
 }

@@ -1,5 +1,4 @@
 import { Invoice } from './invoice.entity';
-import { Product } from './product.entity';
 import {
   Column,
   CreateDateColumn,
@@ -28,10 +27,6 @@ export class InvoiceDetaill {
   @ManyToOne(() => Invoice, (invoice) => invoice.invoiceDetaill)
   @JoinColumn({ name: 'invoiceId' })
   invoice: Invoice;
-
-  @ManyToOne(() => Product, (product) => product.invoiceDetaill)
-  @JoinColumn({ name: 'productId' })
-  product: Product;
 
   @CreateDateColumn({
     type: 'timestamp',

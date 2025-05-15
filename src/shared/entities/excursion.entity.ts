@@ -7,13 +7,16 @@ import {
   UpdateDateColumn,
   JoinColumn,
   ManyToOne,
+  ManyToMany,
 } from 'typeorm';
 import { CategoryType } from './categoryType.entity';
+import { StateType } from './stateType.entity';
+import { Booking } from './booking.entity';
 
-@Entity({ name: 'Product' })
-export class Product {
+@Entity({ name: 'Excursion' })
+export class Excursion {
   @PrimaryGeneratedColumn()
-  productId: number;
+  excursionId: number;
 
   @Column({
     type: 'int',
@@ -21,7 +24,7 @@ export class Product {
   })
   code?: number;
 
-  @Column('varchar', { length: 50, nullable: true })
+  @Column('varchar', { length: 50, nullable: false })
   name: string;
 
   @Column('varchar', { length: 250, nullable: true })
@@ -31,7 +34,7 @@ export class Product {
     type: 'int',
     nullable: false,
   })
-  amount?: number;
+  amountPerson?: number;
 
   @Column('decimal', { precision: 10, scale: 2 })
   priceBuy: number;
@@ -39,16 +42,31 @@ export class Product {
   @Column('decimal', { precision: 10, scale: 2 })
   priceSale: number;
 
-  @ManyToOne(() => CategoryType, (categoryType) => categoryType.product)
+  @ManyToMany(() => Booking, (booking) => booking.excursion)
+  booking: Booking[];
+
+  @ManyToOne(() => StateType, (stateType) => stateType.excursion)
+  @JoinColumn({ name: 'stateTypeId' })
+  stateType: StateType;
+
+  @ManyToOne(() => CategoryType, (categoryType) => categoryType.excursion)
   @JoinColumn({ name: 'categoryTypeId' })
   categoryType: CategoryType;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({
+    type: 'timestamp',
+  })
   createdAt?: Date;
 
-  @UpdateDateColumn({ type: 'timestamp', nullable: true })
+  @UpdateDateColumn({
+    type: 'timestamp',
+    nullable: true,
+  })
   updatedAt?: Date;
 
-  @DeleteDateColumn({ type: 'timestamp', nullable: true })
+  @DeleteDateColumn({
+    type: 'timestamp',
+    nullable: true,
+  })
   deletedAt?: Date;
 }
