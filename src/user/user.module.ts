@@ -1,37 +1,18 @@
-import { RoleTypeRepository } from './../shared/repositories/roleType.repository';
-import { RepositoryService } from './../shared/services/repositoriry.service';
-import { CrudUserService } from './services/crudUser.service';
-import { IdentificationTypeRepository } from './../shared/repositories/identificationType.repository';
-import { IdentificationType } from './../shared/entities/identificationType.entity';
-import { RoleType } from '../shared/entities/roleType.entity';
-import { User } from './../shared/entities/user.entity';
-import { SharedModule } from './../shared/shared.module';
-import { CrudUserUseCase } from './useCases/crudUser.UC';
-import { UserRepository } from './../shared/repositories/user.repository';
-import { Module } from '@nestjs/common';
-import { UserController } from './controllers/user.controller';
 import { UserService } from './services/user.service';
-import { UserUC } from './useCases/user.uc';
+import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { SharedModule } from './../shared/shared.module';
+import { UserController } from './controllers/user.controller';
+import { CrudUserService } from './services/crudUser.service';
+import { UserUC } from './useCases/user.uc';
+import { CrudUserUseCase } from './useCases/crudUser.UC';
 
 @Module({
-  controllers: [UserController],
   imports: [
     SharedModule.forRoot(),
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    TypeOrmModule.forFeature([User, RoleType, IdentificationType]),
   ],
-  providers: [
-    CrudUserUseCase,
-    UserUC,
-    UserService,
-    CrudUserService,
-    UserService,
-    UserRepository,
-    RoleTypeRepository,
-    IdentificationTypeRepository,
-    RepositoryService,
-  ],
+  controllers: [UserController],
+  providers: [UserUC, CrudUserUseCase, CrudUserService, UserService],
 })
 export class UserModule {}

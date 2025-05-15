@@ -1,10 +1,10 @@
+import { RepositoryService } from './services/repositoriry.service';
 import { StateType } from './entities/stateType.entity';
 import { RoleTypeRepository } from './repositories/roleType.repository';
 import { InvoiceDetaill } from './entities/invoiceDetaill.entity';
 import { TaxeTypeRepository } from './repositories/taxeType.repository';
 import { PhoneCodeRepository } from './repositories/phoneCode.repository';
 import { PhoneCode } from './entities/phoneCode.entity';
-import { AccessSessionsService } from './../auth/services/accessSessions.service';
 import { AccessSessionsRepository } from './repositories/accessSessions.repository';
 import { AccessSessions } from './entities/accessSessions.entity';
 import { Invoice } from './entities/invoice.entity';
@@ -12,13 +12,10 @@ import { AdditionalType } from './entities/additionalType.entity';
 import { PaidType } from './entities/paidType.entity';
 import { PayType } from './entities/payType.entity';
 import { TaxeType } from './entities/taxeType.entity';
-import { ProductService } from './../products/services/product.service';
 import { CategoryTypeRepository } from './repositories/categoryType.repository';
 import { ProductRepository } from './repositories/product.repository';
 import { CategoryType } from './entities/categoryType.entity';
 import { Product } from './entities/product.entity';
-import { UserService } from '../user/services/user.service';
-import { AuthService } from '../auth/services/auth.service';
 import { DynamicModule, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -26,7 +23,6 @@ import { User } from './entities/user.entity';
 import { UserRepository } from './repositories/user.repository';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
-import { JwtStrategy } from './strategies/jwt.strategy';
 import { RoleType } from './entities/roleType.entity';
 import { IdentificationType } from './entities/identificationType.entity';
 import { IdentificationTypeRepository } from './repositories/identificationType.repository';
@@ -59,24 +55,24 @@ export class SharedModule {
         }),
         PassportModule,
         TypeOrmModule.forFeature([
-          User,
-          RoleType,
-          IdentificationType,
-          Product,
-          CategoryType,
-          TaxeType,
-          PayType,
-          PaidType,
+          AccessSessions,
+          Accommodation,
           AdditionalType,
+          BedType,
+          Booking,
+          CategoryType,
+          Excursion,
+          IdentificationType,
           Invoice,
           InvoiceDetaill,
-          AccessSessions,
+          PaidType,
+          PayType,
           PhoneCode,
+          Product,
+          RoleType,
+          TaxeType,
           StateType,
-          BedType,
-          Accommodation,
-          Excursion,
-          Booking,
+          User,
         ]),
         JwtModule.registerAsync({
           inject: [ConfigService],
@@ -90,34 +86,27 @@ export class SharedModule {
         }),
       ],
       providers: [
-        UserRepository,
-        RoleTypeRepository,
-        IdentificationTypeRepository,
-        ProductRepository,
-        CategoryTypeRepository,
-        TaxeTypeRepository,
         AccessSessionsRepository,
+        CategoryTypeRepository,
+        IdentificationTypeRepository,
         PhoneCodeRepository,
-        JwtStrategy,
-        AuthService,
-        UserService,
-        ProductService,
-        AccessSessionsService,
+        ProductRepository,
+        RoleTypeRepository,
+        TaxeTypeRepository,
+        UserRepository,
+        RepositoryService,
       ],
       exports: [
         TypeOrmModule,
-        UserRepository,
-        RoleTypeRepository,
-        IdentificationTypeRepository,
-        ProductRepository,
-        CategoryTypeRepository,
         AccessSessionsRepository,
+        CategoryTypeRepository,
+        IdentificationTypeRepository,
         PhoneCodeRepository,
+        ProductRepository,
+        RoleTypeRepository,
         TaxeTypeRepository,
-        AuthService,
-        UserService,
-        ProductService,
-        AccessSessionsService,
+        UserRepository,
+        RepositoryService,
       ],
     };
   }
