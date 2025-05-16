@@ -35,7 +35,6 @@ import {
 } from '@nestjs/swagger';
 import { ProductUC } from '../useCases/productUC.uc';
 import { AuthGuard } from '@nestjs/passport';
-
 import { CreateProductRelatedDataReponseDto } from '../dtos/crudProduct.dto';
 import { CrudProductUC } from '../useCases/crudProductUC.uc';
 

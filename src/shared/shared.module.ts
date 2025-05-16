@@ -1,3 +1,4 @@
+import { ExcursionRepository } from './repositories/excursion.repository';
 import { StateTypeRepository } from './repositories/stateType.repository';
 import { BookingRepository } from './repositories/booking.repository';
 import { BedTypeRepository } from './repositories/bedType.repository';
@@ -95,6 +96,7 @@ export class SharedModule {
         BedTypeRepository,
         BookingRepository,
         CategoryTypeRepository,
+        ExcursionRepository,
         IdentificationTypeRepository,
         PhoneCodeRepository,
         ProductRepository,
@@ -111,6 +113,7 @@ export class SharedModule {
         BedTypeRepository,
         BookingRepository,
         CategoryTypeRepository,
+        ExcursionRepository,
         IdentificationTypeRepository,
         PhoneCodeRepository,
         ProductRepository,

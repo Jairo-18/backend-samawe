@@ -1,3 +1,5 @@
+import { StateTypeRepository } from './../repositories/stateType.repository';
+import { BedTypeRepository } from './../repositories/bedType.repository';
 import { RoleTypeRepository } from './../repositories/roleType.repository';
 import { TaxeTypeRepository } from './../repositories/taxeType.repository';
 import { CategoryTypeRepository } from './../repositories/categoryType.repository';
@@ -14,6 +16,8 @@ export class RepositoryService {
     phoneCode: PhoneCodeRepository;
     categoryType: CategoryTypeRepository;
     taxeType: TaxeTypeRepository;
+    bedType: BedTypeRepository;
+    stateType: StateTypeRepository;
   };
 
   constructor(
@@ -22,6 +26,8 @@ export class RepositoryService {
     private readonly _phoneCodeRepository: PhoneCodeRepository,
     private readonly _categoryTypeRepository: CategoryTypeRepository,
     private readonly _taxeTypeRepository: TaxeTypeRepository,
+    private readonly _stateTypeRepository: StateTypeRepository,
+    private readonly _bedTypeRepository: BedTypeRepository,
   ) {
     this.repositories = {
       roleType: _roleRepository,
@@ -29,6 +35,8 @@ export class RepositoryService {
       phoneCode: _phoneCodeRepository,
       categoryType: _categoryTypeRepository,
       taxeType: _taxeTypeRepository,
+      bedType: _bedTypeRepository,
+      stateType: _stateTypeRepository,
     };
   }
 

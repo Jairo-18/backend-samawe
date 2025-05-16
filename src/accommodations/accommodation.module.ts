@@ -1,3 +1,5 @@
+import { CrudAccommodationUC } from './useCases/crudAccommodationUC.uc';
+import { CrudAccommodationService } from './services/crudAccommodation.service';
 import { AccommodationService } from './services/accommodation.service';
 import { AccommodationController } from './controllers/accommodation.controller';
 import { Module } from '@nestjs/common';
@@ -11,6 +13,11 @@ import { AccommodationUC } from './useCases/accommodationUC.uc';
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [AccommodationController],
-  providers: [AccommodationService, AccommodationUC],
+  providers: [
+    AccommodationService,
+    CrudAccommodationService,
+    AccommodationUC,
+    CrudAccommodationUC,
+  ],
 })
 export class AccommodationModule {}

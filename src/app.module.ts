@@ -1,3 +1,4 @@
+import { ExcursionModule } from './excursions/excursion.module';
 import { ProductModule } from './products/product.module';
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
@@ -21,10 +22,11 @@ import { AccommodationModule } from './accommodations/accommodation.module';
       rootPath: join(__dirname, '..', 'public'),
     }),
     SharedModule.forRoot(),
-    AuthModule,
-    UserModule,
-    ProductModule,
     AccommodationModule,
+    AuthModule,
+    ExcursionModule,
+    ProductModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],

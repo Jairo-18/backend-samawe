@@ -1,4 +1,136 @@
-import { Controller } from '@nestjs/common';
+import { CrudAccommodationUC } from '../useCases/crudAccommodationUC.uc';
+import {
+  DuplicatedResponseDto,
+  CreatedRecordResponseDto,
+  DeleteReCordResponseDto,
+  NotFoundResponseDto,
+  UpdateRecordResponseDto,
+} from './../../shared/dtos/response.dto';
+import {
+  CreateAccommodationDto,
+  GetAcommodationDto,
+  GetAllAccommodationsResposeDto,
+  UpdateAccommodationDto,
+} from './../dtos/accommodation.dto';
+import { AccommodationUC } from './../useCases/accommodationUC.uc';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import {
+  ApiBearerAuth,
+  ApiConflictResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { CreateAccommodationRelatedDataReponseDto } from '../dtos/crudAccommodation.dto';
 
 @Controller('accommodation')
-export class AccommodationController {}
+@ApiTags('Hospedajes')
+export class AccommodationController {
+  constructor(
+    private readonly _accommodationUC: AccommodationUC,
+    private readonly _crudAccommodationUC: CrudAccommodationUC,
+  ) {}
+
+  @Post('create')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({ type: CreateAccommodationDto })
+  @ApiConflictResponse({ type: DuplicatedResponseDto })
+  async create(
+    @Body() accommodationDto: CreateAccommodationDto,
+  ): Promise<CreatedRecordResponseDto> {
+    const createAccommodation =
+      await this._accommodationUC.create(accommodationDto);
+
+    return {
+      message: 'Registro de hospedaje exitoso',
+      statusCode: HttpStatus.CREATED,
+      data: {
+        rowId: createAccommodation.accommodationId.toString(),
+        ...createAccommodation,
+      },
+    };
+  }
+
+  @Get('/create/related-data')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({ type: CreateAccommodationRelatedDataReponseDto })
+  async getRelatedData(): Promise<CreateAccommodationRelatedDataReponseDto> {
+    const data = await this._crudAccommodationUC.getRelatedDataToCreate();
+    return {
+      statusCode: HttpStatus.OK,
+      data,
+    };
+  }
+
+  @Get()
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({ type: GetAllAccommodationsResposeDto })
+  async findAll(): Promise<GetAllAccommodationsResposeDto> {
+    const accommodations = await this._accommodationUC.findAll();
+    return {
+      statusCode: HttpStatus.OK,
+      data: { accommodations },
+    };
+  }
+
+  @Patch(':id')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({ type: UpdateRecordResponseDto })
+  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  async update(
+    @Param('id') accommodationId: string,
+    @Body() accommodationData: UpdateAccommodationDto,
+  ): Promise<UpdateRecordResponseDto> {
+    await this._accommodationUC.update(accommodationId, accommodationData);
+
+    return {
+      message: 'Habitación actualizado correctamente',
+      statusCode: HttpStatus.OK,
+    };
+  }
+
+  @Get(':id')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({ type: GetAcommodationDto })
+  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  async findOne(
+    @Param('id') accommodationId: string,
+  ): Promise<GetAcommodationDto> {
+    const accommodation = await this._accommodationUC.findOne(accommodationId);
+    return {
+      statusCode: HttpStatus.OK,
+      data: accommodation,
+    };
+  }
+
+  @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({ type: DeleteReCordResponseDto })
+  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  async delete(
+    @Param('id') accommodationId: string,
+  ): Promise<DeleteReCordResponseDto> {
+    await this._accommodationUC.delete(accommodationId);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Hospedaje eliminado exitosamente',
+    };
+  }
+}

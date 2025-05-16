@@ -31,6 +31,7 @@ export class CrudProductService {
 
     return { categoryType, taxeType };
   }
+
   async paginatedList(params: PaginatedListProductsParamsDto) {
     const skip = (params.page - 1) * params.perPage;
     const where: FindOptionsWhere<Product>[] = [];
