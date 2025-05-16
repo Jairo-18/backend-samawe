@@ -1,3 +1,7 @@
+import { StateTypeRepository } from './repositories/stateType.repository';
+import { BookingRepository } from './repositories/booking.repository';
+import { BedTypeRepository } from './repositories/bedType.repository';
+import { AccommodationRepository } from './repositories/accommodation.repository';
 import { RepositoryService } from './services/repositoriry.service';
 import { StateType } from './entities/stateType.entity';
 import { RoleTypeRepository } from './repositories/roleType.repository';
@@ -87,11 +91,15 @@ export class SharedModule {
       ],
       providers: [
         AccessSessionsRepository,
+        AccommodationRepository,
+        BedTypeRepository,
+        BookingRepository,
         CategoryTypeRepository,
         IdentificationTypeRepository,
         PhoneCodeRepository,
         ProductRepository,
         RoleTypeRepository,
+        StateTypeRepository,
         TaxeTypeRepository,
         UserRepository,
         RepositoryService,
@@ -99,11 +107,15 @@ export class SharedModule {
       exports: [
         TypeOrmModule,
         AccessSessionsRepository,
+        AccommodationRepository,
+        BedTypeRepository,
+        BookingRepository,
         CategoryTypeRepository,
         IdentificationTypeRepository,
         PhoneCodeRepository,
         ProductRepository,
         RoleTypeRepository,
+        StateTypeRepository,
         TaxeTypeRepository,
         UserRepository,
         RepositoryService,

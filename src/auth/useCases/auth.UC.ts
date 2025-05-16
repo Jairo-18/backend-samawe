@@ -8,17 +8,17 @@ import {
 
 @Injectable()
 export class AuthUC {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly _authService: AuthService) {}
 
   async login(body: LoginDto) {
-    return await this.authService.signIn(body);
+    return await this._authService.signIn(body);
   }
 
   async refreshToken(body: RefreshTokenBodyDto) {
-    return this.authService.refreshToken(body);
+    return this._authService.refreshToken(body);
   }
 
   async signOut(body: SignOutBodyDto) {
-    return await this.authService.signOut(body);
+    return await this._authService.signOut(body);
   }
 }

@@ -20,15 +20,15 @@ import { v4 as uuidv4 } from 'uuid';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly usersService: UserService,
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
-    private readonly accessSessionsService: AccessSessionsService,
+    private readonly _userService: UserService,
+    private readonly _jwtService: JwtService,
+    private readonly _configService: ConfigService,
+    private readonly _accessSessionsService: AccessSessionsService,
   ) {}
 
   async signIn(credentials: Partial<UserAuthModel>) {
     // Buscar el usuario por el email
-    const user = await this.usersService.findByParams({
+    const user = await this._userService.findByParams({
       email: credentials.email,
     });
 
@@ -58,7 +58,7 @@ export class AuthService {
     }
 
     // Creamos la sesión de acceso
-    const accessSessionId = await this.accessSessionsService.generateSession({
+    const accessSessionId = await this._accessSessionsService.generateSession({
       userId: user.userId, // ← aquí estaba el error
       accessToken: tokens.accessToken,
       id: uuidv4(),
@@ -82,13 +82,15 @@ export class AuthService {
 
   // Función para validar la sesión (usada en el refresh token)
   async validateSession({ userId, token }: { userId: string; token: string }) {
-    const user = await this.usersService.findOne(userId); // Buscamos el usuario por ID
+    const user = await this._userService.findOne(userId); // Buscamos el usuario por ID
     let payload;
 
     try {
-      payload = this.jwtService.verify(token, {
-        secret: this.configService.get<string>('jwt.secret'),
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      payload = this._jwtService.verify(token, {
+        secret: this._configService.get<string>('jwt.secret'),
       });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_e) {
       throw new UnauthorizedException('No autorizado');
     }
@@ -105,14 +107,14 @@ export class AuthService {
     accessToken: string;
     refreshToken: string;
   } {
-    const accessToken = this.jwtService.sign(payload, {
-      expiresIn: this.configService.get('jwt.expiresIn'),
-      secret: this.configService.get<string>('jwt.secret'),
+    const accessToken = this._jwtService.sign(payload, {
+      expiresIn: this._configService.get('jwt.expiresIn'),
+      secret: this._configService.get<string>('jwt.secret'),
     });
 
-    const refreshToken = this.jwtService.sign(payload, {
-      expiresIn: this.configService.get('jwt.refreshTokenExpiresIn'),
-      secret: this.configService.get<string>('jwt.secret'),
+    const refreshToken = this._jwtService.sign(payload, {
+      expiresIn: this._configService.get('jwt.refreshTokenExpiresIn'),
+      secret: this._configService.get<string>('jwt.secret'),
     });
 
     return { accessToken, refreshToken };
@@ -123,9 +125,10 @@ export class AuthService {
     let payload;
 
     try {
-      payload = this.jwtService.verify(body.refreshToken, {
-        secret: this.configService.get<string>('jwt.secret'),
+      payload = this._jwtService.verify(body.refreshToken, {
+        secret: this._configService.get<string>('jwt.secret'),
       });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_e) {
       throw new UnauthorizedException('No autorizado');
     }
@@ -166,7 +169,7 @@ export class AuthService {
     accessToken: string;
     accessSessionId: string;
   }): Promise<void> {
-    const sessionExists = await this.accessSessionsService.findOneByParams({
+    const sessionExists = await this._accessSessionsService.findOneByParams({
       userId,
       accessToken,
       id: accessSessionId,
@@ -175,6 +178,6 @@ export class AuthService {
     if (!sessionExists) {
       throw new NotFoundException(NOT_FOUND_RESPONSE);
     }
-    await this.accessSessionsService.delete(sessionExists.id, userId);
+    await this._accessSessionsService.delete(sessionExists.id, userId);
   }
 }

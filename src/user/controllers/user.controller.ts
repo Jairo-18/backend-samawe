@@ -1,5 +1,6 @@
+import { CrudUserUC } from './../useCases/crudUserUC';
 import { User } from 'src/shared/entities/user.entity';
-import { CrudUserUseCase } from '../useCases/crudUser.UC';
+
 import {
   CreateUserRelatedDataReponseDto,
   PaginatedListUsersParamsDto,
@@ -26,7 +27,7 @@ import {
   GetUserResponseDto,
 } from '../dtos/user.dto';
 
-import { UserUC } from '../useCases/user.uc';
+import { UserUC } from '../useCases/userUC.uc';
 import {
   Body,
   Controller,
@@ -48,7 +49,7 @@ import { ResponsePaginationDto } from 'src/shared/dtos/pagination.dto';
 export class UserController {
   constructor(
     private readonly _userUC: UserUC,
-    private readonly _crudUserUseCase: CrudUserUseCase,
+    private readonly _crudUserUC: CrudUserUC,
   ) {}
 
   @Patch('change-password')
@@ -69,7 +70,7 @@ export class UserController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
   async getRelatedDataForCreate(): Promise<CreateUserRelatedDataReponseDto> {
-    const data = await this._crudUserUseCase.getRelatedDataToCreate(false);
+    const data = await this._crudUserUC.getRelatedDataToCreate(false);
     return {
       statusCode: HttpStatus.OK,
       data,
@@ -79,7 +80,7 @@ export class UserController {
   @Get('/register/related-data')
   @ApiOkResponse({ type: CreateUserRelatedDataReponseDto })
   async getRelatedData(): Promise<CreateUserRelatedDataReponseDto> {
-    const data = await this._crudUserUseCase.getRelatedDataToCreate(true);
+    const data = await this._crudUserUC.getRelatedDataToCreate(true);
     return {
       statusCode: HttpStatus.OK,
       data,
@@ -133,7 +134,7 @@ export class UserController {
   async getPaginatedList(
     @Query() params: PaginatedListUsersParamsDto,
   ): Promise<ResponsePaginationDto<User>> {
-    return await this._crudUserUseCase.paginatedList(params);
+    return await this._crudUserUC.paginatedList(params);
   }
 
   @Get(':id')

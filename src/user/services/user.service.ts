@@ -18,15 +18,15 @@ import { Not } from 'typeorm';
 @Injectable()
 export class UserService {
   constructor(
-    private userRepository: UserRepository,
-    private readonly roleRepository: RoleTypeRepository,
-    private readonly identificationTypeRepository: IdentificationTypeRepository,
-    private readonly phoneCodeRepository: PhoneCodeRepository,
+    private _userRepository: UserRepository,
+    private readonly _roleTypeRepository: RoleTypeRepository,
+    private readonly _identificationTypeRepository: IdentificationTypeRepository,
+    private readonly _phoneCodeRepository: PhoneCodeRepository,
   ) {}
 
   async create(user: CreateUserDto): Promise<{ rowId: string }> {
     // Validación por email
-    const existingUserByEmail = await this.userRepository.findOne({
+    const existingUserByEmail = await this._userRepository.findOne({
       where: { email: user.email },
     });
 
@@ -35,7 +35,7 @@ export class UserService {
     }
 
     // Validación por tipo + número de identificación
-    const existingUserByIdentification = await this.userRepository.findOne({
+    const existingUserByIdentification = await this._userRepository.findOne({
       where: {
         identificationType: { identificationTypeId: user.identificationType },
         identificationNumber: user.identificationNumber,
@@ -50,7 +50,7 @@ export class UserService {
     }
 
     // Validación por código de teléfono + número
-    const existingPhoneUser = await this.userRepository.findOne({
+    const existingPhoneUser = await this._userRepository.findOne({
       where: {
         phoneCode: { phoneCodeId: user.phoneCode },
         phone: user.phone,
@@ -66,15 +66,17 @@ export class UserService {
 
     this.validatePasswordMatch(user.password, user.confirmPassword);
 
-    const roleType = await this.roleRepository.findOne({
+    const roleType = await this._roleTypeRepository.findOne({
       where: { roleTypeId: user.roleType },
     });
 
-    const identificationType = await this.identificationTypeRepository.findOne({
-      where: { identificationTypeId: user.identificationType },
-    });
+    const identificationType = await this._identificationTypeRepository.findOne(
+      {
+        where: { identificationTypeId: user.identificationType },
+      },
+    );
 
-    const phoneCode = await this.phoneCodeRepository.findOne({
+    const phoneCode = await this._phoneCodeRepository.findOne({
       where: { phoneCodeId: user.phoneCode },
     });
 
@@ -87,7 +89,7 @@ export class UserService {
 
     const hashedPassword = await bcrypt.hash(user.password, 10);
 
-    const res = await this.userRepository.insert({
+    const res = await this._userRepository.insert({
       ...user,
       password: hashedPassword,
       roleType,
@@ -102,7 +104,7 @@ export class UserService {
     const salt = await bcrypt.genSalt();
 
     // Validación por email
-    const existingUserByEmail = await this.userRepository.findOne({
+    const existingUserByEmail = await this._userRepository.findOne({
       where: { email: user.email },
     });
 
@@ -111,7 +113,7 @@ export class UserService {
     }
 
     // Validación por tipo + número de identificación
-    const existingUserByIdentification = await this.userRepository.findOne({
+    const existingUserByIdentification = await this._userRepository.findOne({
       where: {
         identificationType: { identificationTypeId: user.identificationType },
         identificationNumber: user.identificationNumber,
@@ -126,7 +128,7 @@ export class UserService {
     }
 
     // Validación por código de teléfono + número
-    const existingPhoneUser = await this.userRepository.findOne({
+    const existingPhoneUser = await this._userRepository.findOne({
       where: {
         phoneCode: { phoneCodeId: user.phoneCode },
         phone: user.phone,
@@ -144,21 +146,21 @@ export class UserService {
 
     const roleType =
       user.roleType && user.roleType.trim() !== ''
-        ? await this.roleRepository.findOne({
+        ? await this._roleTypeRepository.findOne({
             where: { roleTypeId: user.roleType },
           })
-        : await this.roleRepository.findOne({
+        : await this._roleTypeRepository.findOne({
             where: { roleTypeId: '4a96be8d-308f-434f-9846-54e5db3e7d95' },
           });
 
     const identificationType =
       typeof user.identificationType === 'string'
-        ? await this.identificationTypeRepository.findOne({
+        ? await this._identificationTypeRepository.findOne({
             where: { identificationTypeId: user.identificationType },
           })
         : user.identificationType;
 
-    const phoneCode = await this.phoneCodeRepository.findOne({
+    const phoneCode = await this._phoneCodeRepository.findOne({
       where: { phoneCodeId: user.phoneCode },
     });
 
@@ -177,14 +179,14 @@ export class UserService {
       phoneCode,
     };
 
-    const res = await this.userRepository.insert(userConfirm);
+    const res = await this._userRepository.insert(userConfirm);
     return { rowId: res.identifiers[0].id };
   }
 
   async update(userId: string, userData: UpdateUserModel) {
     const userExist = await this.findOne(userId);
     if (userData.email) {
-      const emailExist = await this.userRepository.findOne({
+      const emailExist = await this._userRepository.findOne({
         where: { userId: Not(userId), email: userData.email },
       });
 
@@ -197,7 +199,7 @@ export class UserService {
     }
 
     if (userData.identificationType || userData.identificationNumber) {
-      const identificationNumberExist = await this.userRepository.findOne({
+      const identificationNumberExist = await this._userRepository.findOne({
         where: {
           userId: Not(userId),
           identificationNumber: userData.identificationNumber,
@@ -215,7 +217,7 @@ export class UserService {
     }
 
     if (userData.phoneCode || userData.phone) {
-      const phoneExist = await this.userRepository.findOne({
+      const phoneExist = await this._userRepository.findOne({
         where: {
           userId: Not(userId),
           phone: userData.phone,
@@ -236,7 +238,7 @@ export class UserService {
       throw new HttpException('El usuario no existe', HttpStatus.NOT_FOUND);
     }
 
-    return await this.userRepository.update(
+    return await this._userRepository.update(
       { userId },
       {
         ...userData,
@@ -265,12 +267,12 @@ export class UserService {
   }
 
   async findAll(): Promise<User[]> {
-    return await this.userRepository.find();
+    return await this._userRepository.find();
   }
 
   async findOne(userId: string): Promise<Partial<User>> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...user } = await this.userRepository.findOne({
+    const { password, ...user } = await this._userRepository.findOne({
       where: { userId },
       relations: ['roleType', 'identificationType', 'phoneCode'],
     });
@@ -283,14 +285,14 @@ export class UserService {
   }
 
   async findByParams(params: Record<string, any>): Promise<User> {
-    return await this.userRepository.findOne({
+    return await this._userRepository.findOne({
       where: [params],
       relations: ['roleType'],
     });
   }
 
   async initData(userId: string) {
-    const user = await this.userRepository.findOne({
+    const user = await this._userRepository.findOne({
       where: { userId: userId },
     });
 
@@ -321,13 +323,13 @@ export class UserService {
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await this.userRepository.update(userId, { password: hashedPassword });
+    await this._userRepository.update(userId, { password: hashedPassword });
 
     return { message: 'Contraseña actualizada correctamente' };
   }
 
   async delete(id: string) {
     await this.findOne(id);
-    return await this.userRepository.delete(id);
+    return await this._userRepository.delete(id);
   }
 }

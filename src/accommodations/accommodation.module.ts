@@ -1,7 +1,9 @@
-import { AccommodationController } from './controllers/accommodation/accommodation.controller';
+import { AccommodationService } from './services/accommodation.service';
+import { AccommodationController } from './controllers/accommodation.controller';
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { SharedModule } from './../shared/shared.module';
+import { AccommodationUC } from './useCases/accommodationUC.uc';
 
 @Module({
   imports: [
@@ -9,6 +11,6 @@ import { SharedModule } from './../shared/shared.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [AccommodationController],
-  providers: [],
+  providers: [AccommodationService, AccommodationUC],
 })
 export class AccommodationModule {}

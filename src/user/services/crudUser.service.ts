@@ -2,7 +2,6 @@ import { User } from './../../shared/entities/user.entity';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { UserRepository } from './../../shared/repositories/user.repository';
-import { PhoneCodeRepository } from './../../shared/repositories/phoneCode.repository';
 import { PhoneCode } from './../../shared/entities/phoneCode.entity';
 import { RepositoryService } from '../../shared/services/repositoriry.service';
 import { RoleType } from '../../shared/entities/roleType.entity';
@@ -19,7 +18,6 @@ export class CrudUserService {
   constructor(
     private readonly _repositoriesService: RepositoryService,
     private readonly _userRepository: UserRepository,
-    private readonly _phoneCodeRepository: PhoneCodeRepository,
   ) {}
 
   async getRelatedDataToCreate(
@@ -42,11 +40,6 @@ export class CrudUserService {
     }
 
     return { identificationType, phoneCode };
-  }
-
-  private async getPhoneCode(code: string) {
-    return (await this._phoneCodeRepository.findOne({ where: { code } }))
-      .phoneCodeId;
   }
 
   async paginatedList(params: PaginatedListUsersParamsDto) {

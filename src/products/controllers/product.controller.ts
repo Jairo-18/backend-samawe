@@ -33,18 +33,18 @@ import {
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { ProductUC } from '../useCases/product.uc';
-
+import { ProductUC } from '../useCases/productUC.uc';
 import { AuthGuard } from '@nestjs/passport';
-import { CrudProductUseCase } from '../useCases/crudProduct.uc';
+
 import { CreateProductRelatedDataReponseDto } from '../dtos/crudProduct.dto';
+import { CrudProductUC } from '../useCases/crudProductUC.uc';
 
 @Controller('product')
 @ApiTags('Productos')
 export class ProductController {
   constructor(
     private readonly _productUC: ProductUC,
-    private readonly _crudProductUseCase: CrudProductUseCase,
+    private readonly _crudProductUC: CrudProductUC,
   ) {}
 
   @Post('create')
@@ -72,7 +72,7 @@ export class ProductController {
   @UseGuards(AuthGuard())
   @ApiOkResponse({ type: CreateProductRelatedDataReponseDto })
   async getRelatedData(): Promise<CreateProductRelatedDataReponseDto> {
-    const data = await this._crudProductUseCase.getRelatedDataToCreate();
+    const data = await this._crudProductUC.getRelatedDataToCreate();
     return {
       statusCode: HttpStatus.OK,
       data,
@@ -115,7 +115,7 @@ export class ProductController {
   async getPaginatedList(
     @Query() params: PaginatedListProductsParamsDto,
   ): Promise<ResponsePaginationDto<Product>> {
-    return await this._crudProductUseCase.paginatedList(params);
+    return await this._crudProductUC.paginatedList(params);
   }
 
   @Get(':id')

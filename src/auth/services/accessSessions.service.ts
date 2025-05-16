@@ -10,23 +10,23 @@ import {
 @Injectable()
 export class AccessSessionsService {
   constructor(
-    private readonly accessSessionsRepository: AccessSessionsRepository,
+    private readonly _accessSessionsRepository: AccessSessionsRepository,
   ) {}
 
   async generateSession(body: AccessSessionsModel): Promise<string> {
-    const session = this.accessSessionsRepository.create({
+    const session = this._accessSessionsRepository.create({
       ...body,
       user: { userId: body.userId }, // esto es lo más importante
     });
 
-    const saved = await this.accessSessionsRepository.save(session);
+    const saved = await this._accessSessionsRepository.save(session);
     return saved.id;
   }
 
   async findOneByParams(
     params: AccessSessionsFiltersModel,
   ): Promise<AccessSessions> {
-    return await this.accessSessionsRepository.findOne({
+    return await this._accessSessionsRepository.findOne({
       where: {
         id: params.id, // Si buscas por id de la sesión
         user: params.userId ? { userId: params.userId } : undefined, // Si pasas un userId, filtra por este
@@ -39,6 +39,6 @@ export class AccessSessionsService {
     if (!sessionExists) {
       throw new HttpException(NOT_FOUND_MESSAGE, HttpStatus.NOT_FOUND);
     }
-    await this.accessSessionsRepository.delete(id);
+    await this._accessSessionsRepository.delete(id);
   }
 }

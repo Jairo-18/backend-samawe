@@ -1,7 +1,7 @@
 import { CrudProductService } from './services/crudProduct.service';
 import { ProductService } from './services/product.service';
-import { CrudProductUseCase } from './useCases/crudProduct.uc';
-import { ProductUC } from './useCases/product.uc';
+import { CrudProductUC } from './useCases/crudProductUC.uc';
+import { ProductUC } from './useCases/productUC.uc';
 import { ProductController } from './controllers/product.controller';
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
@@ -13,11 +13,6 @@ import { SharedModule } from './../shared/shared.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [ProductController],
-  providers: [
-    ProductUC,
-    CrudProductUseCase,
-    ProductService,
-    CrudProductService,
-  ],
+  providers: [ProductUC, CrudProductUC, ProductService, CrudProductService],
 })
 export class ProductModule {}

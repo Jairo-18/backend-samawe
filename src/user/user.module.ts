@@ -1,11 +1,11 @@
+import { CrudUserUC } from './useCases/crudUserUC';
 import { UserService } from './services/user.service';
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { SharedModule } from './../shared/shared.module';
 import { UserController } from './controllers/user.controller';
 import { CrudUserService } from './services/crudUser.service';
-import { UserUC } from './useCases/user.uc';
-import { CrudUserUseCase } from './useCases/crudUser.UC';
+import { UserUC } from './useCases/userUC.uc';
 
 @Module({
   imports: [
@@ -13,6 +13,7 @@ import { CrudUserUseCase } from './useCases/crudUser.UC';
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [UserController],
-  providers: [UserUC, CrudUserUseCase, CrudUserService, UserService],
+  providers: [UserUC, CrudUserUC, CrudUserService, UserService],
+  exports: [UserService],
 })
 export class UserModule {}
