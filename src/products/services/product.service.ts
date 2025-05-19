@@ -59,24 +59,29 @@ export class ProductService {
       throw new BadRequestException('El ID del producto debe ser un número');
     }
 
-    const codeExist = await this._productRepository.findOne({
-      where: { code: updateProductDto.code },
-    });
-
-    // Solo lanzar error si el código existe en OTRO producto (no en el actual)
-    if (codeExist && codeExist.productId !== id) {
-      throw new HttpException(
-        'El código ya está en uso por otro producto',
-        HttpStatus.CONFLICT,
-      );
-    }
-
+    // Primero obtenemos el producto que queremos actualizar
     const product = await this._productRepository.findOne({
       where: { productId: id },
     });
 
     if (!product) {
       throw new NotFoundException(`Producto con ID ${id} no encontrado`);
+    }
+
+    // Solo verificamos el código si se está intentando actualizar
+    if (updateProductDto.code) {
+      // Buscamos si existe algún producto con ese código
+      const codeExist = await this._productRepository.findOne({
+        where: { code: updateProductDto.code },
+      });
+
+      // Lanzamos error solo si encontramos un producto diferente con ese código
+      if (codeExist && codeExist.productId !== id) {
+        throw new HttpException(
+          'El código ya está en uso por otro producto',
+          HttpStatus.CONFLICT,
+        );
+      }
     }
 
     if (updateProductDto.categoryTypeId) {
@@ -93,7 +98,6 @@ export class ProductService {
 
     return await this._productRepository.save(product);
   }
-
   async findAll(): Promise<Product[]> {
     return await this._productRepository.find();
   }
