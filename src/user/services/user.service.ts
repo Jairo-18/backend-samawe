@@ -18,7 +18,7 @@ import { Not } from 'typeorm';
 @Injectable()
 export class UserService {
   constructor(
-    private _userRepository: UserRepository,
+    private readonly _userRepository: UserRepository,
     private readonly _roleTypeRepository: RoleTypeRepository,
     private readonly _identificationTypeRepository: IdentificationTypeRepository,
     private readonly _phoneCodeRepository: PhoneCodeRepository,

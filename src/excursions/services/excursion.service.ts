@@ -84,13 +84,12 @@ export class ExcursionService {
       throw new NotFoundException(`Pasadía con ID ${id} no encontrado`);
     }
 
-    // Validación de código único
-    if (updateExcursionDto.code && updateExcursionDto.code !== excursion.code) {
+    if (updateExcursionDto.code) {
       const codeExist = await this._excursionRepository.findOne({
         where: { code: updateExcursionDto.code },
       });
-
-      if (codeExist) {
+      // Verifica si el código existe y pertenece a un registro diferente
+      if (codeExist && codeExist.code !== excursion.code) {
         throw new ConflictException(
           'El código ya está en uso por otra pasadía',
         );

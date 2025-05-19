@@ -98,15 +98,11 @@ export class AccommodationService {
     }
 
     // Validar si el código nuevo ya está en uso por otro hospedaje
-    if (
-      updateAccommodationDto.code &&
-      updateAccommodationDto.code !== accommodation.code
-    ) {
+    if (updateAccommodationDto.code) {
       const codeExist = await this._accommodationRepository.findOne({
         where: { code: updateAccommodationDto.code },
       });
-
-      if (codeExist) {
+      if (codeExist && codeExist.code !== accommodation.code) {
         throw new ConflictException(
           'El código ya está en uso por otro hospedaje',
         );

@@ -63,8 +63,12 @@ export class ProductService {
       where: { code: updateProductDto.code },
     });
 
-    if (codeExist) {
-      throw new HttpException('El código ya está en uso', HttpStatus.CONFLICT);
+    // Solo lanzar error si el código existe en OTRO producto (no en el actual)
+    if (codeExist && codeExist.productId !== id) {
+      throw new HttpException(
+        'El código ya está en uso por otro producto',
+        HttpStatus.CONFLICT,
+      );
     }
 
     const product = await this._productRepository.findOne({
