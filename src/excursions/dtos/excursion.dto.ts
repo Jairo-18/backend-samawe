@@ -16,9 +16,9 @@ import {
 } from 'class-validator';
 
 export class CreateExcursionDto {
-  @ApiProperty({ example: 1, description: 'ID de la pasadía', required: true })
+  @ApiProperty({ example: 1, description: 'ID de la pasadía', required: false })
   @IsNumber()
-  @IsNotEmpty({ message: 'El ID de la pasadía es requerido' })
+  @IsOptional()
   excursionId: number;
 
   @ApiProperty({ example: 123, description: 'Código de excursión' })

@@ -98,6 +98,7 @@ export class ProductService {
 
     return await this._productRepository.save(product);
   }
+
   async findAll(): Promise<Product[]> {
     return await this._productRepository.find();
   }

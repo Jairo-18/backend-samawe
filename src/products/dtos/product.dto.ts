@@ -16,9 +16,9 @@ import {
 } from 'class-validator';
 
 export class CreateProductDto {
-  @ApiProperty({ example: 1, description: 'ID del producto', required: true })
+  @ApiProperty({ example: 1, description: 'ID del producto', required: false })
   @IsNumber()
-  @IsNotEmpty({ message: 'El ID del producto es requerido' })
+  @IsOptional()
   productId: number;
 
   @ApiProperty({

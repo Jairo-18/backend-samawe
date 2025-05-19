@@ -17,9 +17,9 @@ import {
 } from 'class-validator';
 
 export class CreateAccommodationDto {
-  @ApiProperty({ example: 1, description: 'ID del hospedaje', required: true })
+  @ApiProperty({ example: 1, description: 'ID del hospedaje', required: false })
   @IsNumber()
-  @IsNotEmpty({ message: 'El ID del hospedaje es requerido' })
+  @IsOptional()
   accommodationId: number;
 
   @ApiProperty({ example: 123, description: 'Código de hospedaje' })
