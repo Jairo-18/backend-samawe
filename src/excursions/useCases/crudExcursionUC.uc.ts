@@ -1,3 +1,4 @@
+import { PaginatedListExcursionsParamsDto } from './../dtos/crudExcursion.dto';
 import { CrudExcursionService } from './../services/crudExcursion.service';
 import { Injectable } from '@nestjs/common';
 
@@ -7,5 +8,9 @@ export class CrudExcursionUC {
 
   async getRelatedDataToCreate() {
     return await this._crudExcursionService.getRelatedDataToCreate();
+  }
+
+  async paginatedList(params: PaginatedListExcursionsParamsDto) {
+    return await this._crudExcursionService.paginatedList(params);
   }
 }

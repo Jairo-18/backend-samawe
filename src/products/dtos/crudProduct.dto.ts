@@ -1,9 +1,9 @@
+import { CategoryType } from './../../shared/entities/categoryType.entity';
 import { ParamsPaginationDto } from './../../shared/dtos/pagination.dto';
 import { TaxeType } from './../../shared/entities/taxeType.entity';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { HttpStatus } from '@nestjs/common';
 import { ApiProperty } from '@nestjs/swagger';
-import { CategoryType } from '../models/product.model';
 import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export interface CreateProductRelatedDataDto {
@@ -35,13 +35,13 @@ export class PaginatedListProductsParamsDto extends ParamsPaginationDto {
   categoryType?: number;
 
   @ApiProperty({
-    example: 1232,
+    example: 'CC-12',
     description: 'Código de producto',
     required: false,
   })
   @IsOptional()
-  @IsNumber()
-  code?: number;
+  @IsString()
+  code?: string;
 
   @ApiProperty({
     example: 'Coca Cola 1L',

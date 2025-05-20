@@ -19,16 +19,13 @@ export class Accommodation {
   @PrimaryGeneratedColumn()
   accommodationId: number;
 
-  @Column({
-    type: 'int',
-    nullable: false,
-  })
-  code?: number;
+  @Column('varchar', { length: 255, nullable: false })
+  code?: string;
 
-  @Column('varchar', { length: 50, nullable: false })
+  @Column('varchar', { length: 255, nullable: false })
   name: string;
 
-  @Column('varchar', { length: 250, nullable: true })
+  @Column('varchar', { length: 500, nullable: true })
   description?: string;
 
   @Column({

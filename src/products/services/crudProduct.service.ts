@@ -38,12 +38,12 @@ export class CrudProductService {
 
     const baseConditions: FindOptionsWhere<Product> = {};
 
-    if (params.code !== undefined) {
-      baseConditions.code = Equal(params.code);
-    }
-
     if (params.name) {
       baseConditions.name = ILike(`%${params.name}%`);
+    }
+
+    if (params.code) {
+      baseConditions.code = ILike(`%${params.code}%`);
     }
 
     if (params.description) {
@@ -80,7 +80,6 @@ export class CrudProductService {
       const searchNumber = Number(search);
       if (!isNaN(searchNumber)) {
         searchConditions.push(
-          { code: Equal(searchNumber) },
           { amount: Equal(searchNumber) },
           { priceBuy: Equal(searchNumber) },
           { priceSale: Equal(searchNumber) },

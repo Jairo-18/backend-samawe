@@ -21,10 +21,10 @@ export class CreateExcursionDto {
   @IsOptional()
   excursionId: number;
 
-  @ApiProperty({ example: 123, description: 'Código de excursión' })
+  @ApiProperty({ example: 'TM-12', description: 'Código de excursión' })
   @IsNumber()
   @IsNotEmpty({ message: 'El código de excursión es requerido' })
-  code: number;
+  code: string;
 
   @ApiProperty({
     example: 'Tour Montaña',
@@ -79,13 +79,13 @@ export class CreateExcursionDto {
 
 export class UpdateExcursionDto {
   @ApiProperty({
-    example: 501,
+    example: 'TSWQ12',
     description: 'Código de la excursión',
     required: false,
   })
   @IsOptional()
   @IsNumber()
-  code?: number;
+  code?: string;
 
   @ApiProperty({
     example: 'Tour Lago Azul',

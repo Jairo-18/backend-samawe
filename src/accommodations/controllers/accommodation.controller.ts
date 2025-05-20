@@ -1,3 +1,6 @@
+import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
+import { PaginatedListAccommodationsParamsDto } from './../dtos/crudAccommodation.dto';
+import { Accommodation } from './../../shared/entities/accommodation.entity';
 import { CrudAccommodationUC } from '../useCases/crudAccommodationUC.uc';
 import {
   DuplicatedResponseDto,
@@ -22,6 +25,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -102,6 +106,16 @@ export class AccommodationController {
       message: 'Habitación actualizado correctamente',
       statusCode: HttpStatus.OK,
     };
+  }
+
+  @Get('/paginated-list')
+  @ApiOkResponse({ type: ResponsePaginationDto<Accommodation> })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async getPaginatedList(
+    @Query() params: PaginatedListAccommodationsParamsDto,
+  ): Promise<ResponsePaginationDto<Accommodation>> {
+    return await this._crudAccommodationUC.paginatedList(params);
   }
 
   @Get(':id')

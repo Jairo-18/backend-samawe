@@ -1,3 +1,6 @@
+import { PaginatedListExcursionsParamsDto } from './../dtos/crudExcursion.dto';
+import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
+import { Excursion } from './../../shared/entities/excursion.entity';
 import { CrudExcursionUC } from './../useCases/crudExcursionUC.uc';
 import {
   CreateExcursionDto,
@@ -23,6 +26,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -101,6 +105,16 @@ export class ExcursionController {
       message: 'Pasadía actualizado correctamente',
       statusCode: HttpStatus.OK,
     };
+  }
+
+  @Get('/paginated-list')
+  @ApiOkResponse({ type: ResponsePaginationDto<Excursion> })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async getPaginatedList(
+    @Query() params: PaginatedListExcursionsParamsDto,
+  ): Promise<ResponsePaginationDto<Excursion>> {
+    return await this._crudExcursionUC.paginatedList(params);
   }
 
   @Get(':id')

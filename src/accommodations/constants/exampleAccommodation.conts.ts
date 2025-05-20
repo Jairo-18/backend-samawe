@@ -2,7 +2,7 @@ export const GET_ALL_ACCOMMODATIONS_EXAMPLE = {
   accommodations: [
     {
       accommodationId: 1,
-      code: 101,
+      code: 'CAB-1',
       name: 'Cabaña El Lago',
       description: 'Cabaña con vista al lago',
       amountPerson: 4,
@@ -19,7 +19,7 @@ export const GET_ALL_ACCOMMODATIONS_EXAMPLE = {
     },
     {
       accommodationId: 2,
-      code: 102,
+      code: 'CAB-1',
       name: 'Cabaña Montaña',
       description: 'Cabaña rústica en la montaña',
       amountPerson: 2,
@@ -39,7 +39,7 @@ export const GET_ALL_ACCOMMODATIONS_EXAMPLE = {
 
 export const GET_ACCOMMODATION_EXAMPLE = {
   accommodationId: 1,
-  code: 101,
+  code: 'CAB-1',
   name: 'Cabaña El Lago',
   description: 'Cabaña con vista al lago',
   amountPerson: 4,

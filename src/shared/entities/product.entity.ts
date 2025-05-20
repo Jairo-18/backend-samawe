@@ -15,22 +15,16 @@ export class Product {
   @PrimaryGeneratedColumn()
   productId: number;
 
-  @Column({
-    type: 'int',
-    nullable: false,
-  })
-  code?: number;
+  @Column('varchar', { length: 255, nullable: true })
+  code?: string;
 
-  @Column('varchar', { length: 50, nullable: true })
+  @Column('varchar', { length: 255, nullable: true })
   name: string;
 
-  @Column('varchar', { length: 250, nullable: true })
+  @Column('varchar', { length: 500, nullable: true })
   description?: string;
 
-  @Column({
-    type: 'int',
-    nullable: false,
-  })
+  @Column('decimal', { precision: 10, scale: 2 })
   amount?: number;
 
   @Column('decimal', { precision: 10, scale: 2 })

@@ -22,10 +22,10 @@ export class CreateAccommodationDto {
   @IsOptional()
   accommodationId: number;
 
-  @ApiProperty({ example: 123, description: 'Código de hospedaje' })
+  @ApiProperty({ example: 'CC-12', description: 'Código de hospedaje' })
   @IsNumber()
   @IsNotEmpty({ message: 'El código de hospedaje es requerido' })
-  code: number;
+  code: string;
 
   @ApiProperty({ example: 'Cabaña Sur', description: 'Nombre del hospedaje' })
   @IsString()
@@ -97,11 +97,11 @@ export class CreateAccommodationDto {
 }
 
 export class UpdateAccommodationDto {
-  @ApiProperty({ example: 123, description: 'Código del hospedaje' })
+  @ApiProperty({ example: 'CSA', description: 'Código del hospedaje' })
   @IsNumber()
   @IsOptional()
   @IsNotEmpty({ message: 'El código es requerido' })
-  code?: number;
+  code?: string;
 
   @ApiProperty({ example: 'Cabaña Sur', description: 'Nombre del hospedaje' })
   @IsString()
