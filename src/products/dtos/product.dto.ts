@@ -11,7 +11,6 @@ import {
   IsString,
   IsOptional,
   IsPositive,
-  IsInt,
   IsNumber,
 } from 'class-validator';
 
@@ -53,7 +52,8 @@ export class CreateProductDto {
     description: 'Cantidad disponible',
     required: true,
   })
-  @IsInt()
+  @IsNumber()
+  @IsPositive()
   @IsNotEmpty({ message: 'La cantidad es requerida' })
   amount: number;
 
@@ -113,6 +113,7 @@ export class UpdateProductDto {
 
   @ApiProperty({ example: 10, description: 'Cantidad disponible' })
   @IsOptional()
+  @IsPositive()
   @IsNumber()
   amount?: number;
 
