@@ -90,7 +90,7 @@ export class UpdateProductDto {
     example: 'CC-12',
     description: 'Código de producto',
   })
-  @IsNumber()
+  @IsString()
   @IsOptional()
   @IsNotEmpty({ message: 'El código de producto es requerido' })
   code: string;

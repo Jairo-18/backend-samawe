@@ -84,7 +84,7 @@ export class UpdateExcursionDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   code?: string;
 
   @ApiProperty({
