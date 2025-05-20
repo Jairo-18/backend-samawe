@@ -103,7 +103,7 @@ export class AccommodationController {
     await this._accommodationUC.update(accommodationId, accommodationData);
 
     return {
-      message: 'Habitación actualizado correctamente',
+      message: 'Hospedaje actualizado correctamente',
       statusCode: HttpStatus.OK,
     };
   }

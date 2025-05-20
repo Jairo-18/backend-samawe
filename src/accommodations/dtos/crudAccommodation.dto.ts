@@ -116,7 +116,7 @@ export class PaginatedListAccommodationsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   categoryType?: number;
 
   @ApiProperty({
@@ -125,7 +125,7 @@ export class PaginatedListAccommodationsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   bedType?: number;
 
   @ApiProperty({
@@ -134,6 +134,6 @@ export class PaginatedListAccommodationsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   stateType?: number;
 }
