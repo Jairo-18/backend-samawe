@@ -5,7 +5,7 @@ import { BedType } from './../../shared/entities/bedType.entity';
 import { CategoryType } from './../../shared/entities/categoryType.entity';
 import { StateType } from './../../shared/entities/stateType.entity';
 import { HttpStatus } from '@nestjs/common';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export interface CreateAccommodationRelatedDataDto {
   stateType?: StateType[];
@@ -62,7 +62,7 @@ export class PaginatedListAccommodationsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   amountPerson?: number;
 
   @ApiProperty({
@@ -71,7 +71,7 @@ export class PaginatedListAccommodationsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   amountRoom?: number;
 
   @ApiProperty({
@@ -80,7 +80,7 @@ export class PaginatedListAccommodationsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   amountBathroom?: number;
 
   @ApiProperty({
@@ -98,7 +98,7 @@ export class PaginatedListAccommodationsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   priceBuy?: number;
 
   @ApiProperty({
@@ -107,7 +107,7 @@ export class PaginatedListAccommodationsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   priceSale?: number;
 
   @ApiProperty({

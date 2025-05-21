@@ -4,7 +4,7 @@ import { StateType } from './../../shared/entities/stateType.entity';
 import { HttpStatus } from '@nestjs/common';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export interface CreateExcursionRelatedDataDto {
   stateType?: StateType[];
@@ -58,7 +58,7 @@ export class PaginatedListExcursionsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   amountPerson?: number;
 
   @ApiProperty({
@@ -67,7 +67,7 @@ export class PaginatedListExcursionsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   priceBuy?: number;
 
   @ApiProperty({
@@ -76,7 +76,7 @@ export class PaginatedListExcursionsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   priceSale?: number;
 
   @ApiProperty({
@@ -85,7 +85,7 @@ export class PaginatedListExcursionsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   stateType?: number;
 
   @ApiProperty({
@@ -94,6 +94,6 @@ export class PaginatedListExcursionsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   categoryType?: number;
 }

@@ -4,7 +4,7 @@ import { TaxeType } from './../../shared/entities/taxeType.entity';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { HttpStatus } from '@nestjs/common';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsString, IsOptional } from 'class-validator';
 
 export interface CreateProductRelatedDataDto {
   taxeType?: TaxeType[];
@@ -67,7 +67,7 @@ export class PaginatedListProductsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   amount?: number;
 
   @ApiProperty({
@@ -76,7 +76,7 @@ export class PaginatedListProductsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   priceBuy?: number;
 
   @ApiProperty({
@@ -85,6 +85,6 @@ export class PaginatedListProductsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   priceSale?: number;
 }
