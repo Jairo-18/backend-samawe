@@ -15,6 +15,7 @@ import {
   IsNumber,
   IsBoolean,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateAccommodationDto {
   @ApiProperty({ example: 1, description: 'ID del hospedaje', required: false })
@@ -48,6 +49,7 @@ export class CreateAccommodationDto {
 
   @ApiProperty({ example: true, description: '¿Tiene jacuzzi?' })
   @IsBoolean()
+  @Type(() => Boolean)
   @IsNotEmpty({ message: 'Debe indicar si tiene jacuzzi' })
   jacuzzi: boolean;
 
@@ -124,6 +126,7 @@ export class UpdateAccommodationDto {
   @ApiProperty({ example: true, description: '¿Tiene jacuzzi?' })
   @IsBoolean()
   @IsOptional()
+  @Type(() => Boolean)
   jacuzzi?: boolean;
 
   @ApiProperty({ example: 2, description: 'Cantidad de habitaciones' })
