@@ -22,7 +22,7 @@ export class CreateExcursionDto {
   excursionId: number;
 
   @ApiProperty({ example: 'TM-12', description: 'Código de excursión' })
-  @IsNumber()
+  @IsString()
   @IsNotEmpty({ message: 'El código de excursión es requerido' })
   code: string;
 
