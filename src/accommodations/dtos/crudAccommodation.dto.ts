@@ -5,8 +5,7 @@ import { BedType } from './../../shared/entities/bedType.entity';
 import { CategoryType } from './../../shared/entities/categoryType.entity';
 import { StateType } from './../../shared/entities/stateType.entity';
 import { HttpStatus } from '@nestjs/common';
-import { IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export interface CreateAccommodationRelatedDataDto {
   stateType?: StateType[];
@@ -90,8 +89,7 @@ export class PaginatedListAccommodationsParamsDto extends ParamsPaginationDto {
     required: false,
   })
   @IsOptional()
-  @IsBoolean()
-  @Type(() => Boolean)
+  @IsString()
   jacuzzi?: boolean;
 
   @ApiProperty({

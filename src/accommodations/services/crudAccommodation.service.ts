@@ -60,7 +60,7 @@ export class CrudAccommodationService {
     }
 
     if (params.jacuzzi !== undefined) {
-      baseConditions.jacuzzi = Equal(params.jacuzzi);
+      baseConditions.jacuzzi = params.jacuzzi;
     }
 
     if (params.amountRoom !== undefined) {
