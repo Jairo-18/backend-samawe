@@ -16,7 +16,10 @@ export class CategoryType {
   @PrimaryGeneratedColumn()
   categoryTypeId: number;
 
-  @Column('varchar', { length: 50, nullable: true })
+  @Column('varchar', { length: 255, nullable: true })
+  code: string;
+
+  @Column('varchar', { length: 255, nullable: true })
   name: string;
 
   @OneToMany(() => Product, (product) => product.categoryType, {

@@ -48,10 +48,6 @@ export class CrudExcursionService {
       baseConditions.description = ILike(`%${params.description}%`);
     }
 
-    if (params.amountPerson !== undefined) {
-      baseConditions.amountPerson = Equal(params.amountPerson);
-    }
-
     if (params.priceBuy !== undefined) {
       baseConditions.priceBuy = Equal(params.priceBuy);
     }
@@ -82,7 +78,6 @@ export class CrudExcursionService {
       const searchNumber = Number(search);
       if (!isNaN(searchNumber)) {
         searchConditions.push(
-          { amountPerson: Equal(searchNumber) },
           { priceBuy: Equal(searchNumber) },
           { priceSale: Equal(searchNumber) },
         );

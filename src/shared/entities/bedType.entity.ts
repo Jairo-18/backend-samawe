@@ -14,7 +14,10 @@ export class BedType {
   @PrimaryGeneratedColumn()
   bedTypeId: number;
 
-  @Column('varchar', { length: 50, nullable: false })
+  @Column('varchar', { length: 255, nullable: true })
+  code?: string;
+
+  @Column('varchar', { length: 255, nullable: true })
   name: string;
 
   @OneToMany(() => Accommodation, (accommodation) => accommodation.bedType, {

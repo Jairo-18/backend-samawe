@@ -1,3 +1,6 @@
+import { PayTypeRepository } from './../repositories/payType.repository';
+import { PaidTypeRepository } from './../repositories/paidType.repository';
+import { AdditionalRepository } from './../repositories/additionalType.repository';
 import { StateTypeRepository } from './../repositories/stateType.repository';
 import { BedTypeRepository } from './../repositories/bedType.repository';
 import { RoleTypeRepository } from './../repositories/roleType.repository';
@@ -11,32 +14,41 @@ import { Repository } from 'typeorm';
 @Injectable()
 export class RepositoryService {
   public repositories: {
-    roleType: RoleTypeRepository;
-    identificationType: IdentificationTypeRepository;
-    phoneCode: PhoneCodeRepository;
-    categoryType: CategoryTypeRepository;
-    taxeType: TaxeTypeRepository;
+    additionalType: AdditionalRepository;
     bedType: BedTypeRepository;
+    categoryType: CategoryTypeRepository;
+    identificationType: IdentificationTypeRepository;
+    paidType: PaidTypeRepository;
+    payType: PayTypeRepository;
+    phoneCode: PhoneCodeRepository;
+    roleType: RoleTypeRepository;
     stateType: StateTypeRepository;
+    taxeType: TaxeTypeRepository;
   };
 
   constructor(
-    private readonly _roleRepository: RoleTypeRepository,
-    private readonly _identificationTipeRepository: IdentificationTypeRepository,
-    private readonly _phoneCodeRepository: PhoneCodeRepository,
-    private readonly _categoryTypeRepository: CategoryTypeRepository,
-    private readonly _taxeTypeRepository: TaxeTypeRepository,
-    private readonly _stateTypeRepository: StateTypeRepository,
+    private readonly _additionalRepository: AdditionalRepository,
     private readonly _bedTypeRepository: BedTypeRepository,
+    private readonly _categoryTypeRepository: CategoryTypeRepository,
+    private readonly _identificationTipeRepository: IdentificationTypeRepository,
+    private readonly _paidTypeRepository: PaidTypeRepository,
+    private readonly _payTypeRepository: PayTypeRepository,
+    private readonly _phoneCodeRepository: PhoneCodeRepository,
+    private readonly _roleRepository: RoleTypeRepository,
+    private readonly _stateTypeRepository: StateTypeRepository,
+    private readonly _taxeTypeRepository: TaxeTypeRepository,
   ) {
     this.repositories = {
-      roleType: _roleRepository,
-      identificationType: _identificationTipeRepository,
-      phoneCode: _phoneCodeRepository,
-      categoryType: _categoryTypeRepository,
-      taxeType: _taxeTypeRepository,
+      additionalType: _additionalRepository,
       bedType: _bedTypeRepository,
+      categoryType: _categoryTypeRepository,
+      identificationType: _identificationTipeRepository,
+      paidType: _paidTypeRepository,
+      payType: _payTypeRepository,
+      phoneCode: _phoneCodeRepository,
+      roleType: _roleRepository,
       stateType: _stateTypeRepository,
+      taxeType: _taxeTypeRepository,
     };
   }
 

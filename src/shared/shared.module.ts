@@ -1,3 +1,7 @@
+import { GenericTypeController } from '../types/controllers/genericType.controller';
+import { PayTypeRepository } from './repositories/payType.repository';
+import { PaidTypeRepository } from './repositories/paidType.repository';
+import { AdditionalRepository } from './repositories/additionalType.repository';
 import { ExcursionRepository } from './repositories/excursion.repository';
 import { StateTypeRepository } from './repositories/stateType.repository';
 import { BookingRepository } from './repositories/booking.repository';
@@ -90,14 +94,18 @@ export class SharedModule {
           defaultStrategy: 'jwt',
         }),
       ],
+      controllers: [GenericTypeController],
       providers: [
         AccessSessionsRepository,
         AccommodationRepository,
+        AdditionalRepository,
         BedTypeRepository,
         BookingRepository,
         CategoryTypeRepository,
         ExcursionRepository,
         IdentificationTypeRepository,
+        PaidTypeRepository,
+        PayTypeRepository,
         PhoneCodeRepository,
         ProductRepository,
         RoleTypeRepository,
@@ -110,11 +118,14 @@ export class SharedModule {
         TypeOrmModule,
         AccessSessionsRepository,
         AccommodationRepository,
+        AdditionalRepository,
         BedTypeRepository,
         BookingRepository,
         CategoryTypeRepository,
         ExcursionRepository,
         IdentificationTypeRepository,
+        PaidTypeRepository,
+        PayTypeRepository,
         PhoneCodeRepository,
         ProductRepository,
         RoleTypeRepository,

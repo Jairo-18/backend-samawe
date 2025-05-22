@@ -12,8 +12,11 @@ export class TaxeType {
   @PrimaryGeneratedColumn()
   taxeTypeId: number;
 
-  @Column('decimal', { precision: 5, scale: 2, default: 0.0 })
-  name: number;
+  @Column('varchar', { length: 255, nullable: false })
+  name: string;
+
+  @Column('float', { nullable: false })
+  percentage: number;
 
   @CreateDateColumn({
     type: 'timestamp',

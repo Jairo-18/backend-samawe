@@ -53,15 +53,6 @@ export class PaginatedListExcursionsParamsDto extends ParamsPaginationDto {
   description?: string;
 
   @ApiProperty({
-    example: 10,
-    description: 'Cantidad de personas permitidas',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  amountPerson?: number;
-
-  @ApiProperty({
     example: 150.5,
     description: 'Precio de compra',
     required: false,

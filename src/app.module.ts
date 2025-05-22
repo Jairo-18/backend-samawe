@@ -1,3 +1,4 @@
+import { GenericTypeModule } from './types/genericType.module';
 import { ExcursionModule } from './excursions/excursion.module';
 import { ProductModule } from './products/product.module';
 import { Module } from '@nestjs/common';
@@ -27,6 +28,7 @@ import { AccommodationModule } from './accommodations/accommodation.module';
     ExcursionModule,
     ProductModule,
     UserModule,
+    GenericTypeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

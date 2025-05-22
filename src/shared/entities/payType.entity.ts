@@ -15,12 +15,15 @@ export class PayType {
   @PrimaryGeneratedColumn()
   payTypeId: number;
 
+  @Column('varchar', { length: 255, nullable: true })
+  code?: string;
+
+  @Column('varchar', { length: 255, nullable: true })
+  name: string;
+
   @ManyToOne(() => Invoice, (invoice) => invoice.payType)
   @JoinColumn({ name: 'invoicesId' })
   invoice: Invoice;
-
-  @Column('varchar', { length: 50, nullable: true })
-  name: string;
 
   @CreateDateColumn({
     type: 'timestamp',

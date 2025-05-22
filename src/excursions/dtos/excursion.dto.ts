@@ -7,7 +7,6 @@ import { Excursion } from './../../shared/entities/excursion.entity';
 import { HttpStatus } from '@nestjs/common';
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -42,11 +41,6 @@ export class CreateExcursionDto {
   @IsOptional()
   @IsString()
   description?: string;
-
-  @ApiProperty({ example: 10, description: 'Cantidad de personas permitidas' })
-  @IsInt()
-  @IsNotEmpty({ message: 'La cantidad de personas es requerida' })
-  amountPerson: number;
 
   @ApiProperty({ example: 150000, description: 'Precio de compra' })
   @IsNumber()
@@ -104,15 +98,6 @@ export class UpdateExcursionDto {
   @IsOptional()
   @IsString()
   description?: string;
-
-  @ApiProperty({
-    example: 10,
-    description: 'Cantidad de personas permitidas',
-    required: false,
-  })
-  @IsOptional()
-  @IsInt()
-  amountPerson?: number;
 
   @ApiProperty({
     example: 3000.0,

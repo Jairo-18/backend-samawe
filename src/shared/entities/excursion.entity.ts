@@ -27,12 +27,6 @@ export class Excursion {
   @Column('varchar', { length: 500, nullable: true })
   description?: string;
 
-  @Column({
-    type: 'int',
-    nullable: false,
-  })
-  amountPerson?: number;
-
   @Column('decimal', { precision: 10, scale: 2 })
   priceBuy: number;
 
