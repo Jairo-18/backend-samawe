@@ -1,6 +1,8 @@
 import { GenericTypeService } from './../services/genericType.service';
 import { Injectable } from '@nestjs/common';
+import { ResponsePaginationDto } from 'src/shared/dtos/pagination.dto';
 import { DeepPartial } from 'typeorm';
+import { ParamsPaginationGenericDto } from '../dtos/genericType.dto';
 
 @Injectable()
 export class GenericTypeUC<T extends object> {
@@ -42,5 +44,12 @@ export class GenericTypeUC<T extends object> {
 
   async delete(id: number | string): Promise<void> {
     await this._genericTypeService.delete(id);
+  }
+
+  async paginatedList(
+    params: ParamsPaginationGenericDto,
+    type: string,
+  ): Promise<ResponsePaginationDto<T>> {
+    return this._genericTypeService.paginatedList(params, type);
   }
 }

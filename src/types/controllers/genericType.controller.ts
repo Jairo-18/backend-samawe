@@ -1,3 +1,4 @@
+import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import {
   CreatedRecordResponseDto,
   DeleteReCordResponseDto,
@@ -20,6 +21,7 @@ import {
   UseGuards,
   HttpStatus,
   Patch,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -31,9 +33,10 @@ import {
 import {
   CreateTypeDto,
   GetAllTypesResponseDto,
+  ParamsPaginationGenericDto,
   Type,
   UpdateTypeDto,
-} from '../dtos/genericTpe.dto';
+} from '../dtos/genericType.dto';
 import { AuthGuard } from '@nestjs/passport';
 
 @Controller('type')
@@ -44,7 +47,7 @@ export class GenericTypeController {
   private getUseCase<T extends object>(type: string): GenericTypeUC<T> {
     const repository = this.repoService.repositories[type];
     if (!repository) throw new NotFoundException(`Tipo "${type}" no válido`);
-    const service = new GenericTypeService<T>(repository);
+    const service = new GenericTypeService<T>(repository, this.repoService);
     return new GenericTypeUC<T>(service);
   }
 
@@ -78,6 +81,7 @@ export class GenericTypeController {
   async findAllTypes(): Promise<GetAllTypesResponseDto> {
     const types = await GenericTypeService.findAllTypesFromRepositories(
       this.repoService.repositories,
+      this.repoService,
     );
 
     return {
@@ -115,6 +119,17 @@ export class GenericTypeController {
       message: 'Registro actualizado correctamente',
       statusCode: HttpStatus.OK,
     };
+  }
+
+  @Get(':type/paginated')
+  @ApiOkResponse({ type: ResponsePaginationDto })
+  // @ApiBearerAuth()
+  // @UseGuards(AuthGuard())
+  async paginatedList(
+    @Param('type') type: string,
+    @Query() params: ParamsPaginationGenericDto,
+  ): Promise<ResponsePaginationDto<any>> {
+    return await this.getUseCase(type).paginatedList(params, type);
   }
 
   @Delete(':type/:id')

@@ -1,9 +1,10 @@
-import { BaseResponseDto } from './../../shared/dtos/response.dto';
+import { BaseResponseDto } from '../../shared/dtos/response.dto';
 // dto/create-type.dto.ts
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { HttpStatus } from '@nestjs/common';
 import { GET_ALL_TYPES_EXAMPLE } from '../constants/examplesTypes.conts';
+import { ParamsPaginationDto } from 'src/shared/dtos/pagination.dto';
 
 export class CreateTypeDto {
   @ApiProperty({ example: 'Ingresa un prefijo' })
@@ -47,4 +48,33 @@ export class UpdateTypeDto {
   @IsString()
   @IsOptional()
   name: string;
+}
+
+export class ParamsPaginationGenericDto extends ParamsPaginationDto {
+  @ApiProperty({
+    description: 'Campo por el cual ordenar',
+    example: 'createdAt',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  orderBy?: string;
+
+  @ApiProperty({
+    example: 'CC-12',
+    description: 'Código de tipo',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  code?: string;
+
+  @ApiProperty({
+    example: 'Cédula de ciudadania',
+    description: 'Nombre del producto',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  name?: string;
 }
