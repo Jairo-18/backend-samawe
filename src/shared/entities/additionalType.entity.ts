@@ -12,11 +12,11 @@ export class AdditionalType {
   @PrimaryGeneratedColumn()
   additionalTypeId: number;
 
-  @Column({
-    type: 'int',
-    nullable: false,
-  })
-  amountAdditional?: number;
+  @Column('varchar', { length: 255, nullable: true })
+  code?: string;
+
+  @Column('varchar', { length: 255, nullable: true })
+  name: string;
 
   @CreateDateColumn({
     type: 'timestamp',
