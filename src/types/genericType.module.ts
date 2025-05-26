@@ -1,3 +1,6 @@
+import { RepositoryService } from './../shared/services/repositoriry.service';
+import { GenericTypeService } from './services/genericType.service';
+import { GenericTypeUC } from './useCases/genericType.uc';
 import { GenericTypeController } from './controllers/genericType.controller';
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
@@ -9,6 +12,6 @@ import { SharedModule } from '../shared/shared.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [GenericTypeController],
-  providers: [],
+  providers: [GenericTypeUC, GenericTypeService, RepositoryService],
 })
 export class GenericTypeModule {}

@@ -6,10 +6,8 @@ import {
   NotFoundResponseDto,
   UpdateRecordResponseDto,
 } from './../../shared/dtos/response.dto';
-import { GenericTypeService } from './../services/genericType.service';
 import { GenericTypeUC } from '../useCases/genericType.uc';
 import { RepositoryService } from '../../shared/services/repositoriry.service';
-// controllers/generic-type.controller.ts
 import {
   Body,
   Controller,
@@ -32,9 +30,8 @@ import {
 } from '@nestjs/swagger';
 import {
   CreateTypeDto,
-  GetAllTypesResponseDto,
+  GetTypeByIdResponseDto,
   ParamsPaginationGenericDto,
-  Type,
   UpdateTypeDto,
 } from '../dtos/genericType.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -42,14 +39,72 @@ import { AuthGuard } from '@nestjs/passport';
 @Controller('type')
 @ApiTags('Tipos')
 export class GenericTypeController {
-  constructor(private readonly repoService: RepositoryService) {}
+  constructor(
+    private readonly repoService: RepositoryService,
+    private readonly genericTypeUC: GenericTypeUC<any>,
+  ) {}
 
-  private getUseCase<T extends object>(type: string): GenericTypeUC<T> {
+  private validateTypeExists(type: string): void {
     const repository = this.repoService.repositories[type];
-    if (!repository) throw new NotFoundException(`Tipo "${type}" no válido`);
-    const service = new GenericTypeService<T>(repository, this.repoService);
-    return new GenericTypeUC<T>(service);
+    if (!repository) {
+      throw new NotFoundException(`Tipo "${type}" no válido`);
+    }
   }
+
+  @Get('paginated/:type')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({ type: ResponsePaginationDto })
+  async paginatedListByType(
+    @Param('type') type: string,
+    @Query() params: ParamsPaginationGenericDto,
+  ): Promise<ResponsePaginationDto<any>> {
+    this.validateTypeExists(type);
+    return await this.genericTypeUC.paginatedList(params, type);
+  }
+  // @Get('multiple/paginated')
+  // @ApiBearerAuth()
+  // @UseGuards(AuthGuard())
+  // @ApiOkResponse({
+  //   type: MultiplePaginatedResponseDto,
+  //   description: 'Paginación múltiple exitosa',
+  // })
+  // @ApiQuery({
+  //   name: 'types',
+  //   required: false,
+  //   description:
+  //     'Tipos separados por comas. Si se omite, consulta todos los tipos disponibles.',
+  //   example: 'roleType,phoneCode,payType',
+  //   type: String,
+  // })
+  // async getMultiplePaginated(
+  //   @Query() params: ParamsPaginationGenericDto,
+  //   @Query('types') typesParam?: string,
+  // ): Promise<MultiplePaginatedResponseDto> {
+  //   const results = await this.genericTypeUC.getMultiplePaginatedTypes(
+  //     params,
+  //     typesParam,
+  //   );
+
+  //   return {
+  //     statusCode: HttpStatus.OK,
+  //     message: `Consulta exitosa de múltiples tipos`,
+  //     data: results.data,
+  //   };
+  // }
+
+  // @Get('available-types')
+  // @ApiBearerAuth()
+  // @UseGuards(AuthGuard())
+  // async getAvailableTypes() {
+  //   const result = await this.genericTypeUC.getAvailableTypesWithCount();
+
+  //   return {
+  //     statusCode: HttpStatus.OK,
+  //     message: 'Tipos disponibles obtenidos exitosamente',
+  //     data: result,
+  //   };
+  // }
 
   @Post('create/:type')
   @ApiBearerAuth()
@@ -60,7 +115,9 @@ export class GenericTypeController {
     @Param('type') type: string,
     @Body() createTypeDto: CreateTypeDto,
   ): Promise<CreatedRecordResponseDto> {
-    const rowId = await this.getUseCase(type).createWithValidation(
+    this.validateTypeExists(type);
+
+    const rowId = await this.genericTypeUC.createWithValidation(
       type,
       createTypeDto,
     );
@@ -68,39 +125,25 @@ export class GenericTypeController {
     return {
       message: `Registro exitoso`,
       statusCode: HttpStatus.CREATED,
-      data: {
-        rowId,
-      },
+      data: { rowId },
     };
   }
 
-  @Get()
+  @Get(':type/:id')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: GetAllTypesResponseDto })
-  async findAllTypes(): Promise<GetAllTypesResponseDto> {
-    const types = await GenericTypeService.findAllTypesFromRepositories(
-      this.repoService.repositories,
-      this.repoService,
-    );
+  @ApiOkResponse({ type: GetTypeByIdResponseDto })
+  async findOneByTypeAndId(
+    @Param('type') type: string,
+    @Param('id') id: string,
+  ): Promise<GetTypeByIdResponseDto> {
+    this.validateTypeExists(type);
+
+    const result = await this.genericTypeUC.findOneByTypeAndId(type, id);
 
     return {
       statusCode: HttpStatus.OK,
-      data: types,
-    };
-  }
-
-  @Get(':type')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: GetAllTypesResponseDto })
-  async findAll(@Param('type') type: string): Promise<GetAllTypesResponseDto> {
-    const types = await this.getUseCase(type).findAll();
-    return {
-      statusCode: HttpStatus.OK,
-      data: {
-        types: types as Type[],
-      },
+      data: { type: result },
     };
   }
 
@@ -114,22 +157,14 @@ export class GenericTypeController {
     @Param('id') id: string,
     @Body() updateTypeDto: UpdateTypeDto,
   ): Promise<UpdateRecordResponseDto> {
-    await this.getUseCase(type).update(id, updateTypeDto);
+    this.validateTypeExists(type);
+
+    await this.genericTypeUC.update(type, id, updateTypeDto);
+
     return {
       message: 'Registro actualizado correctamente',
       statusCode: HttpStatus.OK,
     };
-  }
-
-  @Get(':type/paginated')
-  @ApiOkResponse({ type: ResponsePaginationDto })
-  // @ApiBearerAuth()
-  // @UseGuards(AuthGuard())
-  async paginatedList(
-    @Param('type') type: string,
-    @Query() params: ParamsPaginationGenericDto,
-  ): Promise<ResponsePaginationDto<any>> {
-    return await this.getUseCase(type).paginatedList(params, type);
   }
 
   @Delete(':type/:id')
@@ -141,7 +176,10 @@ export class GenericTypeController {
     @Param('type') type: string,
     @Param('id') id: string,
   ): Promise<DeleteReCordResponseDto> {
-    await this.getUseCase(type).delete(id);
+    this.validateTypeExists(type);
+
+    await this.genericTypeUC.delete(type, id);
+
     return {
       statusCode: HttpStatus.OK,
       message: 'Registro eliminado exitosamente',

@@ -1,3 +1,6 @@
+import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
+import { OrderConst } from './../../shared/constants/order.constants';
+import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { RepositoryService } from './../../shared/services/repositoriry.service';
 import { Repository, DeepPartial } from 'typeorm';
 import {
@@ -5,106 +8,26 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ResponsePaginationDto } from 'src/shared/dtos/pagination.dto';
-import { PageMetaDto } from 'src/shared/dtos/pageMeta.dto';
-import { OrderConst } from 'src/shared/constants/order.constants';
-import { ParamsPaginationGenericDto } from '../dtos/genericType.dto';
+
+import { ParamsPaginationGenericDto, Type } from '../dtos/genericType.dto';
 
 @Injectable()
 export class GenericTypeService<T extends object> {
-  constructor(
-    private readonly _repository: Repository<T>,
-    private readonly repositoryService: RepositoryService,
-  ) {}
+  constructor(private readonly repositoryService: RepositoryService) {}
 
-  get repository(): Repository<T> {
-    return this._repository;
-  }
-
-  async createWithValidation(type: string, data: DeepPartial<T>): Promise<T> {
-    // Validar duplicado sólo con el campo code porque type es solo para el mensaje
-    const existing = await this._repository.findOne({
-      where: { code: (data as any).code },
-    } as any);
-
-    if (existing) {
-      throw new ConflictException(
-        `El registro con code "${(data as any).code}" ya existe en ${type}.`,
-      );
+  private getRepositoryByType(type: string): Repository<any> {
+    const repository = this.repositoryService.repositories[type];
+    if (!repository) {
+      throw new NotFoundException(`Tipo "${type}" no válido`);
     }
-    return this.create(data);
+    return repository;
   }
 
-  async create(data: DeepPartial<T>): Promise<T> {
-    const entity = this._repository.create(data);
-    return this._repository.save(entity);
+  private getPrimaryKeyField(repository: Repository<any>): string {
+    return repository.metadata.primaryColumns[0].propertyName;
   }
 
-  async findAll(): Promise<T[]> {
-    return this._repository.find();
-  }
-
-  static async findAllTypesFromRepositories(
-    repositories: Record<string, Repository<any>>,
-    repositoryService: RepositoryService,
-  ): Promise<Record<string, any[]>> {
-    const result: Record<string, any[]> = {};
-
-    for (const [typeName, repository] of Object.entries(repositories)) {
-      const service = new GenericTypeService(repository, repositoryService);
-      const data = await service.findAll();
-      result[typeName] = data;
-    }
-
-    return result;
-  }
-
-  async findOne(id: number | string): Promise<T> {
-    return this._repository.findOne({ where: { id } as any });
-  }
-
-  async update(id: string | number, data: DeepPartial<T>): Promise<void> {
-    // Validaciones previas, por ejemplo código duplicado
-    if ('code' in data) {
-      const existing = await this._repository.findOne({
-        where: { code: (data as any).code },
-      } as any);
-      if (existing && (existing as any).id !== id) {
-        throw new ConflictException(
-          `El código "${(data as any).code}" ya está en uso.`,
-        );
-      }
-    }
-
-    // Actualizar el registro, sin devolver nada
-    await this._repository.update(id, data as any);
-  }
-
-  async delete(id: number | string): Promise<void> {
-    const primaryColumn =
-      this._repository.metadata.primaryColumns[0].propertyName;
-
-    // Verificar existencia
-    const existing = await this._repository.findOne({
-      where: { [primaryColumn]: id } as any,
-    });
-
-    if (!existing) {
-      throw new NotFoundException(
-        `Registro con ${primaryColumn}="${id}" no encontrado.`,
-      );
-    }
-
-    await this._repository.delete({ [primaryColumn]: id } as any);
-  }
-
-  async paginatedList(
-    params: ParamsPaginationGenericDto,
-    type: string,
-  ): Promise<ResponsePaginationDto<T>> {
-    const skip = (params.page - 1) * params.perPage;
-    const take = params.perPage;
-
+  private getIdFieldByType(type: string): string {
     const idFieldByEntity: Record<string, string> = {
       roleType: 'roleTypeId',
       phoneCode: 'phoneCodeId',
@@ -117,9 +40,10 @@ export class GenericTypeService<T extends object> {
       stateType: 'stateTypeId',
       taxeType: 'taxeTypeId',
     };
+    return idFieldByEntity[type] ?? 'id';
+  }
 
-    const idField = idFieldByEntity[type] ?? 'id';
-
+  private getOrderFieldsByType(type: string): string[] {
     const orderFieldsByEntity: Record<string, string[]> = {
       phoneCode: ['code', 'name', 'phoneCodeId'],
       product: ['createdAt', 'name', 'priceBuy', 'priceSale'],
@@ -133,66 +57,217 @@ export class GenericTypeService<T extends object> {
       stateType: ['name', 'code', 'stateTypeId'],
       taxeType: ['name', 'code', 'taxeTypeId'],
     };
+    return orderFieldsByEntity[type] || [];
+  }
 
-    const validOrderFields = orderFieldsByEntity[type] || [];
-    const defaultOrderField = validOrderFields[0] ?? idField;
+  // private processTypesParam(typesParam?: string): string[] {
+  //   return (
+  //     typesParam?.split(',').map((t) => t.trim()) || this.getAvailableTypes()
+  //   );
+  // }
 
+  async createWithValidation(type: string, data: DeepPartial<T>): Promise<T> {
+    const repository = this.getRepositoryByType(type);
+    const existing = await repository.findOne({
+      where: { code: (data as any).code },
+    });
+
+    if (existing) {
+      throw new ConflictException(
+        `El registro con code "${(data as any).code}" ya existe en ${type}.`,
+      );
+    }
+
+    const entity = repository.create(data);
+    return repository.save(entity);
+  }
+
+  async createWithValidationAndGetId(
+    type: string,
+    data: DeepPartial<T>,
+  ): Promise<string> {
+    const created = await this.createWithValidation(type, data);
+    const repository = this.getRepositoryByType(type);
+    const primaryKey = this.getPrimaryKeyField(repository);
+    return (created as any)[primaryKey]?.toString() || '';
+  }
+
+  async create(type: string, data: DeepPartial<T>): Promise<T> {
+    const repository = this.getRepositoryByType(type);
+    const entity = repository.create(data);
+    return repository.save(entity);
+  }
+
+  async findOneByTypeAndId(type: string, id: string): Promise<Type | null> {
+    const repo = this.getRepositoryByType(type);
+    const primaryKey = this.getPrimaryKeyForType(type);
+
+    return await repo.findOneBy({ [primaryKey]: id });
+  }
+
+  private getPrimaryKeyForType(type: string): string {
+    const map: Record<string, string> = {
+      additionalType: 'additionalTypeId',
+      bedType: 'bedTypeId',
+      categoryType: 'categoryTypeId',
+      identificationType: 'identificationTypeId',
+      paidType: 'paidTypeId',
+      payType: 'payTypeId',
+      phoneCode: 'phoneCodeId',
+      roleType: 'roleTypeId',
+      stateType: 'stateTypeId',
+      taxeType: 'taxeTypeId',
+    };
+
+    const key = map[type];
+    if (!key) {
+      throw new Error(`No se definió clave primaria para el tipo: ${type}`);
+    }
+
+    return key;
+  }
+
+  async findOneByType(type: string, id: number | string): Promise<T> {
+    const repository = this.getRepositoryByType(type);
+    return repository.findOne({ where: { id } as any });
+  }
+
+  async updateByType(
+    type: string,
+    id: string | number,
+    data: DeepPartial<T>,
+  ): Promise<void> {
+    const repository = this.getRepositoryByType(type);
+
+    if ('code' in data) {
+      const existing = await repository.findOne({
+        where: { code: (data as any).code },
+      });
+      if (existing && (existing as any).id !== id) {
+        throw new ConflictException(
+          `El código "${(data as any).code}" ya está en uso.`,
+        );
+      }
+    }
+
+    await repository.update(id, data as any);
+  }
+
+  async deleteByType(type: string, id: number | string): Promise<void> {
+    const repository = this.getRepositoryByType(type);
+    const primaryColumn = this.getPrimaryKeyField(repository);
+    const existing = await repository.findOne({
+      where: { [primaryColumn]: id } as any,
+    });
+
+    if (!existing) {
+      throw new NotFoundException(
+        `Registro con ${primaryColumn}="${id}" no encontrado.`,
+      );
+    }
+
+    await repository.delete({ [primaryColumn]: id } as any);
+  }
+
+  async paginatedList(
+    params: ParamsPaginationGenericDto,
+    type: string,
+  ): Promise<ResponsePaginationDto<T>> {
+    const repository = this.getRepositoryByType(type);
+    const skip = (params.page - 1) * params.perPage;
+    const take = params.perPage;
+
+    const idField = this.getIdFieldByType(type);
+    const validOrderFields = this.getOrderFieldsByType(type);
     const orderField =
       params.orderBy && validOrderFields.includes(params.orderBy)
         ? params.orderBy
-        : defaultOrderField;
-
-    const orderDirection = params.order ?? OrderConst.DESC;
-
-    const repository = this.repositoryService.repositories[
-      type
-    ] as Repository<T>;
-
-    if (!repository) {
-      throw new Error(`Repository for type "${type}" not found`);
-    }
+        : (validOrderFields[0] ?? idField);
 
     const qb = repository.createQueryBuilder('entity');
+    this.applyFilters(qb, params, idField);
 
-    // Simplificación de filtros
+    qb.skip(skip).take(take);
+    qb.orderBy(`entity.${orderField}`, params.order ?? OrderConst.DESC);
+
+    const [items, total] = await qb.getManyAndCount();
+    const meta = new PageMetaDto({ itemCount: total, pageOptionsDto: params });
+
+    return new ResponsePaginationDto<T>(items, meta);
+  }
+
+  private applyFilters(
+    qb: any,
+    params: ParamsPaginationGenericDto,
+    idField: string,
+  ): void {
     const filters: string[] = [];
     const paramsWhere: Record<string, any> = {};
 
-    if (params.name && params.name.trim()) {
+    if (params.name?.trim()) {
       filters.push('entity.name ILIKE :name');
       paramsWhere.name = `%${params.name.trim()}%`;
     }
 
-    if (params.code && params.code.trim()) {
+    if (params.code?.trim()) {
       filters.push('entity.code ILIKE :code');
       paramsWhere.code = `%${params.code.trim()}%`;
     }
 
-    if (params.search && params.search.trim()) {
-      if (!params.name && !params.code) {
-        filters.push(
-          '(entity.name ILIKE :search OR entity.code ILIKE :search)',
-        );
-        paramsWhere.search = `%${params.search.trim()}%`;
+    if (params.search?.trim() && !params.name && !params.code) {
+      filters.push('(entity.name ILIKE :search OR entity.code ILIKE :search)');
+      paramsWhere.search = `%${params.search.trim()}%`;
 
-        if (!isNaN(Number(params.search.trim()))) {
-          filters.push(`entity.${idField} = :idSearch`);
-          paramsWhere.idSearch = Number(params.search.trim());
-        }
+      if (!isNaN(Number(params.search.trim()))) {
+        filters.push(`entity.${idField} = :idSearch`);
+        paramsWhere.idSearch = Number(params.search.trim());
       }
     }
 
     if (filters.length > 0) {
       qb.andWhere(filters.join(' AND '), paramsWhere);
     }
-
-    qb.skip(skip).take(take);
-    qb.orderBy(`entity.${orderField}`, orderDirection);
-
-    const [items, total] = await qb.getManyAndCount();
-
-    const meta = new PageMetaDto({ itemCount: total, pageOptionsDto: params });
-
-    return new ResponsePaginationDto<T>(items, meta);
   }
+
+  // async getMultiplePaginatedTypes(
+  //   types: string[],
+  //   params: ParamsPaginationGenericDto,
+  // ): Promise<MultiplePaginatedResponse> {
+  //   const repositories = this.repositoryService.repositories;
+  //   const invalidTypes = types.filter((type) => !repositories[type]);
+  //   if (invalidTypes.length) {
+  //     throw new NotFoundException(
+  //       `Tipos no válidos: ${invalidTypes.join(', ')}`,
+  //     );
+  //   }
+
+  //   const promises = types.map(async (type) => {
+  //     const data = await this.paginatedList(params, type);
+  //     return [type, data] as [string, ResponsePaginationDto<any>];
+  //   });
+
+  //   const results = await Promise.all(promises);
+  //   return Object.fromEntries(results);
+  // }
+
+  // async getMultiplePaginatedTypesWithProcessing(
+  //   params: ParamsPaginationGenericDto,
+  //   typesParam?: string,
+  // ): Promise<{
+  //   data: MultiplePaginatedResponse;
+  //   typesCount: number;
+  // }> {
+  //   const types = this.processTypesParam(typesParam);
+  //   const data = await this.getMultiplePaginatedTypes(types, params);
+  //   return { data, typesCount: types.length };
+  // }
+
+  // getAvailableTypes(): string[] {
+  //   return Object.keys(this.repositoryService.repositories);
+  // }
+
+  // getAvailableTypesWithCount(): { types: string[]; count: number } {
+  //   const types = this.getAvailableTypes();
+  //   return { types, count: types.length };
+  // }
 }

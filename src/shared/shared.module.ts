@@ -1,4 +1,3 @@
-import { GenericTypeController } from '../types/controllers/genericType.controller';
 import { PayTypeRepository } from './repositories/payType.repository';
 import { PaidTypeRepository } from './repositories/paidType.repository';
 import { AdditionalRepository } from './repositories/additionalType.repository';
@@ -94,7 +93,7 @@ export class SharedModule {
           defaultStrategy: 'jwt',
         }),
       ],
-      controllers: [GenericTypeController],
+      controllers: [],
       providers: [
         AccessSessionsRepository,
         AccommodationRepository,
