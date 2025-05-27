@@ -140,15 +140,15 @@ export class GenericTypeService<T extends object> {
     const repository = this.getRepositoryByType(type);
 
     if ('code' in data) {
-      const newCode = (data as any).code;
-
       const existing = await repository.findOne({
-        where: { code: newCode },
+        where: { code: (data as any).code },
       });
 
-      // Validamos si el code ya existe y pertenece a otro registro
-      if (existing && existing.id.toString() !== id.toString()) {
-        throw new ConflictException(`El código "${newCode}" ya está en uso.`);
+      // Solo lanzar error si existe otro registro con ese código Y no es el mismo que estamos actualizando
+      if (existing && existing.id && existing.id.toString() !== id.toString()) {
+        throw new ConflictException(
+          `El código "${(data as any).code}" ya está en uso.`,
+        );
       }
     }
 
