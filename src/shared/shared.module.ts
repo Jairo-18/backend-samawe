@@ -1,3 +1,5 @@
+import { InvoiceDetaillRepository } from './repositories/invoiceDetaill.repository';
+import { InvoiceRepository } from './repositories/invoice.repository';
 import { PayTypeRepository } from './repositories/payType.repository';
 import { PaidTypeRepository } from './repositories/paidType.repository';
 import { AdditionalRepository } from './repositories/additionalType.repository';
@@ -9,7 +11,6 @@ import { AccommodationRepository } from './repositories/accommodation.repository
 import { RepositoryService } from './services/repositoriry.service';
 import { StateType } from './entities/stateType.entity';
 import { RoleTypeRepository } from './repositories/roleType.repository';
-import { InvoiceDetaill } from './entities/invoiceDetaill.entity';
 import { TaxeTypeRepository } from './repositories/taxeType.repository';
 import { PhoneCodeRepository } from './repositories/phoneCode.repository';
 import { PhoneCode } from './entities/phoneCode.entity';
@@ -38,6 +39,9 @@ import { BedType } from './entities/bedType.entity';
 import { Accommodation } from './entities/accommodation.entity';
 import { Excursion } from './entities/excursion.entity';
 import { Booking } from './entities/booking.entity';
+import { InvoiceType } from './entities/invoiceType.entity';
+import { InvoiceTypeRepository } from './repositories/invoiceType.repository';
+import { InvoiceDetail } from './entities/invoiceDetaill.entity';
 
 @Module({})
 export class SharedModule {
@@ -72,7 +76,8 @@ export class SharedModule {
           Excursion,
           IdentificationType,
           Invoice,
-          InvoiceDetaill,
+          InvoiceDetail,
+          InvoiceType,
           PaidType,
           PayType,
           PhoneCode,
@@ -103,6 +108,9 @@ export class SharedModule {
         CategoryTypeRepository,
         ExcursionRepository,
         IdentificationTypeRepository,
+        InvoiceRepository,
+        InvoiceDetaillRepository,
+        InvoiceTypeRepository,
         PaidTypeRepository,
         PayTypeRepository,
         PhoneCodeRepository,
@@ -123,6 +131,9 @@ export class SharedModule {
         CategoryTypeRepository,
         ExcursionRepository,
         IdentificationTypeRepository,
+        InvoiceRepository,
+        InvoiceDetaillRepository,
+        InvoiceTypeRepository,
         PaidTypeRepository,
         PayTypeRepository,
         PhoneCodeRepository,

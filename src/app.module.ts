@@ -12,6 +12,7 @@ import { join } from 'path';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { AccommodationModule } from './accommodations/accommodation.module';
+import { InvoiceModule } from './invoices/invoice.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { AccommodationModule } from './accommodations/accommodation.module';
     ProductModule,
     UserModule,
     GenericTypeModule,
+    InvoiceModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -32,6 +32,7 @@ export class GenericTypeService<T extends object> {
       roleType: 'roleTypeId',
       phoneCode: 'phoneCodeId',
       payType: 'payTypeId',
+      invoiceType: 'invoiceTypeId',
       paidType: 'paidTypeId',
       additionalType: 'additionalTypeId',
       bedType: 'bedTypeId',
@@ -46,8 +47,8 @@ export class GenericTypeService<T extends object> {
   private getOrderFieldsByType(type: string): string[] {
     const orderFieldsByEntity: Record<string, string[]> = {
       phoneCode: ['code', 'name', 'phoneCodeId'],
-      product: ['createdAt', 'name', 'priceBuy', 'priceSale'],
       roleType: ['name', 'code', 'roleTypeId'],
+      invoiceType: ['name', 'code', 'invoiceTypeId'],
       payType: ['name', 'code', 'payTypeId'],
       paidType: ['name', 'code', 'paidTypeId'],
       additionalType: ['name', 'code', 'additionalTypeId'],
@@ -109,6 +110,7 @@ export class GenericTypeService<T extends object> {
     const map: Record<string, string> = {
       additionalType: 'additionalTypeId',
       bedType: 'bedTypeId',
+      invoiceType: 'invoiceTypeId',
       categoryType: 'categoryTypeId',
       identificationType: 'identificationTypeId',
       paidType: 'paidTypeId',

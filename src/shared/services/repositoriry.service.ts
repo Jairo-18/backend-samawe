@@ -10,6 +10,7 @@ import { PhoneCodeRepository } from './../repositories/phoneCode.repository';
 import { Injectable } from '@nestjs/common';
 import { IdentificationTypeRepository } from '../repositories/identificationType.repository';
 import { Repository } from 'typeorm';
+import { InvoiceTypeRepository } from '../repositories/invoiceType.repository';
 
 @Injectable()
 export class RepositoryService {
@@ -18,6 +19,7 @@ export class RepositoryService {
     bedType: BedTypeRepository;
     categoryType: CategoryTypeRepository;
     identificationType: IdentificationTypeRepository;
+    invoiceType: InvoiceTypeRepository;
     paidType: PaidTypeRepository;
     payType: PayTypeRepository;
     phoneCode: PhoneCodeRepository;
@@ -31,6 +33,7 @@ export class RepositoryService {
     private readonly _bedTypeRepository: BedTypeRepository,
     private readonly _categoryTypeRepository: CategoryTypeRepository,
     private readonly _identificationTipeRepository: IdentificationTypeRepository,
+    private readonly _invoiceTypeRepository: InvoiceTypeRepository,
     private readonly _paidTypeRepository: PaidTypeRepository,
     private readonly _payTypeRepository: PayTypeRepository,
     private readonly _phoneCodeRepository: PhoneCodeRepository,
@@ -43,6 +46,7 @@ export class RepositoryService {
       bedType: _bedTypeRepository,
       categoryType: _categoryTypeRepository,
       identificationType: _identificationTipeRepository,
+      invoiceType: _invoiceTypeRepository,
       paidType: _paidTypeRepository,
       payType: _payTypeRepository,
       phoneCode: _phoneCodeRepository,

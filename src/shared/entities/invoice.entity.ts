@@ -1,4 +1,3 @@
-import { InvoiceDetaill } from './invoiceDetaill.entity';
 import { User } from './user.entity';
 
 import { PayType } from './payType.entity';
@@ -13,49 +12,73 @@ import {
   ManyToOne,
   OneToMany,
 } from 'typeorm';
-import { CategoryType } from './categoryType.entity';
+import { PaidType } from './paidType.entity';
+import { InvoiceDetail } from './invoiceDetaill.entity';
+import { InvoiceType } from './invoiceType.entity';
 
 @Entity({ name: 'Invoice' })
 export class Invoice {
   @PrimaryGeneratedColumn()
   invoiceId: number;
 
-  @Column('varchar', { length: 50, nullable: true })
-  name: string;
+  @Column('varchar', { length: 255, nullable: false })
+  code: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  totalAmount: number;
+  @ManyToOne(() => InvoiceType)
+  @JoinColumn({ name: 'invoiceTypeId' })
+  invoiceType: InvoiceType;
 
-  @ManyToOne(() => User, (user) => user.invoices)
+  @ManyToOne(() => User)
   @JoinColumn({ name: 'userId' })
-  user: User;
+  user: User; // Cliente
 
-  @OneToMany(() => InvoiceDetaill, (invoiceDetaill) => invoiceDetaill.invoice)
-  @JoinColumn({ name: 'invoiceDetaillId' })
-  invoiceDetaill: InvoiceDetaill;
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'employeeId' })
+  employee: User;
 
-  @ManyToOne(() => PayType, (payType) => payType.invoice)
-  @JoinColumn({ name: 'payTipeId' })
+  @ManyToOne(() => PaidType)
+  @JoinColumn({ name: 'paidTypeId' })
+  paidType: PaidType;
+
+  @ManyToOne(() => PayType)
+  @JoinColumn({ name: 'payTypeId' })
   payType: PayType;
 
-  @ManyToOne(() => CategoryType, (categoryType) => categoryType.product)
-  @JoinColumn({ name: 'categoryTypeId' })
-  categoryType: CategoryType;
-
-  @CreateDateColumn({
-    type: 'timestamp',
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: false,
+    default: 0,
   })
-  createdAt?: Date;
+  subtotal: number;
 
-  @UpdateDateColumn({
-    type: 'timestamp',
-    nullable: true,
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: false,
+    default: 0,
   })
+  total: number;
+
+  @Column({ type: 'date' })
+  startDate: Date;
+
+  @Column({ type: 'date' })
+  endDate: Date;
+
+  @OneToMany(() => InvoiceDetail, (detail) => detail.invoice, {
+    cascade: true,
+  })
+  invoiceDetails: InvoiceDetail[];
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn({ nullable: true })
   updatedAt?: Date;
 
-  @DeleteDateColumn({
-    type: 'timestamp',
-    nullable: true,
-  })
+  @DeleteDateColumn({ nullable: true })
   deletedAt?: Date;
 }
