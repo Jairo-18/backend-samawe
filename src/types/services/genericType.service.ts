@@ -143,7 +143,8 @@ export class GenericTypeService<T extends object> {
       const existing = await repository.findOne({
         where: { code: (data as any).code },
       });
-      if (existing && (existing as any).id !== id) {
+
+      if (existing && existing.id.toString() !== id.toString()) {
         throw new ConflictException(
           `El código "${(data as any).code}" ya está en uso.`,
         );
