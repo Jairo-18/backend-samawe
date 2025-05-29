@@ -1,34 +1,184 @@
 import {
+  CreateInvoiceDetailDto,
+  UpdateInvoiceDetailDto,
+} from './../dtos/invoiceDetaill.dto';
+import {
+  CreateInvoiceWithDetailsDto,
+  GetInvoiceWithDetails,
+  UpdateInvoiceDto,
+} from './../dtos/invoice.dto';
+import {
   CreatedRecordResponseDto,
+  DeleteReCordResponseDto,
   DuplicatedResponseDto,
+  NotFoundResponseDto,
+  UpdateRecordResponseDto,
 } from './../../shared/dtos/response.dto';
-import { Controller, Post, HttpStatus, Body } from '@nestjs/common';
-import { ApiConflictResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { CreateInvoiceDto } from '../dtos/invoice.dto';
+import {
+  Controller,
+  Post,
+  HttpStatus,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Get,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiConflictResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { InvoiceUC } from '../useCases/invoiceUC.uc';
+import { AuthGuard } from '@nestjs/passport';
 
-@Controller('invoice')
+@Controller('invoices')
 @ApiTags('Facturas')
 export class InvoiceController {
   constructor(private readonly _invoiceUC: InvoiceUC) {}
 
-  @Post('create')
-  //   @ApiBearerAuth()
-  //   @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: CreateInvoiceDto })
-  @ApiConflictResponse({ type: DuplicatedResponseDto })
-  async create(
-    @Body() invoiceDto: CreateInvoiceDto,
-  ): Promise<CreatedRecordResponseDto> {
-    const createExcursion = await this._invoiceUC.create(invoiceDto);
+  // @Post('create')
+  // //   @ApiBearerAuth()
+  // //   @UseGuards(AuthGuard())
+  // @ApiOkResponse({ type: CreateInvoiceDto })
+  // @ApiConflictResponse({ type: DuplicatedResponseDto })
+  // async create(
+  //   @Body() invoiceDto: CreateInvoiceDto,
+  // ): Promise<CreatedRecordResponseDto> {
+  //   const createExcursion = await this._invoiceUC.create(invoiceDto);
 
+  //   return {
+  //     message: 'Registro de factura exitoso',
+  //     statusCode: HttpStatus.CREATED,
+  //     data: {
+  //       rowId: createExcursion.invoiceId.toString(),
+  //       ...createExcursion,
+  //     },
+  //   };
+  // }
+
+  @Post('create')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({ type: CreateInvoiceWithDetailsDto })
+  @ApiConflictResponse({ type: DuplicatedResponseDto })
+  async createWithDetails(
+    @Body() createInvoiceWithDetailsDto: CreateInvoiceWithDetailsDto,
+  ): Promise<CreatedRecordResponseDto> {
+    const created = await this._invoiceUC.createWithDetails(
+      createInvoiceWithDetailsDto,
+    );
     return {
-      message: 'Registro de factura exitoso',
+      message: 'Factura con detalles registrada',
       statusCode: HttpStatus.CREATED,
       data: {
-        rowId: createExcursion.invoiceId.toString(),
-        ...createExcursion,
+        rowId: created.invoiceId.toString(),
+        ...created,
       },
+    };
+  }
+
+  @Get(':id')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({ type: GetInvoiceWithDetails })
+  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  async findOne(
+    @Param('id') excursionId: number,
+  ): Promise<GetInvoiceWithDetails> {
+    const excursion = await this._invoiceUC.findOne(excursionId);
+    return {
+      statusCode: HttpStatus.OK,
+      data: excursion,
+    };
+  }
+
+  @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({ type: DeleteReCordResponseDto })
+  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  async remove(
+    @Param('id') invoiceId: number,
+  ): Promise<DeleteReCordResponseDto> {
+    await this._invoiceUC.delete(invoiceId);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Factura eliminada exitosamente',
+    };
+  }
+
+  @Patch(':id')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({ type: UpdateRecordResponseDto })
+  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  async update(
+    @Param('id') invoiceId: number,
+    @Body() invoiceData: UpdateInvoiceDto,
+  ): Promise<UpdateRecordResponseDto> {
+    await this._invoiceUC.update({ invoiceId, ...invoiceData });
+
+    return {
+      message: 'Factura actualizada correctamente',
+      statusCode: HttpStatus.OK,
+    };
+  }
+
+  @Post(':invoiceId/details')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({ type: CreateInvoiceDetailDto })
+  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  async addDetail(
+    @Param('invoiceId') invoiceId: number,
+    @Body() createDetailDto: CreateInvoiceDetailDto,
+  ): Promise<CreatedRecordResponseDto> {
+    const detailCreated = await this._invoiceUC.addDetail(
+      invoiceId,
+      createDetailDto,
+    );
+    return {
+      message: 'Detalle agregado a la factura',
+      statusCode: HttpStatus.CREATED,
+      data: {
+        rowId: detailCreated.invoiceDetailId.toString(),
+        ...detailCreated,
+      },
+    };
+  }
+
+  @Patch('details/:invoiceDetailId')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({ type: UpdateInvoiceDetailDto })
+  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  async updateDetail(
+    @Param('invoiceDetailId') invoiceDetailId: number,
+    @Body() updateDetailDto: UpdateInvoiceDetailDto,
+  ) {
+    await this._invoiceUC.updateDetail(invoiceDetailId, updateDetailDto);
+    return {
+      message: 'Detalle actualizado correctamente',
+      statusCode: HttpStatus.OK,
+    };
+  }
+
+  @Delete('details/:detailId')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({ type: DeleteReCordResponseDto })
+  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  async deleteDetail(
+    @Param('detailId') updateDetailDto: number,
+  ): Promise<DeleteReCordResponseDto> {
+    await this._invoiceUC.deleteDetail(updateDetailDto);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Detalle eliminado correctamente',
     };
   }
 }

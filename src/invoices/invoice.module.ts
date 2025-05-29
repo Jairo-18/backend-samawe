@@ -4,6 +4,7 @@ import { InvoiceController } from './controllers/invoice.controller';
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { SharedModule } from '../shared/shared.module';
+import { InvoiceDetailService } from './services/invoiceDetail.service';
 
 @Module({
   imports: [
@@ -11,6 +12,6 @@ import { SharedModule } from '../shared/shared.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [InvoiceController],
-  providers: [InvoiceService, InvoiceUC],
+  providers: [InvoiceService, InvoiceUC, InvoiceDetailService],
 })
 export class InvoiceModule {}
