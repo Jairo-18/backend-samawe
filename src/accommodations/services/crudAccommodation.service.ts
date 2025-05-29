@@ -8,7 +8,7 @@ import { CategoryType } from './../../shared/entities/categoryType.entity';
 import { RepositoryService } from '../../shared/services/repositoriry.service';
 import { Injectable } from '@nestjs/common';
 import {
-  CreateAccommodationRelatedDataDto,
+  CreateRelatedDataServicesAndProductsDto,
   PaginatedListAccommodationsParamsDto,
 } from '../dtos/crudAccommodation.dto';
 import { Equal, FindOptionsWhere, ILike } from 'typeorm';
@@ -20,7 +20,7 @@ export class CrudAccommodationService {
     private readonly _accommodationRepository: AccommodationRepository,
   ) {}
 
-  async getRelatedDataToCreate(): Promise<CreateAccommodationRelatedDataDto> {
+  async getRelatedDataToCreate(): Promise<CreateRelatedDataServicesAndProductsDto> {
     const categoryType =
       await this._repositoriesService.getEntities<CategoryType>(
         this._repositoriesService.repositories.categoryType,

@@ -7,13 +7,13 @@ import { StateType } from './../../shared/entities/stateType.entity';
 import { HttpStatus } from '@nestjs/common';
 import { IsOptional, IsString } from 'class-validator';
 
-export interface CreateAccommodationRelatedDataDto {
+export interface CreateRelatedDataServicesAndProductsDto {
   stateType?: StateType[];
   categoryType: CategoryType[];
   bedType: BedType[];
 }
 
-export class CreateAccommodationRelatedDataReponseDto
+export class CreateRelatedDataServicesAndProductsResponseDto
   implements BaseResponseDto
 {
   @ApiProperty({
@@ -23,9 +23,9 @@ export class CreateAccommodationRelatedDataReponseDto
   statusCode: number;
   @ApiProperty({
     type: Object,
-    example: 'Datos relacionados con hospedaje',
+    example: 'Datos relacionados para productos y servicios',
   })
-  data: CreateAccommodationRelatedDataDto;
+  data: CreateRelatedDataServicesAndProductsDto;
 }
 
 export class PaginatedListAccommodationsParamsDto extends ParamsPaginationDto {

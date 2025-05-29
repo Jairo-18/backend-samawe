@@ -35,7 +35,6 @@ import {
 } from '@nestjs/swagger';
 import { ProductUC } from '../useCases/productUC.uc';
 import { AuthGuard } from '@nestjs/passport';
-import { CreateProductRelatedDataReponseDto } from '../dtos/crudProduct.dto';
 import { CrudProductUC } from '../useCases/crudProductUC.uc';
 
 @Controller('product')
@@ -63,18 +62,6 @@ export class ProductController {
         rowId: createdProduct.productId.toString(),
         ...createdProduct,
       },
-    };
-  }
-
-  @Get('/create/related-data')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: CreateProductRelatedDataReponseDto })
-  async getRelatedData(): Promise<CreateProductRelatedDataReponseDto> {
-    const data = await this._crudProductUC.getRelatedDataToCreate();
-    return {
-      statusCode: HttpStatus.OK,
-      data,
     };
   }
 

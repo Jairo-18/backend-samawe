@@ -36,7 +36,6 @@ import {
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { CreateExcursionRelatedDataReponseDto } from '../dtos/crudExcursion.dto';
 
 @Controller('excursion')
 @ApiTags('Pasadías')
@@ -63,18 +62,6 @@ export class ExcursionController {
         rowId: createExcursion.excursionId.toString(),
         ...createExcursion,
       },
-    };
-  }
-
-  @Get('/create/related-data')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: CreateExcursionRelatedDataReponseDto })
-  async getRelatedData(): Promise<CreateExcursionRelatedDataReponseDto> {
-    const data = await this._crudExcursionUC.getRelatedDataToCreate();
-    return {
-      statusCode: HttpStatus.OK,
-      data,
     };
   }
 

@@ -6,10 +6,6 @@ import { Injectable } from '@nestjs/common';
 export class CrudExcursionUC {
   constructor(private readonly _crudExcursionService: CrudExcursionService) {}
 
-  async getRelatedDataToCreate() {
-    return await this._crudExcursionService.getRelatedDataToCreate();
-  }
-
   async paginatedList(params: PaginatedListExcursionsParamsDto) {
     return await this._crudExcursionService.paginatedList(params);
   }

@@ -1,5 +1,8 @@
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
-import { PaginatedListAccommodationsParamsDto } from './../dtos/crudAccommodation.dto';
+import {
+  CreateRelatedDataServicesAndProductsResponseDto,
+  PaginatedListAccommodationsParamsDto,
+} from './../dtos/crudAccommodation.dto';
 import { Accommodation } from './../../shared/entities/accommodation.entity';
 import { CrudAccommodationUC } from '../useCases/crudAccommodationUC.uc';
 import {
@@ -36,7 +39,6 @@ import {
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { CreateAccommodationRelatedDataReponseDto } from '../dtos/crudAccommodation.dto';
 
 @Controller('accommodation')
 @ApiTags('Hospedajes')
@@ -70,8 +72,8 @@ export class AccommodationController {
   @Get('/create/related-data')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: CreateAccommodationRelatedDataReponseDto })
-  async getRelatedData(): Promise<CreateAccommodationRelatedDataReponseDto> {
+  @ApiOkResponse({ type: CreateRelatedDataServicesAndProductsResponseDto })
+  async getRelatedData(): Promise<CreateRelatedDataServicesAndProductsResponseDto> {
     const data = await this._crudAccommodationUC.getRelatedDataToCreate();
     return {
       statusCode: HttpStatus.OK,

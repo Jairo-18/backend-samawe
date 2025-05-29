@@ -1,28 +1,6 @@
-import { CategoryType } from './../../shared/entities/categoryType.entity';
 import { ParamsPaginationDto } from './../../shared/dtos/pagination.dto';
-import { StateType } from './../../shared/entities/stateType.entity';
-import { HttpStatus } from '@nestjs/common';
-import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsString } from 'class-validator';
-
-export interface CreateExcursionRelatedDataDto {
-  stateType?: StateType[];
-  categoryType: CategoryType[];
-}
-
-export class CreateExcursionRelatedDataReponseDto implements BaseResponseDto {
-  @ApiProperty({
-    type: Number,
-    example: HttpStatus.OK,
-  })
-  statusCode: number;
-  @ApiProperty({
-    type: Object,
-    example: 'Datos relacionados con pasadía',
-  })
-  data: CreateExcursionRelatedDataDto;
-}
 
 export class PaginatedListExcursionsParamsDto extends ParamsPaginationDto {
   @ApiProperty({

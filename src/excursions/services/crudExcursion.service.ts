@@ -3,11 +3,8 @@ import { PaginatedListExcursionsParamsDto } from './../dtos/crudExcursion.dto';
 import { ExcursionRepository } from './../../shared/repositories/excursion.repository';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
-import { StateType } from './../../shared/entities/stateType.entity';
-import { CategoryType } from './../../shared/entities/categoryType.entity';
 import { RepositoryService } from './../../shared/services/repositoriry.service';
 import { Injectable } from '@nestjs/common';
-import { CreateExcursionRelatedDataDto } from '../dtos/crudExcursion.dto';
 import { Equal, FindOptionsWhere, ILike } from 'typeorm';
 
 @Injectable()
@@ -16,19 +13,6 @@ export class CrudExcursionService {
     private readonly _repositoriesService: RepositoryService,
     private readonly _excursionRepository: ExcursionRepository,
   ) {}
-
-  async getRelatedDataToCreate(): Promise<CreateExcursionRelatedDataDto> {
-    const categoryType =
-      await this._repositoriesService.getEntities<CategoryType>(
-        this._repositoriesService.repositories.categoryType,
-      );
-
-    const stateType = await this._repositoriesService.getEntities<StateType>(
-      this._repositoriesService.repositories.stateType,
-    );
-
-    return { categoryType, stateType };
-  }
 
   async paginatedList(params: PaginatedListExcursionsParamsDto) {
     const skip = (params.page - 1) * params.perPage;

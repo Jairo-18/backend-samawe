@@ -6,10 +6,6 @@ import { Injectable } from '@nestjs/common';
 export class CrudProductUC {
   constructor(private _crudProductService: CrudProductService) {}
 
-  async getRelatedDataToCreate() {
-    return await this._crudProductService.getRelatedDataToCreate();
-  }
-
   async paginatedList(params: PaginatedListProductsParamsDto) {
     return await this._crudProductService.paginatedList(params);
   }
