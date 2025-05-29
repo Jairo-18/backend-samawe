@@ -1,3 +1,6 @@
+import { BaseResponseDto } from './../../shared/dtos/response.dto';
+import { Invoice } from './../../shared/entities/invoice.entity';
+import { OnlyOneDefined } from '../../shared/validators/onlyOneDefined';
 import { HttpStatus } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
@@ -10,11 +13,9 @@ import {
   IsArray,
   ArrayNotEmpty,
 } from 'class-validator';
-import { BaseResponseDto } from 'src/shared/dtos/response.dto';
-import { Invoice } from 'src/shared/entities/invoice.entity';
+
 import { GET_INVOICE_EXAMPLE } from '../constants/exampleInvoices.conts';
 import { Type } from 'class-transformer';
-import { OnlyOneDefined } from 'src/shared/validators/onlyOneDefined';
 
 export class CreateInvoiceDto {
   @ApiProperty({ example: 1, description: 'ID de la factura', required: false })
