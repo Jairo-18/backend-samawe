@@ -50,4 +50,8 @@ export class InvoiceUC {
   async deleteDetail(invoiceDetailId: number) {
     return this._invoiceDetailService.delete(invoiceDetailId);
   }
+
+  async getRelatedDataToCreate() {
+    return await this._invoiceDetailService.getRelatedDataToCreate();
+  }
 }

@@ -1,3 +1,8 @@
+import { PaidType } from './../../shared/entities/paidType.entity';
+import { PayType } from './../../shared/entities/payType.entity';
+import { TaxeType } from './../../shared/entities/taxeType.entity';
+import { InvoiceType } from './../../shared/entities/invoiceType.entity';
+import { RepositoryService } from './../../shared/services/repositoriry.service';
 import { ExcursionRepository } from './../../shared/repositories/excursion.repository';
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
@@ -8,6 +13,7 @@ import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDet
 
 import {
   CreateInvoiceDetailDto,
+  CreateRelatedDataInvoiceDto,
   UpdateInvoiceDetailDto,
 } from '../dtos/invoiceDetaill.dto';
 
@@ -20,7 +26,29 @@ export class InvoiceDetailService {
     private readonly _accommodationRepository: AccommodationRepository,
     private readonly _excursionRepository: ExcursionRepository,
     private readonly _taxeTypeRepository: TaxeTypeRepository,
+    private readonly _repositoriesService: RepositoryService,
   ) {}
+
+  async getRelatedDataToCreate(): Promise<CreateRelatedDataInvoiceDto> {
+    const invoiceType =
+      await this._repositoriesService.getEntities<InvoiceType>(
+        this._repositoriesService.repositories.invoiceType,
+      );
+
+    const taxeType = await this._repositoriesService.getEntities<TaxeType>(
+      this._repositoriesService.repositories.taxeType,
+    );
+
+    const payType = await this._repositoriesService.getEntities<PayType>(
+      this._repositoriesService.repositories.payType,
+    );
+
+    const paidType = await this._repositoriesService.getEntities<PaidType>(
+      this._repositoriesService.repositories.paidType,
+    );
+
+    return { invoiceType, taxeType, payType, paidType };
+  }
 
   async create(invoiceId: number, dto: CreateInvoiceDetailDto) {
     const invoice = await this._invoiceRepository.findOne({

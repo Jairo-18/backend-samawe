@@ -1,3 +1,9 @@
+import { PaidType } from './../../shared/entities/paidType.entity';
+import { BaseResponseDto } from './../../shared/dtos/response.dto';
+import { PayType } from './../../shared/entities/payType.entity';
+import { TaxeType } from './../../shared/entities/taxeType.entity';
+import { InvoiceType } from './../../shared/entities/invoiceType.entity';
+import { HttpStatus } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
 
@@ -139,4 +145,24 @@ export class UpdateInvoiceDetailDto {
   @IsOptional()
   @IsNumber()
   taxeTypeId?: number;
+}
+
+export interface CreateRelatedDataInvoiceDto {
+  invoiceType?: InvoiceType[];
+  taxeType: TaxeType[];
+  payType: PayType[];
+  paidType: PaidType[];
+}
+
+export class CreateRelatedDataInvoiceResponseDto implements BaseResponseDto {
+  @ApiProperty({
+    type: Number,
+    example: HttpStatus.OK,
+  })
+  statusCode: number;
+  @ApiProperty({
+    type: Object,
+    example: 'Datos relacionados para factura y detalle factura',
+  })
+  data: CreateRelatedDataInvoiceDto;
 }

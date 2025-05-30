@@ -1,5 +1,6 @@
 import {
   CreateInvoiceDetailDto,
+  CreateRelatedDataInvoiceResponseDto,
   UpdateInvoiceDetailDto,
 } from './../dtos/invoiceDetaill.dto';
 import {
@@ -78,6 +79,18 @@ export class InvoiceController {
         rowId: created.invoiceId.toString(),
         ...created,
       },
+    };
+  }
+
+  @Get('/create/related-data')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({ type: CreateRelatedDataInvoiceResponseDto })
+  async getRelatedData(): Promise<CreateRelatedDataInvoiceResponseDto> {
+    const data = await this._invoiceUC.getRelatedDataToCreate();
+    return {
+      statusCode: HttpStatus.OK,
+      data,
     };
   }
 

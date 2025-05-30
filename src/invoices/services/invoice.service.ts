@@ -75,7 +75,7 @@ export class InvoiceService {
       throw new BadRequestException('Tipo de factura no encontrado');
     }
 
-    // ❗ Validar que no exista otra factura con el mismo code y tipo
+    //  Validar que no exista otra factura con el mismo code y tipo
     const existingInvoice = await this._invoiceRepository.findOne({
       where: {
         code: code,
