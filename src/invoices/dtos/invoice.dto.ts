@@ -12,6 +12,7 @@ import {
   ValidateNested,
   IsArray,
   ArrayNotEmpty,
+  IsUUID,
 } from 'class-validator';
 
 import { GET_INVOICE_EXAMPLE } from '../constants/exampleInvoices.conts';
@@ -38,6 +39,14 @@ export class CreateInvoiceDto {
   @IsNotEmpty({ message: 'El código de factura es requerido' })
   code: string;
 
+  @ApiProperty({
+    example: '538fd155-0392-4e67-bacb-99ad8796ce80',
+    description: 'ID del cliente (User) al que va dirigida la factura',
+  })
+  @IsUUID()
+  @IsNotEmpty({ message: 'El cliente (userId) es requerido' })
+  userId: string;
+
   @ApiProperty({ example: '2025-05-27', description: 'Fecha de inicio' })
   @IsDateString(
     {},
@@ -53,6 +62,24 @@ export class CreateInvoiceDto {
   )
   @IsNotEmpty({ message: 'La fecha de fin es requerida' })
   endDate: string;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID del tipo de pago (PayType)',
+    required: true,
+  })
+  @IsNumber()
+  @IsNotEmpty({ message: 'El tipo de pago es requerido' })
+  payTypeId: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID del estado de pago (PaidType)',
+    required: true,
+  })
+  @IsNumber()
+  @IsNotEmpty({ message: 'El estado de pago es requerido' })
+  paidTypeId: number;
 }
 
 export class GetInvoiceWithDetails implements BaseResponseDto {
@@ -202,6 +229,24 @@ export class UpdateInvoiceDto {
   @IsString()
   @IsNotEmpty()
   endDate: string;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID del tipo de pago (PayType)',
+    required: true,
+  })
+  @IsNumber()
+  @IsNotEmpty({ message: 'El tipo de pago es requerido' })
+  payTypeId: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID del estado de pago (PaidType)',
+    required: true,
+  })
+  @IsNumber()
+  @IsNotEmpty({ message: 'El estado de pago es requerido' })
+  paidTypeId: number;
 
   @ApiProperty({
     description: 'Detalles que componen la factura',

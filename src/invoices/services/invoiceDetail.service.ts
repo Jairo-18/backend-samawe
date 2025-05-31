@@ -58,11 +58,25 @@ export class InvoiceDetailService {
       throw new NotFoundException(`Factura con ID ${invoiceId} no encontrada`);
     }
 
+    let taxRate = 0;
+    if (dto.taxeTypeId) {
+      const taxeType = await this._taxeTypeRepository.findOne({
+        where: { taxeTypeId: dto.taxeTypeId },
+      });
+      if (!taxeType)
+        throw new NotFoundException('Tipo de impuesto no encontrado');
+      taxRate = taxeType.percentage;
+    }
+
+    // Calcular valores
+    const priceWithTax = dto.priceWithoutTax * (1 + taxRate);
+    const subtotal = dto.amount * priceWithTax;
+
     const detail = this._invoiceDetaillRepository.create({
       amount: dto.amount,
       priceWithoutTax: dto.priceWithoutTax,
-      priceWithTax: dto.priceWithTax,
-      subtotal: dto.subtotal,
+      priceWithTax: priceWithTax,
+      subtotal: subtotal,
       taxeType: dto.taxeTypeId ? { taxeTypeId: dto.taxeTypeId } : null,
       invoice,
     });
@@ -111,11 +125,28 @@ export class InvoiceDetailService {
     }
 
     // Actualizamos las propiedades simples
-    existing.amount = updateDto.amount ?? existing.amount;
-    existing.priceWithoutTax =
-      updateDto.priceWithoutTax ?? existing.priceWithoutTax;
-    existing.priceWithTax = updateDto.priceWithTax ?? existing.priceWithTax;
-    existing.subtotal = updateDto.subtotal ?? existing.subtotal;
+    if (
+      updateDto.priceWithoutTax !== undefined ||
+      updateDto.taxeTypeId !== undefined
+    ) {
+      let taxRate = 0;
+      if (updateDto.taxeTypeId !== undefined) {
+        const taxeType = await this._taxeTypeRepository.findOne({
+          where: { taxeTypeId: updateDto.taxeTypeId },
+        });
+        if (!taxeType)
+          throw new NotFoundException('Tipo de impuesto no encontrado');
+        taxRate = taxeType.percentage;
+        existing.taxeType = taxeType;
+      } else if (existing.taxeType) {
+        taxRate = existing.taxeType.percentage;
+      }
+
+      existing.priceWithoutTax =
+        updateDto.priceWithoutTax ?? existing.priceWithoutTax;
+      existing.priceWithTax = existing.priceWithoutTax * (1 + taxRate);
+      existing.subtotal = existing.amount * existing.priceWithTax;
+    }
 
     // Actualizar relación con product si viene productId en updateDto
     if (updateDto.productId !== undefined) {

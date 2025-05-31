@@ -19,8 +19,12 @@ export class InvoiceUC {
 
   async createWithDetails(
     createInvoiceWithDetailsDto: CreateInvoiceWithDetailsDto,
+    employeeId: string,
   ) {
-    return this._invoiceService.createWithDetails(createInvoiceWithDetailsDto);
+    return this._invoiceService.createWithDetails(
+      createInvoiceWithDetailsDto,
+      employeeId,
+    );
   }
 
   async findOne(invoiceId: number) {

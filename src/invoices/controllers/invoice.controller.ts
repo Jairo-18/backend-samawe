@@ -25,6 +25,7 @@ import {
   Delete,
   Get,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -60,7 +61,6 @@ export class InvoiceController {
   //     },
   //   };
   // }
-
   @Post('create')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
@@ -68,10 +68,15 @@ export class InvoiceController {
   @ApiConflictResponse({ type: DuplicatedResponseDto })
   async createWithDetails(
     @Body() createInvoiceWithDetailsDto: CreateInvoiceWithDetailsDto,
+    @Request() req: any,
   ): Promise<CreatedRecordResponseDto> {
+    const employeeId = req.user.userId;
+
     const created = await this._invoiceUC.createWithDetails(
       createInvoiceWithDetailsDto,
+      employeeId,
     );
+
     return {
       message: 'Factura con detalles registrada',
       statusCode: HttpStatus.CREATED,

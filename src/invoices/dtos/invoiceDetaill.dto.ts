@@ -10,7 +10,7 @@ import { IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
 export class CreateInvoiceDetailDto {
   @ApiPropertyOptional({
     description: 'ID del producto asociado al detalle',
-    example: 10,
+    example: 1,
   })
   @IsOptional()
   @IsNumber()
@@ -18,7 +18,7 @@ export class CreateInvoiceDetailDto {
 
   @ApiPropertyOptional({
     description: 'ID del hospedaje asociado al detalle',
-    example: 5,
+    example: 0,
   })
   @IsOptional()
   @IsNumber()
@@ -26,7 +26,7 @@ export class CreateInvoiceDetailDto {
 
   @ApiPropertyOptional({
     description: 'ID de la excursión asociada al detalle',
-    example: 8,
+    example: 0,
   })
   @IsOptional()
   @IsNumber()
@@ -42,27 +42,11 @@ export class CreateInvoiceDetailDto {
 
   @ApiProperty({
     description: 'Precio unitario sin impuestos',
-    example: 100.0,
+    example: 1200.0,
   })
   @IsNumber()
   @IsNotEmpty()
   priceWithoutTax: number;
-
-  @ApiProperty({
-    description: 'Precio unitario con impuestos incluidos',
-    example: 118.0,
-  })
-  @IsNumber()
-  @IsNotEmpty()
-  priceWithTax: number;
-
-  @ApiProperty({
-    description: 'Subtotal del ítem (cantidad * precio con impuestos)',
-    example: 236.0,
-  })
-  @IsNumber()
-  @IsNotEmpty()
-  subtotal: number;
 
   @ApiPropertyOptional({
     description: 'ID del tipo de impuesto aplicado al ítem',
@@ -84,7 +68,7 @@ export class UpdateInvoiceDetailDto {
 
   @ApiPropertyOptional({
     description: 'ID del producto asociado al detalle',
-    example: 10,
+    example: 2,
   })
   @IsOptional()
   @IsNumber()
@@ -92,7 +76,7 @@ export class UpdateInvoiceDetailDto {
 
   @ApiPropertyOptional({
     description: 'ID del hospedaje asociado al detalle',
-    example: 5,
+    example: 0,
   })
   @IsOptional()
   @IsNumber()
@@ -100,7 +84,7 @@ export class UpdateInvoiceDetailDto {
 
   @ApiPropertyOptional({
     description: 'ID de la excursión asociada al detalle',
-    example: 8,
+    example: 0,
   })
   @IsOptional()
   @IsNumber()
@@ -108,7 +92,7 @@ export class UpdateInvoiceDetailDto {
 
   @ApiProperty({
     description: 'Cantidad de unidades de este ítem',
-    example: 2,
+    example: 3,
   })
   @IsNumber()
   @IsNotEmpty()
@@ -121,22 +105,6 @@ export class UpdateInvoiceDetailDto {
   @IsNumber()
   @IsNotEmpty()
   priceWithoutTax: number;
-
-  @ApiProperty({
-    description: 'Precio unitario con impuestos incluidos',
-    example: 118.0,
-  })
-  @IsNumber()
-  @IsNotEmpty()
-  priceWithTax: number;
-
-  @ApiProperty({
-    description: 'Subtotal del ítem (cantidad * precio con impuestos)',
-    example: 236.0,
-  })
-  @IsNumber()
-  @IsNotEmpty()
-  subtotal: number;
 
   @ApiPropertyOptional({
     description: 'ID del tipo de impuesto aplicado al ítem',

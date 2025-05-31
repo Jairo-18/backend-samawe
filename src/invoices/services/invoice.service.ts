@@ -1,3 +1,8 @@
+import { PaidType } from './../../shared/entities/paidType.entity';
+import { PayType } from './../../shared/entities/payType.entity';
+import { PaidTypeRepository } from './../../shared/repositories/paidType.repository';
+import { PayTypeRepository } from './../../shared/repositories/payType.repository';
+import { UserRepository } from './../../shared/repositories/user.repository';
 import { InvoiceType } from './../../shared/entities/invoiceType.entity';
 import { TaxeType } from './../../shared/entities/taxeType.entity';
 import { Excursion } from './../../shared/entities/excursion.entity';
@@ -25,47 +30,41 @@ export class InvoiceService {
     private readonly _invoiceRepository: InvoiceRepository,
     private readonly _invoiceTypeRepository: InvoiceTypeRepository,
     private readonly _taxeTypeRepository: TaxeTypeRepository,
+    private readonly _payTypeRepository: PayTypeRepository,
+    private readonly _paidTypeRepository: PaidTypeRepository,
     private readonly _invoiceDetailRepository: InvoiceDetaillRepository,
+    private readonly _userRepository: UserRepository,
   ) {}
-
-  // async create(createInvoiceDto: CreateInvoiceDto): Promise<Invoice> {
-  //   const codeExist = await this._invoiceRepository.findOne({
-  //     where: { code: createInvoiceDto.code },
-  //   });
-
-  //   if (codeExist) {
-  //     throw new HttpException('El código ya está en uso', HttpStatus.CONFLICT);
-  //   }
-
-  //   try {
-  //     const { invoiceTypeId, ...invoiceData } = createInvoiceDto;
-
-  //     // Cargar relaciones
-  //     const invoiceType = await this._invoiceTypeRepository.findOne({
-  //       where: { invoiceTypeId },
-  //     });
-
-  //     if (!invoiceType) {
-  //       throw new BadRequestException('Tipo de factura no encontrado');
-  //     }
-
-  //     const newInvoice = this._invoiceRepository.create({
-  //       ...invoiceData,
-  //       invoiceType,
-  //     });
-
-  //     return await this._invoiceRepository.save(newInvoice);
-  //   } catch (error) {
-  //     console.error('Error creando factura:', error);
-  //     throw new BadRequestException('No se pudo crear la factura');
-  //   }
-  // }
 
   async createWithDetails(
     createInvoiceWithDetailsDto: CreateInvoiceWithDetailsDto,
+    employeeId: string,
   ): Promise<Invoice> {
-    const { invoiceTypeId, details, code, ...invoiceData } =
-      createInvoiceWithDetailsDto;
+    const {
+      invoiceTypeId,
+      details,
+      code,
+      userId,
+      payTypeId,
+      paidTypeId,
+      ...invoiceData
+    } = createInvoiceWithDetailsDto;
+
+    // Validar payType
+    const payType = await this._payTypeRepository.findOne({
+      where: { payTypeId },
+    });
+    if (!payType) {
+      throw new BadRequestException('Tipo de pago no encontrado');
+    }
+
+    // Validar paidType
+    const paidType = await this._paidTypeRepository.findOne({
+      where: { paidTypeId },
+    });
+    if (!paidType) {
+      throw new BadRequestException('Estado de pago no encontrado');
+    }
 
     // Validar tipo de factura
     const invoiceType = await this._invoiceTypeRepository.findOne({
@@ -75,13 +74,21 @@ export class InvoiceService {
       throw new BadRequestException('Tipo de factura no encontrado');
     }
 
-    //  Validar que no exista otra factura con el mismo code y tipo
+    // Validar cliente
+    const user = await this._userRepository.findOne({
+      where: { userId },
+    });
+    if (!user) {
+      throw new BadRequestException('Cliente no encontrado');
+    }
+
+    // Validar que no exista otra factura con el mismo code y tipo
     const existingInvoice = await this._invoiceRepository.findOne({
       where: {
-        code: code,
-        invoiceType: { invoiceTypeId }, // depende de cómo esté relacionada tu entidad
+        code,
+        invoiceType: { invoiceTypeId },
       },
-      relations: ['invoiceType'], // asegúrate de incluir la relación si es necesaria
+      relations: ['invoiceType'],
     });
 
     if (existingInvoice) {
@@ -91,24 +98,42 @@ export class InvoiceService {
     }
 
     // Preparar detalles
+    let invoiceTotal = 0;
     const invoiceDetails = [];
 
     for (const detail of details) {
+      let taxRate = 0;
       let taxeType = null;
+
       if (detail.taxeTypeId) {
         taxeType = await this._taxeTypeRepository.findOne({
           where: { taxeTypeId: detail.taxeTypeId },
+          select: ['taxeTypeId', 'percentage'], // Asegurarnos de traer el rate
         });
         if (!taxeType) {
           throw new BadRequestException('Tipo de impuesto no encontrado');
         }
+        taxRate = taxeType.rate / 100; // Convertir porcentaje a decimal (ej: 16% -> 0.16)
       }
 
+      // Validar que los valores numéricos sean válidos
+      const priceWithoutTax = Number(detail.priceWithoutTax);
+      const amount = Number(detail.amount);
+
+      if (isNaN(priceWithoutTax) || isNaN(amount)) {
+        throw new BadRequestException('Los valores numéricos no son válidos');
+      }
+
+      // Calcular valores
+      const priceWithTax = priceWithoutTax * (1 + taxRate);
+      const subtotal = amount * priceWithTax;
+      invoiceTotal += subtotal;
+
       invoiceDetails.push({
-        amount: detail.amount,
-        priceWithoutTax: detail.priceWithoutTax,
-        priceWithTax: detail.priceWithTax,
-        subtotal: detail.subtotal,
+        amount: amount,
+        priceWithoutTax: priceWithoutTax,
+        priceWithTax: priceWithTax,
+        subtotal: subtotal,
         taxeType,
         product: detail.productId ? { productId: detail.productId } : null,
         accommodation: detail.accommodationId
@@ -120,11 +145,17 @@ export class InvoiceService {
       });
     }
 
-    // Crear la factura con detalles
+    // Crear la factura con detalles, cliente y empleado
     const newInvoice = this._invoiceRepository.create({
       code,
       ...invoiceData,
+      subtotal: invoiceTotal, // Asegurar que subtotal también se establezca
+      total: invoiceTotal,
       invoiceType,
+      user,
+      employee: { userId: employeeId },
+      payType,
+      paidType,
       invoiceDetails,
     });
 
@@ -156,10 +187,17 @@ export class InvoiceService {
   }
 
   async update(updateDto: UpdateInvoiceDto): Promise<Invoice> {
-    const { invoiceId, invoiceTypeId, code, startDate, endDate, details } =
-      updateDto;
+    const {
+      invoiceId,
+      invoiceTypeId,
+      code,
+      startDate,
+      endDate,
+      details,
+      payTypeId,
+      paidTypeId,
+    } = updateDto;
 
-    // Crear un query runner para transacciones
     const queryRunner =
       this._invoiceRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
@@ -169,7 +207,7 @@ export class InvoiceService {
       // Cargar factura con detalles
       const invoice = await queryRunner.manager.findOne(Invoice, {
         where: { invoiceId },
-        relations: ['invoiceDetails'],
+        relations: ['invoiceDetails', 'payType', 'paidType'],
       });
 
       if (!invoice) throw new NotFoundException('Factura no encontrada');
@@ -181,6 +219,24 @@ export class InvoiceService {
       if (!invoiceType)
         throw new BadRequestException('Tipo de factura no válido');
 
+      // Actualizar payType si viene en el DTO
+      if (payTypeId !== undefined) {
+        const payType = await queryRunner.manager.findOne(PayType, {
+          where: { payTypeId },
+        });
+        if (!payType) throw new BadRequestException('Tipo de pago no válido');
+        invoice.payType = payType;
+      }
+
+      // Actualizar paidType si viene en el DTO
+      if (paidTypeId !== undefined) {
+        const paidType = await queryRunner.manager.findOne(PaidType, {
+          where: { paidTypeId },
+        });
+        if (!paidType)
+          throw new BadRequestException('Estado de pago no válido');
+        invoice.paidType = paidType;
+      }
       // Actualizar campos factura
       invoice.code = code;
       invoice.startDate = new Date(startDate);
@@ -195,6 +251,7 @@ export class InvoiceService {
         invoice.invoiceDetails.map((d) => [d.invoiceDetailId, d]),
       );
 
+      let invoiceTotal = 0;
       const detailsToSave: InvoiceDetail[] = [];
       const keepDetailIds = new Set<number>();
 
@@ -214,7 +271,7 @@ export class InvoiceService {
           detailEntity.invoice = invoice;
         }
 
-        // Asociar entidad relacionada: product, accommodation o excursion
+        // Asociar entidad relacionada
         if (d.productId) {
           const product = await queryRunner.manager.findOne(Product, {
             where: { productId: d.productId },
@@ -254,6 +311,7 @@ export class InvoiceService {
         }
 
         // TaxeType opcional
+        let taxRate = 0;
         if (d.taxeTypeId) {
           const taxeType = await queryRunner.manager.findOne(TaxeType, {
             where: { taxeTypeId: d.taxeTypeId },
@@ -261,18 +319,27 @@ export class InvoiceService {
           if (!taxeType)
             throw new BadRequestException(`TaxeType ${d.taxeTypeId} no existe`);
           detailEntity.taxeType = taxeType;
+          taxRate = taxeType.percentage;
         } else {
           detailEntity.taxeType = null;
         }
 
-        // Asignar valores numéricos
+        // Calcular valores
+        const priceWithTax = d.priceWithoutTax * (1 + taxRate);
+        const subtotal = d.amount * priceWithTax;
+        invoiceTotal += subtotal;
+
+        // Asignar valores
         detailEntity.amount = d.amount;
         detailEntity.priceWithoutTax = d.priceWithoutTax;
-        detailEntity.priceWithTax = d.priceWithTax;
-        detailEntity.subtotal = d.subtotal;
+        detailEntity.priceWithTax = priceWithTax;
+        detailEntity.subtotal = subtotal;
 
         detailsToSave.push(detailEntity);
       }
+
+      // Actualizar total de la factura
+      invoice.total = invoiceTotal;
 
       // Guardar detalles (nuevos y editados)
       await queryRunner.manager.save(InvoiceDetail, detailsToSave);
@@ -286,17 +353,14 @@ export class InvoiceService {
         await queryRunner.manager.remove(InvoiceDetail, toDelete);
       }
 
-      // Commit de la transacción
       await queryRunner.commitTransaction();
 
       // Retornar la factura actualizada con detalles
       return this.findOne(invoiceId);
     } catch (error) {
-      // Rollback en caso de error
       await queryRunner.rollbackTransaction();
       throw error;
     } finally {
-      // Liberar queryRunner
       await queryRunner.release();
     }
   }
