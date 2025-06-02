@@ -1,3 +1,5 @@
+import { PaginatedListInvoicesParamsDto } from './../dtos/paginatedInvoice.dto';
+import { Invoice } from './../../shared/entities/invoice.entity';
 import {
   CreateInvoiceDetailDto,
   CreateRelatedDataInvoiceResponseDto,
@@ -25,6 +27,7 @@ import {
   Delete,
   Get,
   UseGuards,
+  Query,
   Request,
 } from '@nestjs/common';
 import {
@@ -36,6 +39,7 @@ import {
 } from '@nestjs/swagger';
 import { InvoiceUC } from '../useCases/invoiceUC.uc';
 import { AuthGuard } from '@nestjs/passport';
+import { ResponsePaginationDto } from 'src/shared/dtos/pagination.dto';
 
 @Controller('invoices')
 @ApiTags('Facturas')
@@ -61,6 +65,16 @@ export class InvoiceController {
   //     },
   //   };
   // }
+  @Get('/paginated-list')
+  @ApiOkResponse({ type: ResponsePaginationDto<Invoice> })
+  // @ApiBearerAuth()
+  // @UseGuards(AuthGuard())
+  async getPaginatedList(
+    @Query() params: PaginatedListInvoicesParamsDto,
+  ): Promise<ResponsePaginationDto<Invoice>> {
+    return await this._invoiceUC.paginatedList(params);
+  }
+
   @Post('create')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())

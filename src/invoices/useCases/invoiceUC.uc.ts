@@ -1,3 +1,5 @@
+import { InvoicedPaginatedService } from './../services/invoicePaginated.service';
+import { PaginatedListExcursionsParamsDto } from './../../excursions/dtos/crudExcursion.dto';
 import { Injectable } from '@nestjs/common';
 import { InvoiceService } from './../services/invoice.service';
 import { InvoiceDetailService } from '../services/invoiceDetail.service';
@@ -15,6 +17,7 @@ export class InvoiceUC {
   constructor(
     private readonly _invoiceService: InvoiceService,
     private readonly _invoiceDetailService: InvoiceDetailService,
+    private readonly _invoicedPaginatedService: InvoicedPaginatedService,
   ) {}
 
   async createWithDetails(
@@ -57,5 +60,9 @@ export class InvoiceUC {
 
   async getRelatedDataToCreate() {
     return await this._invoiceDetailService.getRelatedDataToCreate();
+  }
+
+  async paginatedList(params: PaginatedListExcursionsParamsDto) {
+    return await this._invoicedPaginatedService.paginatedList(params);
   }
 }
