@@ -1,3 +1,4 @@
+import { InvoicedPaginatedService } from './services/invoicePaginated.service';
 import { InvoiceUC } from './useCases/invoiceUC.uc';
 import { InvoiceService } from './services/invoice.service';
 import { InvoiceController } from './controllers/invoice.controller';
@@ -12,6 +13,11 @@ import { InvoiceDetailService } from './services/invoiceDetail.service';
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [InvoiceController],
-  providers: [InvoiceService, InvoiceUC, InvoiceDetailService],
+  providers: [
+    InvoiceService,
+    InvoiceUC,
+    InvoiceDetailService,
+    InvoicedPaginatedService,
+  ],
 })
 export class InvoiceModule {}
