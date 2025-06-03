@@ -102,8 +102,8 @@ export class InvoiceController {
   }
 
   @Get('/create/related-data')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  // @ApiBearerAuth()
+  // @UseGuards(AuthGuard())
   @ApiOkResponse({ type: CreateRelatedDataInvoiceResponseDto })
   async getRelatedData(): Promise<CreateRelatedDataInvoiceResponseDto> {
     const data = await this._invoiceUC.getRelatedDataToCreate();

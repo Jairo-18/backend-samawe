@@ -6,6 +6,7 @@ import { InvoiceType } from './../../shared/entities/invoiceType.entity';
 import { HttpStatus } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
+import { IdentificationType } from 'src/user/models/user.model';
 
 export class CreateInvoiceDetailDto {
   @ApiPropertyOptional({
@@ -120,6 +121,7 @@ export interface CreateRelatedDataInvoiceDto {
   taxeType: TaxeType[];
   payType: PayType[];
   paidType: PaidType[];
+  identificationType: IdentificationType[];
 }
 
 export class CreateRelatedDataInvoiceResponseDto implements BaseResponseDto {
