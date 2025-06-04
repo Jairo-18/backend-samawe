@@ -2,7 +2,7 @@ import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { Invoice } from './../../shared/entities/invoice.entity';
 import { OnlyOneDefined } from '../../shared/validators/onlyOneDefined';
 import { HttpStatus } from '@nestjs/common';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsNotEmpty,
   IsNumber,
@@ -11,7 +11,6 @@ import {
   IsDateString,
   ValidateNested,
   IsArray,
-  ArrayNotEmpty,
   IsUUID,
 } from 'class-validator';
 
@@ -110,81 +109,6 @@ export class CreateInvoiceWithDetailsDto extends CreateInvoiceDto {
   details: CreateInvoiceDetailDto[];
 }
 
-class InvoiceDetailDto {
-  @ApiPropertyOptional({
-    description:
-      'ID del detalle de factura (solo para editar detalles existentes)',
-    example: 123,
-  })
-  @IsNumber()
-  @IsOptional()
-  invoiceDetailId?: number;
-
-  @ApiPropertyOptional({
-    description: 'ID del producto asociado al detalle',
-    example: 45,
-  })
-  @IsNumber()
-  @IsOptional()
-  productId?: number;
-
-  @ApiPropertyOptional({
-    description: 'ID del hospedaje asociado al detalle',
-    example: 12,
-  })
-  @IsNumber()
-  @IsOptional()
-  accommodationId?: number;
-
-  @ApiPropertyOptional({
-    description: 'ID de la excursión asociada al detalle',
-    example: 7,
-  })
-  @IsNumber()
-  @IsOptional()
-  excursionId?: number;
-
-  @ApiProperty({
-    description: 'Cantidad del ítem en el detalle',
-    example: 3,
-  })
-  @IsNumber()
-  @IsNotEmpty()
-  amount: number;
-
-  @ApiProperty({
-    description: 'Precio sin impuesto',
-    example: 150.75,
-  })
-  @IsNumber()
-  @IsNotEmpty()
-  priceWithoutTax: number;
-
-  @ApiProperty({
-    description: 'Precio con impuesto incluido',
-    example: 177.86,
-  })
-  @IsNumber()
-  @IsNotEmpty()
-  priceWithTax: number;
-
-  @ApiProperty({
-    description: 'Subtotal (cantidad * precio con impuesto)',
-    example: 533.58,
-  })
-  @IsNumber()
-  @IsNotEmpty()
-  subtotal: number;
-
-  @ApiPropertyOptional({
-    description: 'ID del tipo de impuesto aplicado',
-    example: 2,
-  })
-  @IsNumber()
-  @IsOptional()
-  taxeTypeId?: number;
-}
-
 @OnlyOneDefined(['productId', 'accommodationId', 'excursionId'], {
   message:
     'Debes especificar exactamente uno entre productId, accommodationId o excursionId',
@@ -199,62 +123,26 @@ export class UpdateInvoiceDto {
   invoiceId: number;
 
   @ApiProperty({
-    description: 'ID del tipo de factura',
-    example: 1,
-  })
-  @IsNumber()
-  @IsNotEmpty()
-  invoiceTypeId: number;
-
-  @ApiProperty({
-    description: 'Código único de la factura',
-    example: 'INV-2025-0001',
-  })
-  @IsString()
-  @IsNotEmpty()
-  code: string;
-
-  @ApiProperty({
-    description: 'Fecha de inicio de la factura (formato ISO 8601)',
-    example: '2025-05-28T00:00:00Z',
-  })
-  @IsString()
-  @IsNotEmpty()
-  startDate: string;
-
-  @ApiProperty({
-    description: 'Fecha de fin de la factura (formato ISO 8601)',
-    example: '2025-06-28T00:00:00Z',
-  })
-  @IsString()
-  @IsNotEmpty()
-  endDate: string;
-
-  @ApiProperty({
     example: 1,
     description: 'ID del tipo de pago (PayType)',
-    required: true,
   })
   @IsNumber()
-  @IsNotEmpty({ message: 'El tipo de pago es requerido' })
-  payTypeId: number;
+  @IsOptional()
+  payTypeId?: number;
 
   @ApiProperty({
     example: 1,
     description: 'ID del estado de pago (PaidType)',
-    required: true,
   })
   @IsNumber()
-  @IsNotEmpty({ message: 'El estado de pago es requerido' })
-  paidTypeId: number;
+  @IsOptional()
+  paidTypeId?: number;
 
   @ApiProperty({
-    description: 'Detalles que componen la factura',
-    type: [InvoiceDetailDto],
+    example: 'b78e8f08-9df4-4f7f-abc0-1b6ef3147a2e',
+    description: 'UUID del cliente (usuario)',
   })
-  @ArrayNotEmpty()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => InvoiceDetailDto)
-  details: InvoiceDetailDto[];
+  @IsUUID()
+  @IsOptional()
+  userId?: string;
 }

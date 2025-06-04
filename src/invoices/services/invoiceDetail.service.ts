@@ -1,3 +1,4 @@
+import { CategoryType } from './../../shared/entities/categoryType.entity';
 import { IdentificationType } from './../../shared/entities/identificationType.entity';
 import { PaidType } from './../../shared/entities/paidType.entity';
 import { PayType } from './../../shared/entities/payType.entity';
@@ -48,12 +49,24 @@ export class InvoiceDetailService {
       this._repositoriesService.repositories.paidType,
     );
 
+    const categoryType =
+      await this._repositoriesService.getEntities<CategoryType>(
+        this._repositoriesService.repositories.categoryType,
+      );
+
     const identificationType =
       await this._repositoriesService.getEntities<IdentificationType>(
         this._repositoriesService.repositories.identificationType,
       );
 
-    return { invoiceType, taxeType, payType, paidType, identificationType };
+    return {
+      invoiceType,
+      taxeType,
+      payType,
+      paidType,
+      identificationType,
+      categoryType,
+    };
   }
 
   async create(invoiceId: number, dto: CreateInvoiceDetailDto) {

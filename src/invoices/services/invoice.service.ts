@@ -1,14 +1,9 @@
+import { User } from './../../shared/entities/user.entity';
 import { PaidType } from './../../shared/entities/paidType.entity';
 import { PayType } from './../../shared/entities/payType.entity';
 import { PaidTypeRepository } from './../../shared/repositories/paidType.repository';
 import { PayTypeRepository } from './../../shared/repositories/payType.repository';
 import { UserRepository } from './../../shared/repositories/user.repository';
-import { InvoiceType } from './../../shared/entities/invoiceType.entity';
-import { TaxeType } from './../../shared/entities/taxeType.entity';
-import { Excursion } from './../../shared/entities/excursion.entity';
-import { Accommodation } from './../../shared/entities/accommodation.entity';
-import { Product } from './../../shared/entities/product.entity';
-import { InvoiceDetaill } from './../../shared/entities/invoiceDetaill.entity';
 import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { TaxeTypeRepository } from './../../shared/repositories/taxeType.repository';
 import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
@@ -167,6 +162,8 @@ export class InvoiceService {
       where: { invoiceId },
       relations: [
         'invoiceType',
+        'payType',
+        'paidType',
         'invoiceDetails',
         'invoiceDetails.product',
         'invoiceDetails.product.categoryType',
@@ -187,39 +184,23 @@ export class InvoiceService {
   }
 
   async update(updateDto: UpdateInvoiceDto): Promise<Invoice> {
-    const {
-      invoiceId,
-      invoiceTypeId,
-      code,
-      startDate,
-      endDate,
-      details,
-      payTypeId,
-      paidTypeId,
-    } = updateDto;
+    const { invoiceId, payTypeId, paidTypeId, userId } = updateDto;
 
     const queryRunner =
       this._invoiceRepository.manager.connection.createQueryRunner();
+
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // Cargar factura con detalles
       const invoice = await queryRunner.manager.findOne(Invoice, {
         where: { invoiceId },
-        relations: ['invoiceDetails', 'payType', 'paidType'],
+        relations: ['payType', 'paidType', 'user'],
       });
 
       if (!invoice) throw new NotFoundException('Factura no encontrada');
 
-      // Validar invoiceType
-      const invoiceType = await queryRunner.manager.findOne(InvoiceType, {
-        where: { invoiceTypeId },
-      });
-      if (!invoiceType)
-        throw new BadRequestException('Tipo de factura no válido');
-
-      // Actualizar payType si viene en el DTO
+      // Actualizar payType si se envía
       if (payTypeId !== undefined) {
         const payType = await queryRunner.manager.findOne(PayType, {
           where: { payTypeId },
@@ -228,7 +209,7 @@ export class InvoiceService {
         invoice.payType = payType;
       }
 
-      // Actualizar paidType si viene en el DTO
+      // Actualizar paidType si se envía
       if (paidTypeId !== undefined) {
         const paidType = await queryRunner.manager.findOne(PaidType, {
           where: { paidTypeId },
@@ -237,125 +218,19 @@ export class InvoiceService {
           throw new BadRequestException('Estado de pago no válido');
         invoice.paidType = paidType;
       }
-      // Actualizar campos factura
-      invoice.code = code;
-      invoice.startDate = new Date(startDate);
-      invoice.endDate = new Date(endDate);
-      invoice.invoiceType = invoiceType;
 
-      // Guardar factura (sin detalles aún)
+      // Actualizar cliente (user UUID) si se envía
+      if (userId !== undefined) {
+        const user = await queryRunner.manager.findOne(User, {
+          where: { userId },
+        });
+        if (!user) throw new BadRequestException('Cliente no encontrado');
+        invoice.user = user;
+      }
+
       await queryRunner.manager.save(invoice);
-
-      // Mapa detalles existentes para fácil acceso
-      const existingDetailsMap = new Map(
-        invoice.invoiceDetails.map((d) => [d.invoiceDetailId, d]),
-      );
-
-      let invoiceTotal = 0;
-      const detailsToSave: InvoiceDetaill[] = [];
-      const keepDetailIds = new Set<number>();
-
-      for (const d of details) {
-        let detailEntity: InvoiceDetaill;
-
-        if (d.invoiceDetailId) {
-          detailEntity = existingDetailsMap.get(d.invoiceDetailId);
-          if (!detailEntity) {
-            throw new NotFoundException(
-              `Detalle con id ${d.invoiceDetailId} no encontrado`,
-            );
-          }
-          keepDetailIds.add(d.invoiceDetailId);
-        } else {
-          detailEntity = new InvoiceDetaill();
-          detailEntity.invoice = invoice;
-        }
-
-        // Asociar entidad relacionada
-        if (d.productId) {
-          const product = await queryRunner.manager.findOne(Product, {
-            where: { productId: d.productId },
-          });
-          if (!product)
-            throw new BadRequestException(`Producto ${d.productId} no existe`);
-          detailEntity.product = product;
-          detailEntity.accommodation = null;
-          detailEntity.excursion = null;
-        } else if (d.accommodationId) {
-          const accommodation = await queryRunner.manager.findOne(
-            Accommodation,
-            { where: { accommodationId: d.accommodationId } },
-          );
-          if (!accommodation)
-            throw new BadRequestException(
-              `Hospedaje ${d.accommodationId} no existe`,
-            );
-          detailEntity.accommodation = accommodation;
-          detailEntity.product = null;
-          detailEntity.excursion = null;
-        } else if (d.excursionId) {
-          const excursion = await queryRunner.manager.findOne(Excursion, {
-            where: { excursionId: d.excursionId },
-          });
-          if (!excursion)
-            throw new BadRequestException(
-              `Excursión ${d.excursionId} no existe`,
-            );
-          detailEntity.excursion = excursion;
-          detailEntity.product = null;
-          detailEntity.accommodation = null;
-        } else {
-          throw new BadRequestException(
-            'Debe asignar productId, accommodationId o excursionId en detalle',
-          );
-        }
-
-        // TaxeType opcional
-        let taxRate = 0;
-        if (d.taxeTypeId) {
-          const taxeType = await queryRunner.manager.findOne(TaxeType, {
-            where: { taxeTypeId: d.taxeTypeId },
-          });
-          if (!taxeType)
-            throw new BadRequestException(`TaxeType ${d.taxeTypeId} no existe`);
-          detailEntity.taxeType = taxeType;
-          taxRate = taxeType.percentage;
-        } else {
-          detailEntity.taxeType = null;
-        }
-
-        // Calcular valores
-        const priceWithTax = d.priceWithoutTax * (1 + taxRate);
-        const subtotal = d.amount * priceWithTax;
-        invoiceTotal += subtotal;
-
-        // Asignar valores
-        detailEntity.amount = d.amount;
-        detailEntity.priceWithoutTax = d.priceWithoutTax;
-        detailEntity.priceWithTax = priceWithTax;
-        detailEntity.subtotal = subtotal;
-
-        detailsToSave.push(detailEntity);
-      }
-
-      // Actualizar total de la factura
-      invoice.total = invoiceTotal;
-
-      // Guardar detalles (nuevos y editados)
-      await queryRunner.manager.save(InvoiceDetaill, detailsToSave);
-
-      // Eliminar detalles que ya no están en el arreglo enviado
-      const toDelete = invoice.invoiceDetails.filter(
-        (d) => !keepDetailIds.has(d.invoiceDetailId),
-      );
-
-      if (toDelete.length > 0) {
-        await queryRunner.manager.remove(InvoiceDetaill, toDelete);
-      }
-
       await queryRunner.commitTransaction();
 
-      // Retornar la factura actualizada con detalles
       return this.findOne(invoiceId);
     } catch (error) {
       await queryRunner.rollbackTransaction();

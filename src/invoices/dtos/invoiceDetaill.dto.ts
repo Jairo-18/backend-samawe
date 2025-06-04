@@ -3,6 +3,7 @@ import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { PayType } from './../../shared/entities/payType.entity';
 import { TaxeType } from './../../shared/entities/taxeType.entity';
 import { InvoiceType } from './../../shared/entities/invoiceType.entity';
+import { CategoryType } from './../../shared/entities/categoryType.entity';
 import { HttpStatus } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
@@ -138,6 +139,7 @@ export class UpdateInvoiceDetailDto {
 }
 
 export interface CreateRelatedDataInvoiceDto {
+  categoryType: CategoryType[];
   invoiceType?: InvoiceType[];
   taxeType: TaxeType[];
   payType: PayType[];

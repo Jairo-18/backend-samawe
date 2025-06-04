@@ -67,8 +67,8 @@ export class InvoiceController {
   // }
   @Get('/paginated-list')
   @ApiOkResponse({ type: ResponsePaginationDto<Invoice> })
-  // @ApiBearerAuth()
-  // @UseGuards(AuthGuard())
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
   async getPaginatedList(
     @Query() params: PaginatedListInvoicesParamsDto,
   ): Promise<ResponsePaginationDto<Invoice>> {
@@ -92,7 +92,7 @@ export class InvoiceController {
     );
 
     return {
-      message: 'Factura con detalles registrada',
+      message: 'Factura registrada',
       statusCode: HttpStatus.CREATED,
       data: {
         rowId: created.invoiceId.toString(),
@@ -102,8 +102,8 @@ export class InvoiceController {
   }
 
   @Get('/create/related-data')
-  // @ApiBearerAuth()
-  // @UseGuards(AuthGuard())
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
   @ApiOkResponse({ type: CreateRelatedDataInvoiceResponseDto })
   async getRelatedData(): Promise<CreateRelatedDataInvoiceResponseDto> {
     const data = await this._invoiceUC.getRelatedDataToCreate();
