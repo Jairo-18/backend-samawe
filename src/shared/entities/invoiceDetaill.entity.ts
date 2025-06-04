@@ -51,10 +51,10 @@ export class InvoiceDetaill {
   @JoinColumn({ name: 'taxeTypeId' })
   taxeType?: TaxeType;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   startDate?: Date;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   endDate?: Date;
 
   @CreateDateColumn()
