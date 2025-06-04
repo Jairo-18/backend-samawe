@@ -5,7 +5,12 @@ import { TaxeType } from './../../shared/entities/taxeType.entity';
 import { InvoiceType } from './../../shared/entities/invoiceType.entity';
 import { HttpStatus } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
+import {
+  IsDateString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+} from 'class-validator';
 import { IdentificationType } from 'src/user/models/user.model';
 
 export class CreateInvoiceDetailDto {
@@ -56,6 +61,22 @@ export class CreateInvoiceDetailDto {
   @IsOptional()
   @IsNumber()
   taxeTypeId?: number;
+
+  @ApiPropertyOptional({
+    description: 'Fecha de entrada (solo para hospedaje o excursión)',
+    example: '2025-06-15T14:00:00Z',
+  })
+  @IsOptional()
+  @IsDateString()
+  startDate?: Date;
+
+  @ApiPropertyOptional({
+    description: 'Fecha de salida (solo para hospedaje o excursión)',
+    example: '2025-06-20T10:00:00Z',
+  })
+  @IsOptional()
+  @IsDateString()
+  endDate?: Date;
 }
 
 export class UpdateInvoiceDetailDto {

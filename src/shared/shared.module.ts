@@ -41,7 +41,7 @@ import { Excursion } from './entities/excursion.entity';
 import { Booking } from './entities/booking.entity';
 import { InvoiceType } from './entities/invoiceType.entity';
 import { InvoiceTypeRepository } from './repositories/invoiceType.repository';
-import { InvoiceDetail } from './entities/invoiceDetaill.entity';
+import { InvoiceDetaill } from './entities/invoiceDetaill.entity';
 
 @Module({})
 export class SharedModule {
@@ -76,7 +76,7 @@ export class SharedModule {
           Excursion,
           IdentificationType,
           Invoice,
-          InvoiceDetail,
+          InvoiceDetaill,
           InvoiceType,
           PaidType,
           PayType,

@@ -8,7 +8,7 @@ import { TaxeType } from './../../shared/entities/taxeType.entity';
 import { Excursion } from './../../shared/entities/excursion.entity';
 import { Accommodation } from './../../shared/entities/accommodation.entity';
 import { Product } from './../../shared/entities/product.entity';
-import { InvoiceDetail } from './../../shared/entities/invoiceDetaill.entity';
+import { InvoiceDetaill } from './../../shared/entities/invoiceDetaill.entity';
 import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { TaxeTypeRepository } from './../../shared/repositories/taxeType.repository';
 import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
@@ -252,11 +252,11 @@ export class InvoiceService {
       );
 
       let invoiceTotal = 0;
-      const detailsToSave: InvoiceDetail[] = [];
+      const detailsToSave: InvoiceDetaill[] = [];
       const keepDetailIds = new Set<number>();
 
       for (const d of details) {
-        let detailEntity: InvoiceDetail;
+        let detailEntity: InvoiceDetaill;
 
         if (d.invoiceDetailId) {
           detailEntity = existingDetailsMap.get(d.invoiceDetailId);
@@ -267,7 +267,7 @@ export class InvoiceService {
           }
           keepDetailIds.add(d.invoiceDetailId);
         } else {
-          detailEntity = new InvoiceDetail();
+          detailEntity = new InvoiceDetaill();
           detailEntity.invoice = invoice;
         }
 
@@ -342,7 +342,7 @@ export class InvoiceService {
       invoice.total = invoiceTotal;
 
       // Guardar detalles (nuevos y editados)
-      await queryRunner.manager.save(InvoiceDetail, detailsToSave);
+      await queryRunner.manager.save(InvoiceDetaill, detailsToSave);
 
       // Eliminar detalles que ya no están en el arreglo enviado
       const toDelete = invoice.invoiceDetails.filter(
@@ -350,7 +350,7 @@ export class InvoiceService {
       );
 
       if (toDelete.length > 0) {
-        await queryRunner.manager.remove(InvoiceDetail, toDelete);
+        await queryRunner.manager.remove(InvoiceDetaill, toDelete);
       }
 
       await queryRunner.commitTransaction();

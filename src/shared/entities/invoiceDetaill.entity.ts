@@ -15,7 +15,7 @@ import { Accommodation } from './accommodation.entity';
 import { Excursion } from './excursion.entity';
 
 @Entity({ name: 'InvoiceDetaill' })
-export class InvoiceDetail {
+export class InvoiceDetaill {
   @PrimaryGeneratedColumn()
   invoiceDetailId: number;
 
@@ -50,6 +50,12 @@ export class InvoiceDetail {
   @ManyToOne(() => TaxeType, { nullable: true })
   @JoinColumn({ name: 'taxeTypeId' })
   taxeType?: TaxeType;
+
+  @Column({ type: 'date', nullable: true })
+  startDate?: Date;
+
+  @Column({ type: 'date', nullable: true })
+  endDate?: Date;
 
   @CreateDateColumn()
   createdAt: Date;

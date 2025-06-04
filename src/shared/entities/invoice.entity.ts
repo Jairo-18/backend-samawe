@@ -13,7 +13,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { PaidType } from './paidType.entity';
-import { InvoiceDetail } from './invoiceDetaill.entity';
+import { InvoiceDetaill } from './invoiceDetaill.entity';
 import { InvoiceType } from './invoiceType.entity';
 
 @Entity({ name: 'Invoice' })
@@ -68,10 +68,10 @@ export class Invoice {
   @Column({ type: 'date' })
   endDate: Date;
 
-  @OneToMany(() => InvoiceDetail, (detail) => detail.invoice, {
+  @OneToMany(() => InvoiceDetaill, (detail) => detail.invoice, {
     cascade: true,
   })
-  invoiceDetails: InvoiceDetail[];
+  invoiceDetails: InvoiceDetaill[];
 
   @CreateDateColumn()
   createdAt: Date;

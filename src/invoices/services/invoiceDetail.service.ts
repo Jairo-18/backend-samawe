@@ -85,6 +85,8 @@ export class InvoiceDetailService {
       subtotal: subtotal,
       taxeType: dto.taxeTypeId ? { taxeTypeId: dto.taxeTypeId } : null,
       invoice,
+      startDate: dto.startDate,
+      endDate: dto.endDate,
     });
 
     // Asignar relación con product si existe productId
