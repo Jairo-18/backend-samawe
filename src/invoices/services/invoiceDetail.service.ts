@@ -9,7 +9,11 @@ import { ExcursionRepository } from './../../shared/repositories/excursion.repos
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { TaxeTypeRepository } from './../../shared/repositories/taxeType.repository';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
 import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 
@@ -69,6 +73,37 @@ export class InvoiceDetailService {
     };
   }
 
+  // Método privado para actualizar el total de la factura
+  private async updateInvoiceTotal(invoiceId: number): Promise<void> {
+    // Obtener todos los detalles de la factura
+    const details = await this._invoiceDetaillRepository.find({
+      where: { invoice: { invoiceId } },
+    });
+
+    // Calcular el nuevo total sumando todos los subtotales
+    const newTotal = details.reduce((sum, detail) => {
+      const subtotal = Number(detail.subtotal);
+      // Validar que el subtotal sea un número válido
+      if (isNaN(subtotal)) {
+        return sum;
+      }
+      return sum + subtotal;
+    }, 0);
+
+    // Validar que el total calculado sea válido
+    if (isNaN(newTotal)) {
+      throw new Error(
+        `Error al calcular el total de la factura ${invoiceId}: resultado NaN`,
+      );
+    }
+
+    // Actualizar la factura con el nuevo total
+    await this._invoiceRepository.update(invoiceId, {
+      total: newTotal,
+      subtotal: newTotal, // Asumiendo que también tienes un campo subtotal separado
+    });
+  }
+
   async create(invoiceId: number, dto: CreateInvoiceDetailDto) {
     const invoice = await this._invoiceRepository.findOne({
       where: { invoiceId },
@@ -78,25 +113,45 @@ export class InvoiceDetailService {
     }
 
     let taxRate = 0;
+    let taxeType = null;
+
     if (dto.taxeTypeId) {
-      const taxeType = await this._taxeTypeRepository.findOne({
+      taxeType = await this._taxeTypeRepository.findOne({
         where: { taxeTypeId: dto.taxeTypeId },
       });
       if (!taxeType)
         throw new NotFoundException('Tipo de impuesto no encontrado');
-      taxRate = taxeType.percentage;
+
+      // Usar 'percentage' o 'rate' dependiendo de tu entidad
+      // Si está en porcentaje (16), dividir por 100. Si ya está en decimal (0.16), usar directo
+      taxRate = taxeType.percentage / 100; // Ajusta según tu campo: taxeType.rate o taxeType.percentage
+    }
+
+    // Validar que los valores numéricos sean válidos
+    const priceWithoutTax = Number(dto.priceWithoutTax);
+    const amount = Number(dto.amount);
+
+    if (
+      isNaN(priceWithoutTax) ||
+      isNaN(amount) ||
+      priceWithoutTax < 0 ||
+      amount <= 0
+    ) {
+      throw new BadRequestException(
+        'Los valores numéricos no son válidos o deben ser mayores a cero',
+      );
     }
 
     // Calcular valores
-    const priceWithTax = dto.priceWithoutTax * (1 + taxRate);
-    const subtotal = dto.amount * priceWithTax;
+    const priceWithTax = Number((priceWithoutTax * (1 + taxRate)).toFixed(2));
+    const subtotal = Number((amount * priceWithTax).toFixed(2));
 
     const detail = this._invoiceDetaillRepository.create({
-      amount: dto.amount,
-      priceWithoutTax: dto.priceWithoutTax,
+      amount: amount,
+      priceWithoutTax: priceWithoutTax,
       priceWithTax: priceWithTax,
       subtotal: subtotal,
-      taxeType: dto.taxeTypeId ? { taxeTypeId: dto.taxeTypeId } : null,
+      taxeType: taxeType,
       invoice,
       startDate: dto.startDate,
       endDate: dto.endDate,
@@ -130,13 +185,25 @@ export class InvoiceDetailService {
       detail.excursion = excursion;
     }
 
-    return await this._invoiceDetaillRepository.save(detail);
+    // Guardar el detalle
+    const savedDetail = await this._invoiceDetaillRepository.save(detail);
+
+    // 🔥 ACTUALIZAR EL TOTAL DE LA FACTURA
+    await this.updateInvoiceTotal(invoiceId);
+
+    return savedDetail;
   }
 
   async update(invoiceDetailId: number, updateDto: UpdateInvoiceDetailDto) {
     const existing = await this._invoiceDetaillRepository.findOne({
       where: { invoiceDetailId },
-      relations: ['product', 'accommodation', 'excursion'], // cargar relaciones para evitar problemas
+      relations: [
+        'product',
+        'accommodation',
+        'excursion',
+        'invoice',
+        'taxeType',
+      ], // Incluir invoice y taxeType
     });
 
     if (!existing) {
@@ -145,28 +212,49 @@ export class InvoiceDetailService {
       );
     }
 
-    // Actualizamos las propiedades simples
+    // Actualizamos las propiedades simples y recalculamos si es necesario
     if (
       updateDto.priceWithoutTax !== undefined ||
-      updateDto.taxeTypeId !== undefined
+      updateDto.taxeTypeId !== undefined ||
+      updateDto.amount !== undefined
     ) {
       let taxRate = 0;
+
       if (updateDto.taxeTypeId !== undefined) {
-        const taxeType = await this._taxeTypeRepository.findOne({
-          where: { taxeTypeId: updateDto.taxeTypeId },
-        });
-        if (!taxeType)
-          throw new NotFoundException('Tipo de impuesto no encontrado');
-        taxRate = taxeType.percentage;
-        existing.taxeType = taxeType;
+        if (updateDto.taxeTypeId === null) {
+          existing.taxeType = null;
+          taxRate = 0;
+        } else {
+          const taxeType = await this._taxeTypeRepository.findOne({
+            where: { taxeTypeId: updateDto.taxeTypeId },
+          });
+          if (!taxeType)
+            throw new NotFoundException('Tipo de impuesto no encontrado');
+
+          taxRate = taxeType.percentage / 100; // Ajusta según tu campo
+          existing.taxeType = taxeType;
+        }
       } else if (existing.taxeType) {
-        taxRate = existing.taxeType.percentage;
+        taxRate = existing.taxeType.percentage / 100; // Ajusta según tu campo
       }
 
-      existing.priceWithoutTax =
-        updateDto.priceWithoutTax ?? existing.priceWithoutTax;
-      existing.priceWithTax = existing.priceWithoutTax * (1 + taxRate);
-      existing.subtotal = existing.amount * existing.priceWithTax;
+      // Actualizar valores
+      existing.amount = Number(updateDto.amount ?? existing.amount);
+      existing.priceWithoutTax = Number(
+        updateDto.priceWithoutTax ?? existing.priceWithoutTax,
+      );
+
+      // Validar que los valores sean números válidos
+      if (isNaN(existing.amount) || isNaN(existing.priceWithoutTax)) {
+        throw new BadRequestException('Los valores numéricos no son válidos');
+      }
+
+      existing.priceWithTax = Number(
+        (existing.priceWithoutTax * (1 + taxRate)).toFixed(2),
+      );
+      existing.subtotal = Number(
+        (existing.amount * existing.priceWithTax).toFixed(2),
+      );
     }
 
     // Actualizar relación con product si viene productId en updateDto
@@ -209,40 +297,56 @@ export class InvoiceDetailService {
       }
     }
 
-    if (updateDto.taxeTypeId !== undefined) {
-      if (updateDto.taxeTypeId === null) {
-        existing.taxeType = null;
-      } else {
-        const taxeType = await this._taxeTypeRepository.findOne({
-          where: { taxeTypeId: updateDto.taxeTypeId },
-        });
-        if (!taxeType)
-          throw new NotFoundException('Tipo de impuesto no encontrado');
-        existing.taxeType = taxeType;
-      }
-    }
+    // Actualizar fechas si vienen en el DTO
+    // if (updateDto.startDate !== undefined) {
+    //   existing.startDate = updateDto.startDate;
+    // }
 
-    return await this._invoiceDetaillRepository.save(existing);
+    // if (updateDto.endDate !== undefined) {
+    //   existing.endDate = updateDto.endDate;
+    // }
+
+    // Guardar cambios
+    const updatedDetail = await this._invoiceDetaillRepository.save(existing);
+
+    // 🔥 ACTUALIZAR EL TOTAL DE LA FACTURA
+    await this.updateInvoiceTotal(existing.invoice.invoiceId);
+
+    return updatedDetail;
   }
 
   async delete(invoiceDetailId: number) {
     const detail = await this._invoiceDetaillRepository.findOne({
       where: { invoiceDetailId },
+      relations: ['invoice'], // Incluir la relación con invoice
     });
+
     if (!detail) {
       throw new NotFoundException(
         `Detalle con ID ${invoiceDetailId} no encontrado`,
       );
     }
 
+    const invoiceId = detail.invoice.invoiceId;
+
     await this._invoiceDetaillRepository.remove(detail);
+
+    // 🔥 ACTUALIZAR EL TOTAL DE LA FACTURA DESPUÉS DE ELIMINAR
+    await this.updateInvoiceTotal(invoiceId);
+
     return { message: 'Detalle eliminado correctamente' };
   }
 
   async findById(invoiceDetailId: number) {
     const detail = await this._invoiceDetaillRepository.findOne({
       where: { invoiceDetailId },
-      relations: ['product', 'accommodation', 'excursion', 'invoice'],
+      relations: [
+        'product',
+        'accommodation',
+        'excursion',
+        'invoice',
+        'taxeType',
+      ],
     });
 
     if (!detail) {
