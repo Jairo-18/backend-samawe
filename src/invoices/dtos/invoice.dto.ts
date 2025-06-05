@@ -1,5 +1,11 @@
+import {
+  CategoryTypeDto,
+  InvoiceTypeDto,
+  PaidTypeDto,
+  PayTypeDto,
+  TaxeTypeDto,
+} from './../../shared/dtos/types.dto';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
-import { Invoice } from './../../shared/entities/invoice.entity';
 import { OnlyOneDefined } from '../../shared/validators/onlyOneDefined';
 import { HttpStatus } from '@nestjs/common';
 import { ApiProperty } from '@nestjs/swagger';
@@ -81,19 +87,6 @@ export class CreateInvoiceDto {
   paidTypeId: number;
 }
 
-export class GetInvoiceWithDetails implements BaseResponseDto {
-  @ApiProperty({
-    example: HttpStatus.OK,
-  })
-  statusCode: number;
-
-  @ApiProperty({
-    type: Object,
-    example: GET_INVOICE_EXAMPLE,
-  })
-  data: Invoice;
-}
-
 @OnlyOneDefined(['productId', 'accommodationId', 'excursionId'], {
   message:
     'Debes especificar exactamente uno entre productId, accommodationId o excursionId',
@@ -145,4 +138,146 @@ export class UpdateInvoiceDto {
   @IsUUID()
   @IsOptional()
   userId?: string;
+}
+
+export class UserMiniDto {
+  @ApiProperty()
+  userId: string;
+
+  @ApiProperty()
+  firstName: string;
+
+  @ApiProperty()
+  lastName: string;
+
+  @ApiProperty()
+  identificationNumber: string;
+}
+
+export class ProductMiniDto {
+  @ApiProperty()
+  productId: number;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty({ type: () => CategoryTypeDto })
+  categoryType: CategoryTypeDto;
+}
+
+export class AccommodationMiniDto {
+  @ApiProperty()
+  accommodationId: number;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty({ type: () => CategoryTypeDto })
+  categoryType: CategoryTypeDto;
+}
+
+export class ExcursionMiniDto {
+  @ApiProperty()
+  excursionId: number;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty({ type: () => CategoryTypeDto })
+  categoryType: CategoryTypeDto;
+}
+
+export class InvoiceDetailDto {
+  @ApiProperty()
+  invoiceDetailId: number;
+
+  @ApiProperty({ required: false })
+  amount?: number;
+
+  @ApiProperty()
+  priceWithoutTax: string;
+
+  @ApiProperty()
+  priceWithTax: string;
+
+  @ApiProperty()
+  subtotal: string;
+
+  @ApiProperty({ required: false })
+  startDate?: Date;
+
+  @ApiProperty({ required: false })
+  endDate?: Date;
+
+  @ApiProperty({ type: () => TaxeTypeDto })
+  taxeType?: TaxeTypeDto;
+
+  @ApiProperty({ type: () => ProductMiniDto, required: false })
+  product?: ProductMiniDto;
+
+  @ApiProperty({ type: () => AccommodationMiniDto, required: false })
+  accommodation?: AccommodationMiniDto;
+
+  @ApiProperty({ type: () => ExcursionMiniDto, required: false })
+  excursion?: ExcursionMiniDto;
+}
+
+export class GetInvoiceWithDetailsDto {
+  @ApiProperty()
+  invoiceId: number;
+
+  @ApiProperty()
+  code: string;
+
+  @ApiProperty()
+  subtotal: string;
+
+  @ApiProperty()
+  total: string;
+
+  @ApiProperty()
+  startDate: Date;
+
+  @ApiProperty()
+  endDate: Date;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty({ required: false })
+  updatedAt?: Date;
+
+  @ApiProperty({ required: false })
+  deletedAt?: Date;
+
+  @ApiProperty({ type: () => InvoiceTypeDto })
+  invoiceType: InvoiceTypeDto;
+
+  @ApiProperty({ type: () => PayTypeDto })
+  payType: PayTypeDto;
+
+  @ApiProperty({ type: () => PaidTypeDto })
+  paidType: PaidTypeDto;
+
+  @ApiProperty({ type: () => UserMiniDto })
+  user: UserMiniDto;
+
+  @ApiProperty({ type: () => UserMiniDto })
+  employee: UserMiniDto;
+
+  @ApiProperty({ type: () => [InvoiceDetailDto] })
+  invoiceDetails: InvoiceDetailDto[];
+}
+
+export class GetInvoiceWithDetailsResponseDto implements BaseResponseDto {
+  @ApiProperty({
+    example: HttpStatus.OK,
+  })
+  statusCode: number;
+
+  @ApiProperty({
+    type: Object,
+    example: GET_INVOICE_EXAMPLE,
+  })
+  data: GetInvoiceWithDetailsDto;
 }

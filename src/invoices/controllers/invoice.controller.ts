@@ -7,7 +7,8 @@ import {
 } from './../dtos/invoiceDetaill.dto';
 import {
   CreateInvoiceWithDetailsDto,
-  GetInvoiceWithDetails,
+  GetInvoiceWithDetailsResponseDto,
+  GetInvoiceWithDetailsDto,
   UpdateInvoiceDto,
 } from './../dtos/invoice.dto';
 import {
@@ -116,15 +117,15 @@ export class InvoiceController {
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: GetInvoiceWithDetails })
+  @ApiOkResponse({ type: GetInvoiceWithDetailsResponseDto })
   @ApiNotFoundResponse({ type: NotFoundResponseDto })
   async findOne(
-    @Param('id') excursionId: number,
-  ): Promise<GetInvoiceWithDetails> {
-    const excursion = await this._invoiceUC.findOne(excursionId);
+    @Param('id') invoiceId: number,
+  ): Promise<{ statusCode: number; data: GetInvoiceWithDetailsDto }> {
+    const invoice = await this._invoiceUC.findOne(invoiceId);
     return {
       statusCode: HttpStatus.OK,
-      data: excursion,
+      data: invoice,
     };
   }
 

@@ -10,6 +10,7 @@ import { InvoiceRepository } from './../../shared/repositories/invoice.repositor
 import { Invoice } from './../../shared/entities/invoice.entity';
 import {
   CreateInvoiceWithDetailsDto,
+  GetInvoiceWithDetailsDto,
   UpdateInvoiceDto,
 } from '../dtos/invoice.dto';
 import { InvoiceTypeRepository } from './../../shared/repositories/invoiceType.repository';
@@ -157,13 +158,15 @@ export class InvoiceService {
     return await this._invoiceRepository.save(newInvoice);
   }
 
-  async findOne(invoiceId: number): Promise<Invoice> {
+  async findOne(invoiceId: number): Promise<GetInvoiceWithDetailsDto> {
     const invoice = await this._invoiceRepository.findOne({
       where: { invoiceId },
       relations: [
         'invoiceType',
         'payType',
         'paidType',
+        'user',
+        'employee',
         'invoiceDetails',
         'invoiceDetails.product',
         'invoiceDetails.product.categoryType',
@@ -180,10 +183,100 @@ export class InvoiceService {
       throw new NotFoundException('Factura no encontrada');
     }
 
-    return invoice;
+    return {
+      invoiceId: invoice.invoiceId,
+      code: invoice.code,
+      subtotal: invoice.subtotal.toString(),
+      total: invoice.total.toString(),
+      startDate: invoice.startDate,
+      endDate: invoice.endDate,
+      createdAt: invoice.createdAt,
+      updatedAt: invoice.updatedAt,
+      deletedAt: invoice.deletedAt,
+
+      invoiceType: {
+        invoiceTypeId: invoice.invoiceType.invoiceTypeId,
+        code: invoice.invoiceType.code,
+        name: invoice.invoiceType.name,
+      },
+
+      payType: {
+        payTypeId: invoice.payType.payTypeId,
+        code: invoice.payType.code,
+        name: invoice.payType.name,
+      },
+
+      paidType: {
+        paidTypeId: invoice.paidType.paidTypeId,
+        code: invoice.paidType.code,
+        name: invoice.paidType.name,
+      },
+
+      user: {
+        userId: invoice.user.userId,
+        firstName: invoice.user.firstName,
+        lastName: invoice.user.lastName,
+        identificationNumber: invoice.user.identificationNumber,
+      },
+
+      employee: {
+        userId: invoice.employee.userId,
+        firstName: invoice.employee.firstName,
+        lastName: invoice.employee.lastName,
+        identificationNumber: invoice.employee.identificationNumber,
+      },
+
+      invoiceDetails: invoice.invoiceDetails.map((detail) => ({
+        invoiceDetailId: detail.invoiceDetailId,
+        amount: detail.amount,
+        priceWithoutTax: detail.priceWithoutTax.toString(),
+        priceWithTax: detail.priceWithTax.toString(),
+        subtotal: detail.subtotal.toString(),
+        startDate: detail.startDate,
+        endDate: detail.endDate,
+
+        taxeType: detail.taxeType
+          ? {
+              taxeTypeId: detail.taxeType.taxeTypeId,
+              name: detail.taxeType.name,
+              percentage: detail.taxeType.percentage,
+            }
+          : null,
+
+        product: detail.product && {
+          productId: detail.product.productId,
+          name: detail.product.name,
+          categoryType: {
+            categoryTypeId: detail.product.categoryType.categoryTypeId,
+            name: detail.product.categoryType.name,
+            code: detail.product.categoryType.code,
+          },
+        },
+
+        accommodation: detail.accommodation && {
+          accommodationId: detail.accommodation.accommodationId,
+          name: detail.accommodation.name,
+          categoryType: {
+            categoryTypeId: detail.accommodation.categoryType.categoryTypeId,
+            name: detail.accommodation.categoryType.name,
+            code: detail.accommodation.categoryType.code,
+          },
+        },
+
+        excursion: detail.excursion && {
+          excursionId: detail.excursion.excursionId,
+          name: detail.excursion.name,
+          categoryType: {
+            categoryTypeId: detail.excursion.categoryType.categoryTypeId,
+            name: detail.excursion.categoryType.name,
+            code: detail.excursion.categoryType.code,
+          },
+        },
+      })),
+    };
   }
 
-  async update(updateDto: UpdateInvoiceDto): Promise<Invoice> {
+  async update(updateDto: UpdateInvoiceDto): Promise<GetInvoiceWithDetailsDto> {
     const { invoiceId, payTypeId, paidTypeId, userId } = updateDto;
 
     const queryRunner =

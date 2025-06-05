@@ -5,6 +5,7 @@ import { InvoiceService } from './../services/invoice.service';
 import { InvoiceDetailService } from '../services/invoiceDetail.service';
 import {
   CreateInvoiceWithDetailsDto,
+  GetInvoiceWithDetailsDto,
   UpdateInvoiceDto,
 } from '../dtos/invoice.dto';
 import {
@@ -30,7 +31,7 @@ export class InvoiceUC {
     );
   }
 
-  async findOne(invoiceId: number) {
+  async findOne(invoiceId: number): Promise<GetInvoiceWithDetailsDto> {
     return this._invoiceService.findOne(invoiceId);
   }
 
