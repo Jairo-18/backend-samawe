@@ -136,9 +136,9 @@ export class InvoicedPaginatedService {
         invoiceId: invoice.invoiceId,
         code: invoice.code,
         subtotal:
-          typeof invoice.subtotal === 'string'
-            ? parseFloat(invoice.subtotal) || 0
-            : invoice.subtotal || 0,
+          typeof invoice.subtotalWithTax === 'string'
+            ? parseFloat(invoice.subtotalWithTax) || 0
+            : invoice.subtotalWithTax || 0,
         total:
           typeof invoice.total === 'string'
             ? parseFloat(invoice.total) || 0

@@ -74,37 +74,44 @@ export class InvoiceDetailService {
   }
 
   // Método privado para actualizar el total de la factura
+  // Método privado para actualizar el total de la factura
   private async updateInvoiceTotal(invoiceId: number): Promise<void> {
     // Obtener todos los detalles de la factura
     const details = await this._invoiceDetaillRepository.find({
       where: { invoice: { invoiceId } },
     });
 
-    // Calcular el nuevo total sumando todos los subtotales
-    const newTotal = details.reduce((sum, detail) => {
-      const subtotal = Number(detail.subtotal);
-      // Validar que el subtotal sea un número válido
-      if (isNaN(subtotal)) {
-        return sum;
-      }
-      return sum + subtotal;
-    }, 0);
+    let subtotalWithoutTax = 0;
+    let total = 0;
 
-    // Validar que el total calculado sea válido
-    if (isNaN(newTotal)) {
-      throw new Error(
-        `Error al calcular el total de la factura ${invoiceId}: resultado NaN`,
-      );
+    for (const detail of details) {
+      const priceWithoutTax = Number(detail.priceWithoutTax);
+      const priceWithTax = Number(detail.priceWithTax);
+      const amount = Number(detail.amount);
+
+      if (isNaN(priceWithoutTax) || isNaN(priceWithTax) || isNaN(amount)) {
+        continue; // O lanza un error si prefieres
+      }
+
+      subtotalWithoutTax += priceWithoutTax * amount;
+      total += priceWithTax * amount;
     }
 
-    // Actualizar la factura con el nuevo total
+    // Redondeos para evitar problemas de precisión
+    subtotalWithoutTax = Number(subtotalWithoutTax.toFixed(2));
+    total = Number(total.toFixed(2));
+
+    const subtotalWithTax = Number((total - subtotalWithoutTax).toFixed(2));
+
     await this._invoiceRepository.update(invoiceId, {
-      total: newTotal,
-      subtotal: newTotal, // Asumiendo que también tienes un campo subtotal separado
+      subtotalWithoutTax,
+      subtotalWithTax,
+      total,
     });
   }
 
   async create(invoiceId: number, dto: CreateInvoiceDetailDto) {
+    // Buscar la factura
     const invoice = await this._invoiceRepository.findOne({
       where: { invoiceId },
     });
@@ -115,19 +122,24 @@ export class InvoiceDetailService {
     let taxRate = 0;
     let taxeType = null;
 
+    // Buscar tipo de impuesto si se especifica
     if (dto.taxeTypeId) {
       taxeType = await this._taxeTypeRepository.findOne({
         where: { taxeTypeId: dto.taxeTypeId },
       });
-      if (!taxeType)
-        throw new NotFoundException('Tipo de impuesto no encontrado');
 
-      // Usar 'percentage' o 'rate' dependiendo de tu entidad
-      // Si está en porcentaje (16), dividir por 100. Si ya está en decimal (0.16), usar directo
-      taxRate = taxeType.percentage / 100; // Ajusta según tu campo: taxeType.rate o taxeType.percentage
+      if (!taxeType) {
+        throw new NotFoundException('Tipo de impuesto no encontrado');
+      }
+
+      // Manejar tanto porcentajes como decimales
+      taxRate =
+        taxeType.percentage > 1
+          ? taxeType.percentage / 100
+          : taxeType.percentage;
     }
 
-    // Validar que los valores numéricos sean válidos
+    // Validar valores numéricos
     const priceWithoutTax = Number(dto.priceWithoutTax);
     const amount = Number(dto.amount);
 
@@ -142,22 +154,23 @@ export class InvoiceDetailService {
       );
     }
 
-    // Calcular valores
+    // Calcular precios con y sin impuesto
     const priceWithTax = Number((priceWithoutTax * (1 + taxRate)).toFixed(2));
     const subtotal = Number((amount * priceWithTax).toFixed(2));
 
+    // Crear detalle
     const detail = this._invoiceDetaillRepository.create({
-      amount: amount,
-      priceWithoutTax: priceWithoutTax,
-      priceWithTax: priceWithTax,
-      subtotal: subtotal,
-      taxeType: taxeType,
+      amount,
+      priceWithoutTax,
+      priceWithTax,
+      subtotal,
+      taxeType,
       invoice,
       startDate: dto.startDate,
       endDate: dto.endDate,
     });
 
-    // Asignar relación con product si existe productId
+    // Asignar relaciones adicionales
     if (dto.productId) {
       const product = await this._productRepository.findOne({
         where: { productId: dto.productId },
@@ -166,7 +179,6 @@ export class InvoiceDetailService {
       detail.product = product;
     }
 
-    // Asignar relación con accommodation si existe accommodationId
     if (dto.accommodationId) {
       const accommodation = await this._accommodationRepository.findOne({
         where: { accommodationId: dto.accommodationId },
@@ -176,7 +188,6 @@ export class InvoiceDetailService {
       detail.accommodation = accommodation;
     }
 
-    // Asignar relación con excursion si existe excursionId
     if (dto.excursionId) {
       const excursion = await this._excursionRepository.findOne({
         where: { excursionId: dto.excursionId },
@@ -188,7 +199,7 @@ export class InvoiceDetailService {
     // Guardar el detalle
     const savedDetail = await this._invoiceDetaillRepository.save(detail);
 
-    // 🔥 ACTUALIZAR EL TOTAL DE LA FACTURA
+    // 🔥 Actualizar el total de la factura
     await this.updateInvoiceTotal(invoiceId);
 
     return savedDetail;

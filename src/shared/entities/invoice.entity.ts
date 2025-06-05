@@ -51,7 +51,16 @@ export class Invoice {
     nullable: false,
     default: 0,
   })
-  subtotal: number;
+  subtotalWithoutTax: number;
+
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: false,
+    default: 0,
+  })
+  subtotalWithTax: number;
 
   @Column({
     type: 'decimal',

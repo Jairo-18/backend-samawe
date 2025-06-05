@@ -20,7 +20,6 @@ import {
   IsUUID,
 } from 'class-validator';
 
-import { GET_INVOICE_EXAMPLE } from '../constants/exampleInvoices.conts';
 import { Type } from 'class-transformer';
 import { CreateInvoiceDetailDto } from './invoiceDetaill.dto';
 
@@ -139,7 +138,6 @@ export class UpdateInvoiceDto {
   @IsOptional()
   userId?: string;
 }
-
 export class UserMiniDto {
   @ApiProperty()
   userId: string;
@@ -161,6 +159,9 @@ export class ProductMiniDto {
   @ApiProperty()
   name: string;
 
+  @ApiProperty()
+  code: string;
+
   @ApiProperty({ type: () => CategoryTypeDto })
   categoryType: CategoryTypeDto;
 }
@@ -172,6 +173,9 @@ export class AccommodationMiniDto {
   @ApiProperty()
   name: string;
 
+  @ApiProperty()
+  code: string;
+
   @ApiProperty({ type: () => CategoryTypeDto })
   categoryType: CategoryTypeDto;
 }
@@ -182,6 +186,9 @@ export class ExcursionMiniDto {
 
   @ApiProperty()
   name: string;
+
+  @ApiProperty()
+  code: string;
 
   @ApiProperty({ type: () => CategoryTypeDto })
   categoryType: CategoryTypeDto;
@@ -209,7 +216,7 @@ export class InvoiceDetailDto {
   @ApiProperty({ required: false })
   endDate?: Date;
 
-  @ApiProperty({ type: () => TaxeTypeDto })
+  @ApiProperty({ type: () => TaxeTypeDto, required: false })
   taxeType?: TaxeTypeDto;
 
   @ApiProperty({ type: () => ProductMiniDto, required: false })
@@ -230,7 +237,10 @@ export class GetInvoiceWithDetailsDto {
   code: string;
 
   @ApiProperty()
-  subtotal: string;
+  subtotalWithoutTax: string;
+
+  @ApiProperty()
+  subtotalWithTax: string;
 
   @ApiProperty()
   total: string;
@@ -276,8 +286,7 @@ export class GetInvoiceWithDetailsResponseDto implements BaseResponseDto {
   statusCode: number;
 
   @ApiProperty({
-    type: Object,
-    example: GET_INVOICE_EXAMPLE,
+    type: () => GetInvoiceWithDetailsDto,
   })
   data: GetInvoiceWithDetailsDto;
 }

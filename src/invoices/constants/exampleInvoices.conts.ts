@@ -1,7 +1,7 @@
 export const GET_INVOICE_EXAMPLE = {
   invoiceId: 2,
   code: '0023',
-  subtotal: '0.00',
+  subtotalWithTax: '0.00',
   total: '0.00',
   startDate: '2025-05-27',
   endDate: '2025-05-30',
