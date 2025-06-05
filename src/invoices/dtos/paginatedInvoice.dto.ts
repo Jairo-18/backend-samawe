@@ -1,6 +1,7 @@
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsOptional, IsString } from 'class-validator';
 import { ParamsPaginationDto } from './../../shared/dtos/pagination.dto';
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 
 export class PaginatedListInvoicesParamsDto extends ParamsPaginationDto {
   @ApiProperty({
@@ -20,6 +21,11 @@ export class PaginatedListInvoicesParamsDto extends ParamsPaginationDto {
   @IsOptional()
   @IsString()
   code?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true' || value === true)
+  invoiceElectronic?: boolean;
 
   @ApiProperty({
     example: 'Juan Pérez',

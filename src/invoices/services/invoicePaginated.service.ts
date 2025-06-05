@@ -50,6 +50,12 @@ export class InvoicedPaginatedService {
       );
     }
 
+    if (params.invoiceElectronic !== undefined) {
+      query.andWhere('invoice.invoiceElectronic = :invoiceElectronic', {
+        invoiceElectronic: params.invoiceElectronic,
+      });
+    }
+
     if (params.employeeName) {
       query.andWhere(
         `(employee.firstName ILIKE :employeeName OR employee.lastName ILIKE :employeeName)`,
