@@ -33,9 +33,9 @@ export class InvoicedPaginatedService {
       .leftJoinAndSelect('invoice.invoiceType', 'invoiceType')
       .where('1=1');
 
-    if (params.invoiceType) {
+    if (params.invoiceTypeId) {
       query.andWhere('invoice.invoiceType = :invoiceType', {
-        invoiceType: params.invoiceType,
+        invoiceType: params.invoiceTypeId,
       });
     }
 
@@ -63,17 +63,10 @@ export class InvoicedPaginatedService {
       );
     }
 
-    if (params.clientIdentificationType) {
+    if (params.identificationTypeId) {
       query.andWhere('user.identificationTypeId = :clientIdentificationType', {
-        clientIdentificationType: params.clientIdentificationType,
+        clientIdentificationType: params.identificationTypeId,
       });
-    }
-
-    if (params.employeeIdentificationType) {
-      query.andWhere(
-        'employee.identificationTypeId = :employeeIdentificationType',
-        { employeeIdentificationType: params.employeeIdentificationType },
-      );
     }
 
     if (params.payTypeId) {

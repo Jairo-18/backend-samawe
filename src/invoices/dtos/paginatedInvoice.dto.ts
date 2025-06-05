@@ -11,7 +11,7 @@ export class PaginatedListInvoicesParamsDto extends ParamsPaginationDto {
   })
   @IsOptional()
   @IsString()
-  invoiceType?: number;
+  invoiceTypeId?: number;
 
   @ApiProperty({
     example: 'EXC-001',
@@ -53,17 +53,7 @@ export class PaginatedListInvoicesParamsDto extends ParamsPaginationDto {
   })
   @IsOptional()
   @IsString()
-  clientIdentificationType?: number;
-
-  @ApiProperty({
-    example: 1,
-    description:
-      'ID del tipo de identificación del empleado (1=CC, 2=NIT, 3=CE, etc.)',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  employeeIdentificationType?: number;
+  identificationTypeId?: number;
 
   @ApiProperty({
     example: '2024-06-01',
