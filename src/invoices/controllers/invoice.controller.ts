@@ -6,10 +6,10 @@ import {
   UpdateInvoiceDetailDto,
 } from './../dtos/invoiceDetaill.dto';
 import {
-  CreateInvoiceWithDetailsDto,
   GetInvoiceWithDetailsResponseDto,
   GetInvoiceWithDetailsDto,
   UpdateInvoiceDto,
+  CreateInvoiceDto,
 } from './../dtos/invoice.dto';
 import {
   CreatedRecordResponseDto,
@@ -47,25 +47,6 @@ import { ResponsePaginationDto } from 'src/shared/dtos/pagination.dto';
 export class InvoiceController {
   constructor(private readonly _invoiceUC: InvoiceUC) {}
 
-  // @Post('create')
-  // //   @ApiBearerAuth()
-  // //   @UseGuards(AuthGuard())
-  // @ApiOkResponse({ type: CreateInvoiceDto })
-  // @ApiConflictResponse({ type: DuplicatedResponseDto })
-  // async create(
-  //   @Body() invoiceDto: CreateInvoiceDto,
-  // ): Promise<CreatedRecordResponseDto> {
-  //   const createExcursion = await this._invoiceUC.create(invoiceDto);
-
-  //   return {
-  //     message: 'Registro de factura exitoso',
-  //     statusCode: HttpStatus.CREATED,
-  //     data: {
-  //       rowId: createExcursion.invoiceId.toString(),
-  //       ...createExcursion,
-  //     },
-  //   };
-  // }
   @Get('/paginated-list')
   @ApiOkResponse({ type: ResponsePaginationDto<Invoice> })
   @ApiBearerAuth()
@@ -76,19 +57,19 @@ export class InvoiceController {
     return await this._invoiceUC.paginatedList(params);
   }
 
-  @Post('create')
+  @Post()
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: CreateInvoiceWithDetailsDto })
+  @ApiOkResponse({ type: CreateInvoiceDto })
   @ApiConflictResponse({ type: DuplicatedResponseDto })
-  async createWithDetails(
-    @Body() createInvoiceWithDetailsDto: CreateInvoiceWithDetailsDto,
+  async create(
+    @Body() createInvoiceDto: CreateInvoiceDto,
     @Request() req: any,
   ): Promise<CreatedRecordResponseDto> {
     const employeeId = req.user.userId;
 
-    const created = await this._invoiceUC.createWithDetails(
-      createInvoiceWithDetailsDto,
+    const created = await this._invoiceUC.createInvoice(
+      createInvoiceDto,
       employeeId,
     );
 
@@ -156,7 +137,6 @@ export class InvoiceController {
     await this._invoiceUC.update({ invoiceId, ...invoiceData });
 
     return {
-      message: 'Factura actualizada correctamente',
       statusCode: HttpStatus.OK,
     };
   }
@@ -206,9 +186,9 @@ export class InvoiceController {
   @ApiOkResponse({ type: DeleteReCordResponseDto })
   @ApiNotFoundResponse({ type: NotFoundResponseDto })
   async deleteDetail(
-    @Param('detailId') updateDetailDto: number,
+    @Param('detailId') deleteDetailDto: number,
   ): Promise<DeleteReCordResponseDto> {
-    await this._invoiceUC.deleteDetail(updateDetailDto);
+    await this._invoiceUC.deleteDetail(deleteDetailDto);
     return {
       statusCode: HttpStatus.OK,
       message: 'Detalle eliminado correctamente',

@@ -15,6 +15,7 @@ import { TaxeTypeRepository } from './../../shared/repositories/taxeType.reposit
 import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
 import { InvoiceTypeRepository } from './../../shared/repositories/invoiceType.repository';
 import {
+  CreateInvoiceDto,
   CreateInvoiceWithDetailsDto,
   GetInvoiceWithDetailsDto,
   UpdateInvoiceDto,
@@ -32,21 +33,17 @@ export class InvoiceService {
     private readonly _userRepository: UserRepository,
   ) {}
 
-  async createWithDetails(
-    createInvoiceWithDetailsDto: CreateInvoiceWithDetailsDto,
-    employeeId: string,
-  ): Promise<Invoice> {
+  async create(dto: CreateInvoiceDto, employeeId: string): Promise<Invoice> {
     const {
       invoiceTypeId,
-      details,
       code,
       userId,
       payTypeId,
       paidTypeId,
+      invoiceElectronic,
       ...invoiceData
-    } = createInvoiceWithDetailsDto;
+    } = dto;
 
-    // Validaciones: obtener entidades relacionadas
     const [payType, paidType, invoiceType, user] = await Promise.all([
       this._payTypeRepository.findOne({ where: { payTypeId } }),
       this._paidTypeRepository.findOne({ where: { paidTypeId } }),
@@ -61,7 +58,6 @@ export class InvoiceService {
       throw new BadRequestException('Tipo de factura no encontrado');
     if (!user) throw new BadRequestException('Cliente no encontrado');
 
-    // Verificar que no exista factura con mismo código y tipo
     const existingInvoice = await this._invoiceRepository.findOne({
       where: { code, invoiceType: { invoiceTypeId } },
       relations: ['invoiceType'],
@@ -73,27 +69,18 @@ export class InvoiceService {
       );
     }
 
-    // Calcular detalles y totales
-    const {
-      details: invoiceDetails,
-      total,
-      subtotalWithoutTax,
-      subtotalWithTax,
-    } = await this._calculateInvoiceDetails(details);
-
-    // Crear entidad factura
     const newInvoice = this._invoiceRepository.create({
       code,
       ...invoiceData,
-      subtotalWithoutTax,
-      subtotalWithTax,
-      total,
+      invoiceElectronic,
+      subtotalWithoutTax: 0,
+      subtotalWithTax: 0,
+      total: 0,
       invoiceType,
       user,
       employee: { userId: employeeId },
       payType,
       paidType,
-      invoiceDetails,
     });
 
     return await this._invoiceRepository.save(newInvoice);
@@ -188,6 +175,7 @@ export class InvoiceService {
     return {
       invoiceId: invoice.invoiceId,
       code: invoice.code,
+      invoiceElectronic: invoice.invoiceElectronic,
       subtotalWithoutTax: invoice.subtotalWithoutTax.toString(),
       subtotalWithTax: invoice.subtotalWithTax.toString(),
       total: invoice.total.toString(),
@@ -273,7 +261,8 @@ export class InvoiceService {
   }
 
   async update(updateDto: UpdateInvoiceDto): Promise<GetInvoiceWithDetailsDto> {
-    const { invoiceId, payTypeId, paidTypeId, userId } = updateDto;
+    const { invoiceId, payTypeId, paidTypeId, userId, invoiceElectronic } =
+      updateDto;
 
     const queryRunner =
       this._invoiceRepository.manager.connection.createQueryRunner();
@@ -311,6 +300,10 @@ export class InvoiceService {
         });
         if (!user) throw new BadRequestException('Cliente no encontrado');
         invoice.user = user;
+      }
+
+      if (invoiceElectronic !== undefined) {
+        invoice.invoiceElectronic = invoiceElectronic;
       }
 
       await queryRunner.manager.save(invoice);

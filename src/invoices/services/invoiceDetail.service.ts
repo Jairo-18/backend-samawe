@@ -73,41 +73,64 @@ export class InvoiceDetailService {
     };
   }
 
-  // Método privado para actualizar el total de la factura
-  // Método privado para actualizar el total de la factura
+  // 🔥 Método mejorado para actualizar totales de la factura
   private async updateInvoiceTotal(invoiceId: number): Promise<void> {
-    // Obtener todos los detalles de la factura
-    const details = await this._invoiceDetaillRepository.find({
-      where: { invoice: { invoiceId } },
-    });
+    try {
+      // Obtener todos los detalles de la factura
+      const details = await this._invoiceDetaillRepository.find({
+        where: { invoice: { invoiceId } },
+      });
 
-    let subtotalWithoutTax = 0;
-    let total = 0;
+      let subtotalWithoutTax = 0;
+      let subtotalWithTax = 0;
+      let total = 0;
 
-    for (const detail of details) {
-      const priceWithoutTax = Number(detail.priceWithoutTax);
-      const priceWithTax = Number(detail.priceWithTax);
-      const amount = Number(detail.amount);
+      // Calcular totales basándose en los detalles existentes
+      for (const detail of details) {
+        const priceWithoutTax = Number(detail.priceWithoutTax) || 0;
+        const priceWithTax = Number(detail.priceWithTax) || 0;
+        const amount = Number(detail.amount) || 0;
 
-      if (isNaN(priceWithoutTax) || isNaN(priceWithTax) || isNaN(amount)) {
-        continue; // O lanza un error si prefieres
+        // Validación adicional
+        if (priceWithoutTax < 0 || priceWithTax < 0 || amount < 0) {
+          continue;
+        }
+
+        const lineSubtotalWithoutTax = priceWithoutTax * amount;
+        const lineSubtotalWithTax = priceWithTax * amount;
+        const taxAmount = lineSubtotalWithTax - lineSubtotalWithoutTax;
+
+        subtotalWithoutTax += lineSubtotalWithoutTax;
+        subtotalWithTax += taxAmount;
+        total += lineSubtotalWithTax;
       }
 
-      subtotalWithoutTax += priceWithoutTax * amount;
-      total += priceWithTax * amount;
+      // Redondear para evitar problemas de precisión decimal
+      subtotalWithoutTax = Math.round(subtotalWithoutTax * 100) / 100;
+      subtotalWithTax = Math.round(subtotalWithTax * 100) / 100;
+      total = Math.round(total * 100) / 100;
+
+      // Actualizar la factura
+      const updateResult = await this._invoiceRepository.update(invoiceId, {
+        subtotalWithoutTax,
+        subtotalWithTax,
+        total,
+      });
+
+      if (updateResult.affected === 0) {
+        throw new NotFoundException(
+          `No se pudo actualizar la factura con ID ${invoiceId}`,
+        );
+      }
+    } catch (error) {
+      console.error(
+        `Error actualizando totales de factura ${invoiceId}:`,
+        error,
+      );
+      throw new BadRequestException(
+        `Error actualizando totales de la factura: ${error.message}`,
+      );
     }
-
-    // Redondeos para evitar problemas de precisión
-    subtotalWithoutTax = Number(subtotalWithoutTax.toFixed(2));
-    total = Number(total.toFixed(2));
-
-    const subtotalWithTax = Number((total - subtotalWithoutTax).toFixed(2));
-
-    await this._invoiceRepository.update(invoiceId, {
-      subtotalWithoutTax,
-      subtotalWithTax,
-      total,
-    });
   }
 
   async create(invoiceId: number, dto: CreateInvoiceDetailDto) {
@@ -199,7 +222,21 @@ export class InvoiceDetailService {
     // Guardar el detalle
     const savedDetail = await this._invoiceDetaillRepository.save(detail);
 
-    // 🔥 Actualizar el total de la factura
+    // 🔥 Si es un producto, disminuir el stock
+    if (savedDetail.product) {
+      const product = savedDetail.product;
+      product.amount = (product.amount ?? 0) - savedDetail.amount;
+
+      if (product.amount < 0) {
+        throw new BadRequestException(
+          `No hay suficiente stock para el producto ${product.name}`,
+        );
+      }
+
+      await this._productRepository.save(product);
+    }
+
+    // Actualizar el total de la factura
     await this.updateInvoiceTotal(invoiceId);
 
     return savedDetail;
@@ -214,7 +251,7 @@ export class InvoiceDetailService {
         'excursion',
         'invoice',
         'taxeType',
-      ], // Incluir invoice y taxeType
+      ],
     });
 
     if (!existing) {
@@ -242,11 +279,17 @@ export class InvoiceDetailService {
           if (!taxeType)
             throw new NotFoundException('Tipo de impuesto no encontrado');
 
-          taxRate = taxeType.percentage / 100; // Ajusta según tu campo
+          taxRate =
+            taxeType.percentage > 1
+              ? taxeType.percentage / 100
+              : taxeType.percentage;
           existing.taxeType = taxeType;
         }
       } else if (existing.taxeType) {
-        taxRate = existing.taxeType.percentage / 100; // Ajusta según tu campo
+        taxRate =
+          existing.taxeType.percentage > 1
+            ? existing.taxeType.percentage / 100
+            : existing.taxeType.percentage;
       }
 
       // Actualizar valores
@@ -256,8 +299,15 @@ export class InvoiceDetailService {
       );
 
       // Validar que los valores sean números válidos
-      if (isNaN(existing.amount) || isNaN(existing.priceWithoutTax)) {
-        throw new BadRequestException('Los valores numéricos no son válidos');
+      if (
+        isNaN(existing.amount) ||
+        isNaN(existing.priceWithoutTax) ||
+        existing.amount < 0 ||
+        existing.priceWithoutTax < 0
+      ) {
+        throw new BadRequestException(
+          'Los valores numéricos no son válidos o no pueden ser negativos',
+        );
       }
 
       existing.priceWithTax = Number(
@@ -271,7 +321,7 @@ export class InvoiceDetailService {
     // Actualizar relación con product si viene productId en updateDto
     if (updateDto.productId !== undefined) {
       if (updateDto.productId === null) {
-        existing.product = null; // quitar relación si null
+        existing.product = null;
       } else {
         const product = await this._productRepository.findOne({
           where: { productId: updateDto.productId },
@@ -308,15 +358,6 @@ export class InvoiceDetailService {
       }
     }
 
-    // Actualizar fechas si vienen en el DTO
-    // if (updateDto.startDate !== undefined) {
-    //   existing.startDate = updateDto.startDate;
-    // }
-
-    // if (updateDto.endDate !== undefined) {
-    //   existing.endDate = updateDto.endDate;
-    // }
-
     // Guardar cambios
     const updatedDetail = await this._invoiceDetaillRepository.save(existing);
 
@@ -329,7 +370,7 @@ export class InvoiceDetailService {
   async delete(invoiceDetailId: number) {
     const detail = await this._invoiceDetaillRepository.findOne({
       where: { invoiceDetailId },
-      relations: ['invoice'], // Incluir la relación con invoice
+      relations: ['invoice', 'product'],
     });
 
     if (!detail) {
@@ -340,12 +381,36 @@ export class InvoiceDetailService {
 
     const invoiceId = detail.invoice.invoiceId;
 
+    if (detail.product) {
+      const product = detail.product;
+
+      // Convertir amount a número seguro
+      const currentAmount = Number(product.amount) || 0;
+      const detailAmount = Number(detail.amount) || 0;
+
+      // Sumar el stock asegurando que el resultado es número válido
+      const newAmount = currentAmount + detailAmount;
+
+      if (isNaN(newAmount)) {
+        throw new Error(
+          `Valor inválido para stock: product.amount=${product.amount} + detail.amount=${detail.amount}`,
+        );
+      }
+
+      product.amount = newAmount;
+
+      await this._productRepository.save(product);
+    }
+
     await this._invoiceDetaillRepository.remove(detail);
 
-    // 🔥 ACTUALIZAR EL TOTAL DE LA FACTURA DESPUÉS DE ELIMINAR
     await this.updateInvoiceTotal(invoiceId);
 
-    return { message: 'Detalle eliminado correctamente' };
+    return {
+      message: 'Detalle eliminado correctamente',
+      invoiceId,
+      deletedDetailId: invoiceDetailId,
+    };
   }
 
   async findById(invoiceDetailId: number) {

@@ -18,6 +18,7 @@ import {
   ValidateNested,
   IsArray,
   IsUUID,
+  IsBoolean,
 } from 'class-validator';
 
 import { Type } from 'class-transformer';
@@ -50,6 +51,14 @@ export class CreateInvoiceDto {
   @IsUUID()
   @IsNotEmpty({ message: 'El cliente (userId) es requerido' })
   userId: string;
+
+  @ApiProperty({
+    example: false,
+    description: 'False y True',
+  })
+  @IsBoolean()
+  @IsNotEmpty({ message: 'Es factura electronica reeuqerido' })
+  invoiceElectronic: boolean;
 
   @ApiProperty({ example: '2025-05-27', description: 'Fecha de inicio' })
   @IsDateString(
@@ -137,7 +146,11 @@ export class UpdateInvoiceDto {
   @IsUUID()
   @IsOptional()
   userId?: string;
+
+  @IsBoolean()
+  invoiceElectronic: boolean;
 }
+
 export class UserMiniDto {
   @ApiProperty()
   userId: string;
@@ -235,6 +248,9 @@ export class GetInvoiceWithDetailsDto {
 
   @ApiProperty()
   code: string;
+
+  @ApiProperty()
+  invoiceElectronic: boolean;
 
   @ApiProperty()
   subtotalWithoutTax: string;

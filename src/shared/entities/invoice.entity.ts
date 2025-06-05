@@ -44,6 +44,9 @@ export class Invoice {
   @JoinColumn({ name: 'payTypeId' })
   payType: PayType;
 
+  @Column({ type: 'boolean', default: false })
+  invoiceElectronic: boolean;
+
   @Column({
     type: 'decimal',
     precision: 10,

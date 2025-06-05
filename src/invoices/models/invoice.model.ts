@@ -1,6 +1,7 @@
 export interface SimplifiedInvoiceResponse {
   invoiceId: number;
   code: string;
+  invoiceElectronic: boolean;
   subtotal?: number;
   total: number;
   startDate: Date;

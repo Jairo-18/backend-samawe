@@ -135,6 +135,7 @@ export class InvoicedPaginatedService {
       const simplified: SimplifiedInvoiceResponse = {
         invoiceId: invoice.invoiceId,
         code: invoice.code,
+        invoiceElectronic: invoice.invoiceElectronic,
         subtotal:
           typeof invoice.subtotalWithTax === 'string'
             ? parseFloat(invoice.subtotalWithTax) || 0

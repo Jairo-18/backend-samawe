@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { InvoiceService } from './../services/invoice.service';
 import { InvoiceDetailService } from '../services/invoiceDetail.service';
 import {
-  CreateInvoiceWithDetailsDto,
+  CreateInvoiceDto,
   GetInvoiceWithDetailsDto,
   UpdateInvoiceDto,
 } from '../dtos/invoice.dto';
@@ -21,14 +21,8 @@ export class InvoiceUC {
     private readonly _invoicedPaginatedService: InvoicedPaginatedService,
   ) {}
 
-  async createWithDetails(
-    createInvoiceWithDetailsDto: CreateInvoiceWithDetailsDto,
-    employeeId: string,
-  ) {
-    return this._invoiceService.createWithDetails(
-      createInvoiceWithDetailsDto,
-      employeeId,
-    );
+  async createInvoice(createInvoiceDto: CreateInvoiceDto, employeeId: string) {
+    return this._invoiceService.create(createInvoiceDto, employeeId);
   }
 
   async findOne(invoiceId: number): Promise<GetInvoiceWithDetailsDto> {
