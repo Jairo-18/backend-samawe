@@ -9,7 +9,7 @@ import { ProductRepository } from './../../shared/repositories/product.repositor
 import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
 import { Injectable } from '@nestjs/common';
 import { InvoiceTotalsDto } from '../dtos/earning.dto';
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 
 @Injectable()
 export class EarningService {
