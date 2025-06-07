@@ -13,6 +13,7 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { AccommodationModule } from './accommodations/accommodation.module';
 import { InvoiceModule } from './invoices/invoice.module';
+import { EarningModule } from './earnings/earning.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { InvoiceModule } from './invoices/invoice.module';
     UserModule,
     GenericTypeModule,
     InvoiceModule,
+    EarningModule,
   ],
   controllers: [AppController],
   providers: [AppService],
