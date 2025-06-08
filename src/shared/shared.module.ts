@@ -63,8 +63,13 @@ export class SharedModule {
             ssl: {
               rejectUnauthorized: false,
             },
+            extra: {
+              max: 10,
+              keepAlive: true,
+            },
           }),
         }),
+
         PassportModule,
         TypeOrmModule.forFeature([
           AccessSessions,
