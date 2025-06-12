@@ -7,12 +7,10 @@ import {
   UpdateDateColumn,
   JoinColumn,
   ManyToOne,
-  ManyToMany,
 } from 'typeorm';
 import { CategoryType } from './categoryType.entity';
 import { BedType } from './bedType.entity';
 import { StateType } from './stateType.entity';
-import { Booking } from './booking.entity';
 
 @Entity({ name: 'Accommodation' })
 export class Accommodation {
@@ -66,9 +64,6 @@ export class Accommodation {
   @ManyToOne(() => CategoryType, (categoryType) => categoryType.accommodation)
   @JoinColumn({ name: 'categoryTypeId' })
   categoryType: CategoryType;
-
-  @ManyToMany(() => Booking, (booking) => booking.accommodation)
-  booking: Booking[];
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt?: Date;

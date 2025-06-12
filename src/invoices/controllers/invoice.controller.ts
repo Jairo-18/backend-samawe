@@ -3,7 +3,6 @@ import { Invoice } from './../../shared/entities/invoice.entity';
 import {
   CreateInvoiceDetailDto,
   CreateRelatedDataInvoiceResponseDto,
-  UpdateInvoiceDetailDto,
 } from './../dtos/invoiceDetaill.dto';
 import {
   GetInvoiceWithDetailsResponseDto,
@@ -161,22 +160,6 @@ export class InvoiceController {
         rowId: detailCreated.invoiceDetailId.toString(),
         ...detailCreated,
       },
-    };
-  }
-
-  @Patch('details/:invoiceDetailId')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: UpdateInvoiceDetailDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
-  async updateDetail(
-    @Param('invoiceDetailId') invoiceDetailId: number,
-    @Body() updateDetailDto: UpdateInvoiceDetailDto,
-  ) {
-    await this._invoiceUC.updateDetail(invoiceDetailId, updateDetailDto);
-    return {
-      message: 'Detalle actualizado correctamente',
-      statusCode: HttpStatus.OK,
     };
   }
 

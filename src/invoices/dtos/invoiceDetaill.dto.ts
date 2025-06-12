@@ -80,64 +80,6 @@ export class CreateInvoiceDetailDto {
   endDate?: Date;
 }
 
-export class UpdateInvoiceDetailDto {
-  @ApiProperty({
-    description: 'ID del detalle de factura',
-    example: 123,
-  })
-  @IsNumber()
-  @IsNotEmpty()
-  invoiceDetailId: number;
-
-  @ApiPropertyOptional({
-    description: 'ID del producto asociado al detalle',
-    example: 2,
-  })
-  @IsOptional()
-  @IsNumber()
-  productId?: number;
-
-  @ApiPropertyOptional({
-    description: 'ID del hospedaje asociado al detalle',
-    example: 0,
-  })
-  @IsOptional()
-  @IsNumber()
-  accommodationId?: number;
-
-  @ApiPropertyOptional({
-    description: 'ID de la excursión asociada al detalle',
-    example: 0,
-  })
-  @IsOptional()
-  @IsNumber()
-  excursionId?: number;
-
-  @ApiProperty({
-    description: 'Cantidad de unidades de este ítem',
-    example: 3,
-  })
-  @IsNumber()
-  @IsNotEmpty()
-  amount: number;
-
-  @ApiProperty({
-    description: 'Precio unitario sin impuestos',
-    example: 100.0,
-  })
-  @IsNumber()
-  @IsNotEmpty()
-  priceWithoutTax: number;
-
-  @ApiPropertyOptional({
-    description: 'ID del tipo de impuesto aplicado al ítem',
-    example: 1,
-  })
-  @IsOptional()
-  @IsNumber()
-  taxeTypeId?: number;
-}
-
 export interface CreateRelatedDataInvoiceDto {
   categoryType: CategoryType[];
   invoiceType?: InvoiceType[];

@@ -93,6 +93,9 @@ export class CreateInvoiceDto {
   @IsNumber()
   @IsNotEmpty({ message: 'El estado de pago es requerido' })
   paidTypeId: number;
+
+  @ApiProperty()
+  details?: CreateInvoiceDetailDto[];
 }
 
 @OnlyOneDefined(['productId', 'accommodationId', 'excursionId'], {
@@ -110,10 +113,6 @@ export class CreateInvoiceWithDetailsDto extends CreateInvoiceDto {
   details: CreateInvoiceDetailDto[];
 }
 
-@OnlyOneDefined(['productId', 'accommodationId', 'excursionId'], {
-  message:
-    'Debes especificar exactamente uno entre productId, accommodationId o excursionId',
-})
 export class UpdateInvoiceDto {
   @ApiProperty({
     description: 'ID de la factura a actualizar',
@@ -140,15 +139,12 @@ export class UpdateInvoiceDto {
   paidTypeId?: number;
 
   @ApiProperty({
-    example: 'b78e8f08-9df4-4f7f-abc0-1b6ef3147a2e',
-    description: 'UUID del cliente (usuario)',
+    example: true,
+    description: 'Factura electrónica',
   })
-  @IsUUID()
-  @IsOptional()
-  userId?: string;
-
   @IsBoolean()
-  invoiceElectronic: boolean;
+  @IsOptional()
+  invoiceElectronic?: boolean;
 }
 
 export class UserMiniDto {

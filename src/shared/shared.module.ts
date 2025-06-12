@@ -1,3 +1,4 @@
+import { BalanceService } from './services/balance.service';
 import { InvoiceDetaillRepository } from './repositories/invoiceDetaill.repository';
 import { InvoiceRepository } from './repositories/invoice.repository';
 import { PayTypeRepository } from './repositories/payType.repository';
@@ -5,7 +6,7 @@ import { PaidTypeRepository } from './repositories/paidType.repository';
 import { AdditionalRepository } from './repositories/additionalType.repository';
 import { ExcursionRepository } from './repositories/excursion.repository';
 import { StateTypeRepository } from './repositories/stateType.repository';
-import { BookingRepository } from './repositories/booking.repository';
+
 import { BedTypeRepository } from './repositories/bedType.repository';
 import { AccommodationRepository } from './repositories/accommodation.repository';
 import { RepositoryService } from './services/repositoriry.service';
@@ -38,10 +39,11 @@ import { IdentificationTypeRepository } from './repositories/identificationType.
 import { BedType } from './entities/bedType.entity';
 import { Accommodation } from './entities/accommodation.entity';
 import { Excursion } from './entities/excursion.entity';
-import { Booking } from './entities/booking.entity';
 import { InvoiceType } from './entities/invoiceType.entity';
 import { InvoiceTypeRepository } from './repositories/invoiceType.repository';
 import { InvoiceDetaill } from './entities/invoiceDetaill.entity';
+import { BalanceRepository } from './repositories/balance.repository';
+import { Balance } from './entities/balance.entity';
 
 @Module({})
 export class SharedModule {
@@ -75,8 +77,8 @@ export class SharedModule {
           AccessSessions,
           Accommodation,
           AdditionalType,
+          Balance,
           BedType,
-          Booking,
           CategoryType,
           Excursion,
           IdentificationType,
@@ -108,8 +110,8 @@ export class SharedModule {
         AccessSessionsRepository,
         AccommodationRepository,
         AdditionalRepository,
+        BalanceRepository,
         BedTypeRepository,
-        BookingRepository,
         CategoryTypeRepository,
         ExcursionRepository,
         IdentificationTypeRepository,
@@ -124,6 +126,7 @@ export class SharedModule {
         StateTypeRepository,
         TaxeTypeRepository,
         UserRepository,
+        BalanceService,
         RepositoryService,
       ],
       exports: [
@@ -131,8 +134,8 @@ export class SharedModule {
         AccessSessionsRepository,
         AccommodationRepository,
         AdditionalRepository,
+        BalanceRepository,
         BedTypeRepository,
-        BookingRepository,
         CategoryTypeRepository,
         ExcursionRepository,
         IdentificationTypeRepository,
@@ -147,6 +150,7 @@ export class SharedModule {
         StateTypeRepository,
         TaxeTypeRepository,
         UserRepository,
+        BalanceService,
         RepositoryService,
       ],
     };

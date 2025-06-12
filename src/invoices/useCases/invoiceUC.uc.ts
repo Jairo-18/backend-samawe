@@ -8,10 +8,7 @@ import {
   GetInvoiceWithDetailsDto,
   UpdateInvoiceDto,
 } from '../dtos/invoice.dto';
-import {
-  CreateInvoiceDetailDto,
-  UpdateInvoiceDetailDto,
-} from '../dtos/invoiceDetaill.dto';
+import { CreateInvoiceDetailDto } from '../dtos/invoiceDetaill.dto';
 
 @Injectable()
 export class InvoiceUC {
@@ -40,13 +37,6 @@ export class InvoiceUC {
   // Aquí delegamos todo al servicio de detalles
   async addDetail(invoiceId: number, dto: CreateInvoiceDetailDto) {
     return this._invoiceDetailService.create(invoiceId, dto);
-  }
-
-  async updateDetail(
-    invoiceDetailId: number,
-    updateDto: UpdateInvoiceDetailDto,
-  ) {
-    return this._invoiceDetailService.update(invoiceDetailId, updateDto);
   }
 
   async deleteDetail(invoiceDetailId: number) {

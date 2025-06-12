@@ -7,11 +7,9 @@ import {
   UpdateDateColumn,
   JoinColumn,
   ManyToOne,
-  ManyToMany,
 } from 'typeorm';
 import { CategoryType } from './categoryType.entity';
 import { StateType } from './stateType.entity';
-import { Booking } from './booking.entity';
 
 @Entity({ name: 'Excursion' })
 export class Excursion {
@@ -32,9 +30,6 @@ export class Excursion {
 
   @Column('decimal', { precision: 10, scale: 2 })
   priceSale: number;
-
-  @ManyToMany(() => Booking, (booking) => booking.excursion)
-  booking: Booking[];
 
   @ManyToOne(() => StateType, (stateType) => stateType.excursion)
   @JoinColumn({ name: 'stateTypeId' })

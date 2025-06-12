@@ -1,3 +1,5 @@
+import { BalanceRepository } from './../../shared/repositories/balance.repository';
+import { BalanceService } from './../../shared/services/balance.service';
 import { CategoryType } from './../../shared/entities/categoryType.entity';
 import { IdentificationType } from './../../shared/entities/identificationType.entity';
 import { PaidType } from './../../shared/entities/paidType.entity';
@@ -20,7 +22,6 @@ import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDet
 import {
   CreateInvoiceDetailDto,
   CreateRelatedDataInvoiceDto,
-  UpdateInvoiceDetailDto,
 } from '../dtos/invoiceDetaill.dto';
 
 @Injectable()
@@ -33,6 +34,8 @@ export class InvoiceDetailService {
     private readonly _excursionRepository: ExcursionRepository,
     private readonly _taxeTypeRepository: TaxeTypeRepository,
     private readonly _repositoriesService: RepositoryService,
+    private readonly _balanceService: BalanceService,
+    private readonly _balanceRepository: BalanceRepository,
   ) {}
 
   async getRelatedDataToCreate(): Promise<CreateRelatedDataInvoiceDto> {
@@ -134,9 +137,9 @@ export class InvoiceDetailService {
   }
 
   async create(invoiceId: number, dto: CreateInvoiceDetailDto) {
-    // Buscar la factura
     const invoice = await this._invoiceRepository.findOne({
       where: { invoiceId },
+      relations: ['invoiceType'],
     });
     if (!invoice) {
       throw new NotFoundException(`Factura con ID ${invoiceId} no encontrada`);
@@ -145,24 +148,19 @@ export class InvoiceDetailService {
     let taxRate = 0;
     let taxeType = null;
 
-    // Buscar tipo de impuesto si se especifica
     if (dto.taxeTypeId) {
       taxeType = await this._taxeTypeRepository.findOne({
         where: { taxeTypeId: dto.taxeTypeId },
       });
-
       if (!taxeType) {
         throw new NotFoundException('Tipo de impuesto no encontrado');
       }
-
-      // Manejar tanto porcentajes como decimales
       taxRate =
         taxeType.percentage > 1
           ? taxeType.percentage / 100
           : taxeType.percentage;
     }
 
-    // Validar valores numéricos
     const priceWithoutTax = Number(dto.priceWithoutTax);
     const amount = Number(dto.amount);
 
@@ -177,11 +175,9 @@ export class InvoiceDetailService {
       );
     }
 
-    // Calcular precios con y sin impuesto
     const priceWithTax = Number((priceWithoutTax * (1 + taxRate)).toFixed(2));
     const subtotal = Number((amount * priceWithTax).toFixed(2));
 
-    // Crear detalle
     const detail = this._invoiceDetaillRepository.create({
       amount,
       priceWithoutTax,
@@ -193,13 +189,17 @@ export class InvoiceDetailService {
       endDate: dto.endDate,
     });
 
-    // Asignar relaciones adicionales
+    // Relaciones
+    let isProduct = false;
+    let product = null;
+
     if (dto.productId) {
-      const product = await this._productRepository.findOne({
+      product = await this._productRepository.findOne({
         where: { productId: dto.productId },
       });
       if (!product) throw new NotFoundException('Producto no encontrado');
       detail.product = product;
+      isProduct = true;
     }
 
     if (dto.accommodationId) {
@@ -219,158 +219,45 @@ export class InvoiceDetailService {
       detail.excursion = excursion;
     }
 
-    // Guardar el detalle
     const savedDetail = await this._invoiceDetaillRepository.save(detail);
 
-    // 🔥 Si es un producto, disminuir el stock
-    if (savedDetail.product) {
-      const product = savedDetail.product;
-      product.amount = (product.amount ?? 0) - savedDetail.amount;
+    // ✅ MANEJO DE STOCK DE PRODUCTO
+    if (isProduct) {
+      const currentAmount = Number(product.amount) || 0;
 
-      if (product.amount < 0) {
-        throw new BadRequestException(
-          `No hay suficiente stock para el producto ${product.name}`,
-        );
+      if (invoice.invoiceType.code === 'FV') {
+        if (currentAmount < amount) {
+          throw new BadRequestException(
+            `No hay suficiente stock para el producto ${product.name}`,
+          );
+        }
+        product.amount = currentAmount - amount;
+      } else if (invoice.invoiceType.code === 'FC') {
+        product.amount = currentAmount + amount;
       }
 
       await this._productRepository.save(product);
     }
 
-    // Actualizar el total de la factura
+    // ✅ ACTUALIZAR TOTAL DE LA FACTURA
     await this.updateInvoiceTotal(invoiceId);
 
+    // ✅ ACTUALIZAR BALANCE (SOLO UNA VEZ)
+    // Primero actualizamos el balance de facturas
+    await this._balanceService.updateBalanceWithInvoice(invoice);
+
+    // Luego actualizamos el balance de productos (si hay productos involucrados)
+    if (isProduct) {
+      await this._balanceService.updateBalanceWithCurrentProducts();
+    }
+
     return savedDetail;
-  }
-
-  async update(invoiceDetailId: number, updateDto: UpdateInvoiceDetailDto) {
-    const existing = await this._invoiceDetaillRepository.findOne({
-      where: { invoiceDetailId },
-      relations: [
-        'product',
-        'accommodation',
-        'excursion',
-        'invoice',
-        'taxeType',
-      ],
-    });
-
-    if (!existing) {
-      throw new NotFoundException(
-        `Detalle con ID ${invoiceDetailId} no encontrado`,
-      );
-    }
-
-    // Actualizamos las propiedades simples y recalculamos si es necesario
-    if (
-      updateDto.priceWithoutTax !== undefined ||
-      updateDto.taxeTypeId !== undefined ||
-      updateDto.amount !== undefined
-    ) {
-      let taxRate = 0;
-
-      if (updateDto.taxeTypeId !== undefined) {
-        if (updateDto.taxeTypeId === null) {
-          existing.taxeType = null;
-          taxRate = 0;
-        } else {
-          const taxeType = await this._taxeTypeRepository.findOne({
-            where: { taxeTypeId: updateDto.taxeTypeId },
-          });
-          if (!taxeType)
-            throw new NotFoundException('Tipo de impuesto no encontrado');
-
-          taxRate =
-            taxeType.percentage > 1
-              ? taxeType.percentage / 100
-              : taxeType.percentage;
-          existing.taxeType = taxeType;
-        }
-      } else if (existing.taxeType) {
-        taxRate =
-          existing.taxeType.percentage > 1
-            ? existing.taxeType.percentage / 100
-            : existing.taxeType.percentage;
-      }
-
-      // Actualizar valores
-      existing.amount = Number(updateDto.amount ?? existing.amount);
-      existing.priceWithoutTax = Number(
-        updateDto.priceWithoutTax ?? existing.priceWithoutTax,
-      );
-
-      // Validar que los valores sean números válidos
-      if (
-        isNaN(existing.amount) ||
-        isNaN(existing.priceWithoutTax) ||
-        existing.amount < 0 ||
-        existing.priceWithoutTax < 0
-      ) {
-        throw new BadRequestException(
-          'Los valores numéricos no son válidos o no pueden ser negativos',
-        );
-      }
-
-      existing.priceWithTax = Number(
-        (existing.priceWithoutTax * (1 + taxRate)).toFixed(2),
-      );
-      existing.subtotal = Number(
-        (existing.amount * existing.priceWithTax).toFixed(2),
-      );
-    }
-
-    // Actualizar relación con product si viene productId en updateDto
-    if (updateDto.productId !== undefined) {
-      if (updateDto.productId === null) {
-        existing.product = null;
-      } else {
-        const product = await this._productRepository.findOne({
-          where: { productId: updateDto.productId },
-        });
-        if (!product) throw new NotFoundException('Producto no encontrado');
-        existing.product = product;
-      }
-    }
-
-    // Actualizar relación con accommodation si viene accommodationId en updateDto
-    if (updateDto.accommodationId !== undefined) {
-      if (updateDto.accommodationId === null) {
-        existing.accommodation = null;
-      } else {
-        const accommodation = await this._accommodationRepository.findOne({
-          where: { accommodationId: updateDto.accommodationId },
-        });
-        if (!accommodation)
-          throw new NotFoundException('Hospedaje no encontrado');
-        existing.accommodation = accommodation;
-      }
-    }
-
-    // Actualizar relación con excursion si viene excursionId en updateDto
-    if (updateDto.excursionId !== undefined) {
-      if (updateDto.excursionId === null) {
-        existing.excursion = null;
-      } else {
-        const excursion = await this._excursionRepository.findOne({
-          where: { excursionId: updateDto.excursionId },
-        });
-        if (!excursion) throw new NotFoundException('Excursión no encontrada');
-        existing.excursion = excursion;
-      }
-    }
-
-    // Guardar cambios
-    const updatedDetail = await this._invoiceDetaillRepository.save(existing);
-
-    // 🔥 ACTUALIZAR EL TOTAL DE LA FACTURA
-    await this.updateInvoiceTotal(existing.invoice.invoiceId);
-
-    return updatedDetail;
   }
 
   async delete(invoiceDetailId: number) {
     const detail = await this._invoiceDetaillRepository.findOne({
       where: { invoiceDetailId },
-      relations: ['invoice', 'product'],
+      relations: ['invoice', 'product', 'invoice.invoiceType'],
     });
 
     if (!detail) {
@@ -379,58 +266,57 @@ export class InvoiceDetailService {
       );
     }
 
-    const invoiceId = detail.invoice.invoiceId;
+    const invoice = detail.invoice;
+    const isSale = invoice.invoiceType.code === 'FV';
+    const isBuy = invoice.invoiceType.code === 'FC';
 
+    // ✅ REVERTIR STOCK SI ES PRODUCTO
     if (detail.product) {
       const product = detail.product;
+      const currentAmount = Number(product.amount ?? 0);
+      const detailAmount = Number(detail.amount ?? 0);
 
-      // Convertir amount a número seguro
-      const currentAmount = Number(product.amount) || 0;
-      const detailAmount = Number(detail.amount) || 0;
-
-      // Sumar el stock asegurando que el resultado es número válido
-      const newAmount = currentAmount + detailAmount;
-
-      if (isNaN(newAmount)) {
+      if (isNaN(currentAmount) || isNaN(detailAmount)) {
         throw new Error(
-          `Valor inválido para stock: product.amount=${product.amount} + detail.amount=${detail.amount}`,
+          `Stock inválido: product.amount=${product.amount}, detail.amount=${detail.amount}`,
         );
       }
 
-      product.amount = newAmount;
+      if (isSale) {
+        // Si fue venta, se había restado => ahora se suma
+        product.amount = currentAmount + detailAmount;
+      } else if (isBuy) {
+        // Si fue compra, se había sumado => ahora se resta
+        const newAmount = currentAmount - detailAmount;
+        if (newAmount < 0) {
+          throw new BadRequestException(
+            `No se puede eliminar: dejaría el stock del producto ${product.name} en negativo`,
+          );
+        }
+        product.amount = newAmount;
+      }
 
       await this._productRepository.save(product);
     }
 
+    // ✅ ELIMINAR EL DETALLE
     await this._invoiceDetaillRepository.remove(detail);
 
-    await this.updateInvoiceTotal(invoiceId);
+    // ✅ RECALCULAR TOTAL DE LA FACTURA
+    await this.updateInvoiceTotal(invoice.invoiceId);
 
-    return {
-      message: 'Detalle eliminado correctamente',
-      invoiceId,
-      deletedDetailId: invoiceDetailId,
-    };
-  }
+    // ✅ ACTUALIZAR BALANCE (MÉTODO SIMPLIFICADO)
+    // Recalculamos los balances de facturas para todos los períodos
+    await this._balanceService.updateBalanceWithInvoice(invoice);
 
-  async findById(invoiceDetailId: number) {
-    const detail = await this._invoiceDetaillRepository.findOne({
-      where: { invoiceDetailId },
-      relations: [
-        'product',
-        'accommodation',
-        'excursion',
-        'invoice',
-        'taxeType',
-      ],
-    });
-
-    if (!detail) {
-      throw new NotFoundException(
-        `Detalle con ID ${invoiceDetailId} no encontrado`,
-      );
+    // Si había producto involucrado, actualizamos balance de productos
+    if (detail.product) {
+      await this._balanceService.updateBalanceWithCurrentProducts();
     }
 
-    return detail;
+    return {
+      invoiceId: invoice.invoiceId,
+      deletedDetailId: invoiceDetailId,
+    };
   }
 }

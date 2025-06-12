@@ -1,10 +1,13 @@
+import { InvoiceDetaill } from './../../shared/entities/invoiceDetaill.entity';
+import { BalanceService } from './../../shared/services/balance.service';
+import { Product } from './../../shared/entities/product.entity';
 import {
   Injectable,
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
 import { Invoice } from './../../shared/entities/invoice.entity';
-import { User } from './../../shared/entities/user.entity';
+
 import { PaidType } from './../../shared/entities/paidType.entity';
 import { PayType } from './../../shared/entities/payType.entity';
 import { PaidTypeRepository } from './../../shared/repositories/paidType.repository';
@@ -31,6 +34,7 @@ export class InvoiceService {
     private readonly _paidTypeRepository: PaidTypeRepository,
     private readonly _invoiceDetailRepository: InvoiceDetaillRepository,
     private readonly _userRepository: UserRepository,
+    private readonly _balanceService: BalanceService,
   ) {}
 
   async create(dto: CreateInvoiceDto, employeeId: string): Promise<Invoice> {
@@ -41,6 +45,7 @@ export class InvoiceService {
       payTypeId,
       paidTypeId,
       invoiceElectronic,
+      details,
       ...invoiceData
     } = dto;
 
@@ -69,13 +74,24 @@ export class InvoiceService {
       );
     }
 
+    // ✅ CALCULAR TOTALES Y DETALLES
+    const {
+      details: invoiceDetails,
+      total,
+      subtotalWithTax,
+      subtotalWithoutTax,
+      hasProducts,
+    } = await this._calculateInvoiceDetails(details ?? []);
+
+    // ✅ CREAR LA FACTURA
     const newInvoice = this._invoiceRepository.create({
       code,
       ...invoiceData,
       invoiceElectronic,
-      subtotalWithoutTax: 0,
-      subtotalWithTax: 0,
-      total: 0,
+      subtotalWithoutTax,
+      subtotalWithTax,
+      total,
+      invoiceDetails,
       invoiceType,
       user,
       employee: { userId: employeeId },
@@ -83,15 +99,103 @@ export class InvoiceService {
       paidType,
     });
 
-    return await this._invoiceRepository.save(newInvoice);
+    const savedInvoice = await this._invoiceRepository.save(newInvoice);
+
+    // ✅ ACTUALIZAR BALANCE (SOLO UNA VEZ)
+    await this._balanceService.updateBalanceWithInvoice(savedInvoice);
+
+    // Si tiene productos, actualizar balance de productos
+    if (hasProducts) {
+      await this._balanceService.updateBalanceWithCurrentProducts();
+    }
+
+    return savedInvoice;
   }
 
+  async delete(invoiceId: number): Promise<void> {
+    const invoice = await this._invoiceRepository.findOne({
+      where: { invoiceId },
+      relations: ['invoiceType', 'invoiceDetails', 'invoiceDetails.product'],
+      withDeleted: true,
+    });
+
+    if (!invoice) {
+      throw new NotFoundException('Factura no encontrada');
+    }
+
+    const queryRunner =
+      this._invoiceRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const isCompra = invoice.invoiceType.code === 'FC';
+      const isVenta = invoice.invoiceType.code === 'FV';
+      let hasProducts = false;
+
+      // ✅ REVERTIR STOCK DE PRODUCTOS
+      for (const detail of invoice.invoiceDetails) {
+        if (detail.product) {
+          hasProducts = true;
+          const product = await queryRunner.manager.findOneOrFail(Product, {
+            where: { productId: detail.product.productId },
+          });
+
+          const currentAmount = Number(product.amount ?? 0);
+          const detailAmount = Number(detail.amount ?? 0);
+
+          if (isNaN(currentAmount) || isNaN(detailAmount)) {
+            throw new Error(
+              `Stock inválido: product.amount=${product.amount}, detail.amount=${detail.amount}`,
+            );
+          }
+
+          if (isCompra) {
+            // Compra: se había sumado => ahora se resta
+            product.amount = currentAmount - detailAmount;
+          } else if (isVenta) {
+            // Venta: se había restado => ahora se suma
+            product.amount = currentAmount + detailAmount;
+          }
+
+          await queryRunner.manager.save(product);
+        }
+      }
+
+      // ✅ BORRADO FÍSICO DE LOS DETALLES
+      await queryRunner.manager.delete(InvoiceDetaill, {
+        invoice: { invoiceId },
+      });
+
+      // ✅ SOFT DELETE DE LA FACTURA
+      await queryRunner.manager.delete(Invoice, { invoiceId });
+
+      await queryRunner.commitTransaction();
+
+      // ✅ ACTUALIZAR BALANCE DESPUÉS DE CONFIRMAR LA TRANSACCIÓN
+      // Usamos el método para eliminar la factura del balance
+      await this._balanceService.removeInvoiceFromBalance(invoice);
+
+      // Si había productos, actualizamos el balance de productos
+      if (hasProducts) {
+        await this._balanceService.updateBalanceWithCurrentProducts();
+      }
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  // ✅ MÉTODO AUXILIAR MEJORADO
   private async _calculateInvoiceDetails(
     details: CreateInvoiceWithDetailsDto['details'],
   ) {
     let invoiceTotal = 0;
     let subtotalWithoutTax = 0;
     let subtotalWithTax = 0;
+    let hasProducts = false;
     const invoiceDetails = [];
 
     for (const detail of details) {
@@ -123,6 +227,11 @@ export class InvoiceService {
       subtotalWithTax += subtotal;
       invoiceTotal += subtotal;
 
+      // ✅ VERIFICAR SI HAY PRODUCTOS
+      if (detail.productId) {
+        hasProducts = true;
+      }
+
       invoiceDetails.push({
         amount,
         priceWithoutTax,
@@ -144,6 +253,7 @@ export class InvoiceService {
       total: invoiceTotal,
       subtotalWithoutTax,
       subtotalWithTax,
+      hasProducts, // ✅ NUEVO: indica si hay productos
     };
   }
 
@@ -261,8 +371,7 @@ export class InvoiceService {
   }
 
   async update(updateDto: UpdateInvoiceDto): Promise<GetInvoiceWithDetailsDto> {
-    const { invoiceId, payTypeId, paidTypeId, userId, invoiceElectronic } =
-      updateDto;
+    const { invoiceId, payTypeId, paidTypeId, invoiceElectronic } = updateDto;
 
     const queryRunner =
       this._invoiceRepository.manager.connection.createQueryRunner();
@@ -272,7 +381,7 @@ export class InvoiceService {
     try {
       const invoice = await queryRunner.manager.findOne(Invoice, {
         where: { invoiceId },
-        relations: ['payType', 'paidType', 'user'],
+        relations: ['payType', 'paidType'],
       });
 
       if (!invoice) throw new NotFoundException('Factura no encontrada');
@@ -294,14 +403,6 @@ export class InvoiceService {
         invoice.paidType = paidType;
       }
 
-      if (userId !== undefined) {
-        const user = await queryRunner.manager.findOne(User, {
-          where: { userId },
-        });
-        if (!user) throw new BadRequestException('Cliente no encontrado');
-        invoice.user = user;
-      }
-
       if (invoiceElectronic !== undefined) {
         invoice.invoiceElectronic = invoiceElectronic;
       }
@@ -316,15 +417,5 @@ export class InvoiceService {
     } finally {
       await queryRunner.release();
     }
-  }
-
-  async delete(invoiceId: number) {
-    await this.findOne(invoiceId);
-
-    // Borrado físico de detalles relacionados
-    await this._invoiceDetailRepository.delete({ invoice: { invoiceId } });
-
-    // Soft delete de la factura
-    return await this._invoiceRepository.softDelete(invoiceId);
   }
 }
