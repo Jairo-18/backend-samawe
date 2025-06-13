@@ -26,6 +26,7 @@ import {
   GetInvoiceWithDetailsDto,
   UpdateInvoiceDto,
 } from '../dtos/invoice.dto';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class InvoiceService {
@@ -41,6 +42,7 @@ export class InvoiceService {
     private readonly _productRepository: ProductRepository,
     private readonly _accommodationRepository: AccommodationRepository,
     private readonly _excursionRepository: ExcursionRepository,
+    private readonly _dataSource: DataSource,
   ) {}
 
   private async _calculateInvoiceDetails(
@@ -62,7 +64,6 @@ export class InvoiceService {
       let taxRate = 0;
       let taxeType = null;
 
-      // Obtener tipo de impuesto
       if (detailDto.taxeTypeId) {
         taxeType = await this._taxeTypeRepository.findOne({
           where: { taxeTypeId: detailDto.taxeTypeId },
@@ -81,13 +82,11 @@ export class InvoiceService {
         throw new BadRequestException('La cantidad debe ser mayor a cero');
       }
 
-      // Variables para precios
       let priceBuy = 0;
       let priceWithoutTax = 0;
       let priceWithTax = 0;
       let detailSubtotal = 0;
 
-      // ====== MANEJO DE PRODUCTOS CON PRECIOS HISTÓRICOS ======
       if (detailDto.productId) {
         const product = await this._productRepository.findOne({
           where: { productId: detailDto.productId },
@@ -96,7 +95,6 @@ export class InvoiceService {
           throw new NotFoundException('Producto no encontrado');
         }
 
-        // Usar precios históricos si se proporcionan, sino usar precios actuales
         priceBuy =
           detailDto.priceBuy !== undefined
             ? Number(detailDto.priceBuy)
@@ -109,16 +107,13 @@ export class InvoiceService {
 
         hasProducts = true;
       } else {
-        // Para servicios (hospedaje, excursiones)
         priceBuy = Number(detailDto.priceBuy) || 0;
         priceWithoutTax = Number(detailDto.priceWithoutTax) || 0;
       }
 
-      // Calcular precios
       priceWithTax = Number((priceWithoutTax * (1 + taxRate)).toFixed(2));
       detailSubtotal = Number((amount * priceWithTax).toFixed(2));
 
-      // Crear detalle
       const detail = this._invoiceDetailRepository.create({
         amount,
         priceBuy,
@@ -130,7 +125,6 @@ export class InvoiceService {
         endDate: detailDto.endDate,
       });
 
-      // Asignar relaciones
       if (detailDto.productId) {
         const product = await this._productRepository.findOne({
           where: { productId: detailDto.productId },
@@ -160,7 +154,6 @@ export class InvoiceService {
 
       details.push(detail);
 
-      // Acumular totales
       const lineSubtotalWithoutTax = amount * priceWithoutTax;
       const lineSubtotalWithTax = amount * priceWithTax;
       const taxAmount = lineSubtotalWithTax - lineSubtotalWithoutTax;
@@ -170,7 +163,6 @@ export class InvoiceService {
       total += lineSubtotalWithTax;
     }
 
-    // Redondear totales
     subtotalWithoutTax = Math.round(subtotalWithoutTax * 100) / 100;
     subtotalWithTax = Math.round(subtotalWithTax * 100) / 100;
     total = Math.round(total * 100) / 100;
@@ -185,22 +177,15 @@ export class InvoiceService {
   }
 
   async create(dto: CreateInvoiceDto, employeeId: string): Promise<Invoice> {
-    const {
-      invoiceTypeId,
-      code,
-      userId,
-      payTypeId,
-      paidTypeId,
-      invoiceElectronic,
-      details,
-      ...invoiceData
-    } = dto;
-
     const [payType, paidType, invoiceType, user] = await Promise.all([
-      this._payTypeRepository.findOne({ where: { payTypeId } }),
-      this._paidTypeRepository.findOne({ where: { paidTypeId } }),
-      this._invoiceTypeRepository.findOne({ where: { invoiceTypeId } }),
-      this._userRepository.findOne({ where: { userId } }),
+      this._payTypeRepository.findOne({ where: { payTypeId: dto.payTypeId } }),
+      this._paidTypeRepository.findOne({
+        where: { paidTypeId: dto.paidTypeId },
+      }),
+      this._invoiceTypeRepository.findOne({
+        where: { invoiceTypeId: dto.invoiceTypeId },
+      }),
+      this._userRepository.findOne({ where: { userId: dto.userId } }),
     ]);
 
     if (!payType) throw new BadRequestException('Tipo de pago no encontrado');
@@ -210,53 +195,64 @@ export class InvoiceService {
       throw new BadRequestException('Tipo de factura no encontrado');
     if (!user) throw new BadRequestException('Cliente no encontrado');
 
-    const existingInvoice = await this._invoiceRepository.findOne({
-      where: { code, invoiceType: { invoiceTypeId } },
-      relations: ['invoiceType'],
-    });
+    const { saved: invoiceEntity, hasProducts } =
+      await this._invoiceRepository.manager.transaction(async (manager) => {
+        const lastInvoice = await manager
+          .getRepository(Invoice)
+          .createQueryBuilder('invoice')
+          .leftJoin('invoice.invoiceType', 'invoiceType')
+          .where('invoiceType.invoiceTypeId = :typeId', {
+            typeId: dto.invoiceTypeId,
+          })
+          .orderBy('invoice.invoiceId', 'DESC')
+          .getOne();
 
-    if (existingInvoice) {
-      throw new BadRequestException(
-        `Ya existe una factura con código '${code}' para el mismo tipo de factura.`,
-      );
-    }
+        let nextNumber = 1;
+        if (lastInvoice?.code) {
+          const parsed = parseInt(lastInvoice.code, 10);
+          if (!isNaN(parsed)) {
+            nextNumber = parsed + 1;
+          }
+        }
 
-    // ✅ CALCULAR TOTALES Y DETALLES
-    const {
-      details: invoiceDetails,
-      total,
-      subtotalWithTax,
-      subtotalWithoutTax,
-      hasProducts,
-    } = await this._calculateInvoiceDetails(details ?? []);
+        const code = nextNumber.toString().padStart(5, '0');
 
-    // ✅ CREAR LA FACTURA
-    const newInvoice = this._invoiceRepository.create({
-      code,
-      ...invoiceData,
-      invoiceElectronic,
-      subtotalWithoutTax,
-      subtotalWithTax,
-      total,
-      invoiceDetails,
-      invoiceType,
-      user,
-      employee: { userId: employeeId },
-      payType,
-      paidType,
-    });
+        const {
+          details: invoiceDetails,
+          total,
+          subtotalWithTax,
+          subtotalWithoutTax,
+          hasProducts,
+        } = await this._calculateInvoiceDetails(dto.details ?? []);
 
-    const savedInvoice = await this._invoiceRepository.save(newInvoice);
+        const invoiceRepo = manager.getRepository(Invoice);
 
-    // ✅ ACTUALIZAR BALANCE (SOLO UNA VEZ)
-    await this._balanceService.updateBalanceWithInvoice(savedInvoice);
+        const newInvoice = invoiceRepo.create({
+          code,
+          invoiceElectronic: dto.invoiceElectronic,
+          startDate: dto.startDate,
+          endDate: dto.endDate,
+          subtotalWithoutTax,
+          subtotalWithTax,
+          total,
+          invoiceDetails,
+          invoiceType,
+          user,
+          employee: { userId: employeeId },
+          payType,
+          paidType,
+        });
 
-    // Si tiene productos, actualizar balance de productos
+        const saved = await invoiceRepo.save(newInvoice);
+        return { saved, hasProducts };
+      });
+
+    await this._balanceService.updateBalanceWithInvoice(invoiceEntity);
     if (hasProducts) {
       await this._balanceService.updateBalanceWithCurrentProducts();
     }
 
-    return savedInvoice;
+    return invoiceEntity;
   }
 
   async delete(invoiceId: number): Promise<void> {
@@ -280,7 +276,6 @@ export class InvoiceService {
       const isVenta = invoice.invoiceType.code === 'FV';
       let hasProducts = false;
 
-      // ✅ REVERTIR STOCK DE PRODUCTOS
       for (const detail of invoice.invoiceDetails) {
         if (detail.product) {
           hasProducts = true;
@@ -298,10 +293,8 @@ export class InvoiceService {
           }
 
           if (isCompra) {
-            // Compra: se había sumado => ahora se resta
             product.amount = currentAmount - detailAmount;
           } else if (isVenta) {
-            // Venta: se había restado => ahora se suma
             product.amount = currentAmount + detailAmount;
           }
 
@@ -309,21 +302,16 @@ export class InvoiceService {
         }
       }
 
-      // ✅ BORRADO FÍSICO DE LOS DETALLES
       await queryRunner.manager.delete(InvoiceDetaill, {
         invoice: { invoiceId },
       });
 
-      // ✅ SOFT DELETE DE LA FACTURA
       await queryRunner.manager.delete(Invoice, { invoiceId });
 
       await queryRunner.commitTransaction();
 
-      // ✅ ACTUALIZAR BALANCE DESPUÉS DE CONFIRMAR LA TRANSACCIÓN
-      // Usamos el método para eliminar la factura del balance
       await this._balanceService.removeInvoiceFromBalance(invoice);
 
-      // Si había productos, actualizamos el balance de productos
       if (hasProducts) {
         await this._balanceService.updateBalanceWithCurrentProducts();
       }

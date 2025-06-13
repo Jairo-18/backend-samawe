@@ -13,7 +13,6 @@ import {
   IsNotEmpty,
   IsNumber,
   IsOptional,
-  IsString,
   IsDateString,
   ValidateNested,
   IsArray,
@@ -38,11 +37,6 @@ export class CreateInvoiceDto {
   @IsNumber()
   @IsNotEmpty({ message: 'El tipo es requerido' })
   invoiceTypeId: number;
-
-  @ApiProperty({ example: '0023', description: 'Código de factura' })
-  @IsString()
-  @IsNotEmpty({ message: 'El código de factura es requerido' })
-  code: string;
 
   @ApiProperty({
     example: '538fd155-0392-4e67-bacb-99ad8796ce80',

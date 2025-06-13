@@ -1,5 +1,4 @@
 import { User } from './user.entity';
-
 import { PayType } from './payType.entity';
 import {
   Column,
@@ -11,11 +10,13 @@ import {
   JoinColumn,
   ManyToOne,
   OneToMany,
+  Unique,
 } from 'typeorm';
 import { PaidType } from './paidType.entity';
 import { InvoiceDetaill } from './invoiceDetaill.entity';
 import { InvoiceType } from './invoiceType.entity';
 
+@Unique('UQ_invoice_code_per_type', ['code', 'invoiceType'])
 @Entity({ name: 'Invoice' })
 export class Invoice {
   @PrimaryGeneratedColumn()
@@ -30,7 +31,7 @@ export class Invoice {
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'userId' })
-  user: User; // Cliente
+  user: User;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'employeeId' })
