@@ -47,6 +47,14 @@ export class CreateInvoiceDetailDto {
   @IsNotEmpty()
   amount: number;
 
+  @ApiPropertyOptional({
+    description: ' NUEVO: Precio de compra histórico (opcional)',
+    example: 800.0,
+  })
+  @IsOptional()
+  @IsNumber()
+  priceBuy?: number;
+
   @ApiProperty({
     description: 'Precio unitario sin impuestos',
     example: 1200.0,

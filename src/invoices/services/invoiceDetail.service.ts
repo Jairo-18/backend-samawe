@@ -1,3 +1,4 @@
+import { Product } from './../../shared/entities/product.entity';
 import { BalanceRepository } from './../../shared/repositories/balance.repository';
 import { BalanceService } from './../../shared/services/balance.service';
 import { CategoryType } from './../../shared/entities/categoryType.entity';
@@ -76,10 +77,8 @@ export class InvoiceDetailService {
     };
   }
 
-  // 🔥 Método mejorado para actualizar totales de la factura
   private async updateInvoiceTotal(invoiceId: number): Promise<void> {
     try {
-      // Obtener todos los detalles de la factura
       const details = await this._invoiceDetaillRepository.find({
         where: { invoice: { invoiceId } },
       });
@@ -88,13 +87,11 @@ export class InvoiceDetailService {
       let subtotalWithTax = 0;
       let total = 0;
 
-      // Calcular totales basándose en los detalles existentes
       for (const detail of details) {
         const priceWithoutTax = Number(detail.priceWithoutTax) || 0;
         const priceWithTax = Number(detail.priceWithTax) || 0;
         const amount = Number(detail.amount) || 0;
 
-        // Validación adicional
         if (priceWithoutTax < 0 || priceWithTax < 0 || amount < 0) {
           continue;
         }
@@ -113,7 +110,6 @@ export class InvoiceDetailService {
       subtotalWithTax = Math.round(subtotalWithTax * 100) / 100;
       total = Math.round(total * 100) / 100;
 
-      // Actualizar la factura
       const updateResult = await this._invoiceRepository.update(invoiceId, {
         subtotalWithoutTax,
         subtotalWithTax,
@@ -136,6 +132,69 @@ export class InvoiceDetailService {
     }
   }
 
+  /**
+   * Valida si los precios del producto han cambiado y sugiere crear uno nuevo
+   */
+  private validateProductPriceConsistency(
+    product: Product,
+    priceBuy: number,
+    priceWithoutTax: number,
+    invoiceTypeCode: string,
+  ): { isValid: boolean; message?: string } {
+    const currentPriceBuy = Number(product.priceBuy);
+    const currentPriceSale = Number(product.priceSale);
+
+    // Solo validar para facturas de compra
+    if (invoiceTypeCode === 'FC') {
+      const priceBuyDiff = Math.abs(currentPriceBuy - priceBuy) > 0.01;
+      const priceSaleDiff = Math.abs(currentPriceSale - priceWithoutTax) > 0.01;
+
+      if (priceBuyDiff || priceSaleDiff) {
+        return {
+          isValid: false,
+          message: `⚠️ ATENCIÓN: Los precios del producto "${product.name}" han cambiado:
+          
+Precios actuales del producto:
+- Precio de compra: $${currentPriceBuy}
+- Precio de venta: $${currentPriceSale}
+
+Precios en esta factura:
+- Precio de compra: $${priceBuy}
+- Precio de venta: $${priceWithoutTax}
+
+RECOMENDACIÓN: Considera crear un producto diferente para mantener la integridad contable, ya que esto podría alterar la contabilidad de la aplicación.`,
+        };
+      }
+    }
+
+    return { isValid: true };
+  }
+
+  /**
+   * Obtiene los precios históricos del producto o los precios actuales
+   */
+  private getHistoricalPrices(
+    product: Product,
+    dto: any,
+  ): { priceBuy: number; priceWithoutTax: number } {
+    // Si se proporcionan precios específicos en el DTO, usarlos (precios históricos)
+    if (dto.priceBuy !== undefined && dto.priceWithoutTax !== undefined) {
+      return {
+        priceBuy: Number(dto.priceBuy),
+        priceWithoutTax: Number(dto.priceWithoutTax),
+      };
+    }
+
+    // Si no, usar los precios actuales del producto
+    return {
+      priceBuy: Number(product.priceBuy),
+      priceWithoutTax: Number(product.priceSale),
+    };
+  }
+
+  /**
+   * Crea un nuevo detalle de factura con precios históricos
+   */
   async create(invoiceId: number, dto: CreateInvoiceDetailDto) {
     const invoice = await this._invoiceRepository.findOne({
       where: { invoiceId },
@@ -161,47 +220,80 @@ export class InvoiceDetailService {
           : taxeType.percentage;
     }
 
-    const priceWithoutTax = Number(dto.priceWithoutTax);
     const amount = Number(dto.amount);
-
-    if (
-      isNaN(priceWithoutTax) ||
-      isNaN(amount) ||
-      priceWithoutTax < 0 ||
-      amount <= 0
-    ) {
-      throw new BadRequestException(
-        'Los valores numéricos no son válidos o deben ser mayores a cero',
-      );
+    if (isNaN(amount) || amount <= 0) {
+      throw new BadRequestException('La cantidad debe ser mayor a cero');
     }
 
-    const priceWithTax = Number((priceWithoutTax * (1 + taxRate)).toFixed(2));
-    const subtotal = Number((amount * priceWithTax).toFixed(2));
+    // Variables para los precios
+    let priceBuy = 0;
+    let priceWithoutTax = 0;
+    let priceWithTax = 0;
+    let subtotal = 0;
 
+    // Relaciones
+    let isProduct = false;
+    let product = null;
+
+    // ====== MANEJO DE PRODUCTOS CON PRECIOS HISTÓRICOS ======
+    if (dto.productId) {
+      product = await this._productRepository.findOne({
+        where: { productId: dto.productId },
+      });
+      if (!product) throw new NotFoundException('Producto no encontrado');
+
+      // Obtener precios (históricos o actuales)
+      const prices = this.getHistoricalPrices(product, dto);
+      priceBuy = prices.priceBuy;
+      priceWithoutTax = prices.priceWithoutTax;
+
+      // Validar consistencia de precios para facturas de compra
+      const validation = this.validateProductPriceConsistency(
+        product,
+        priceBuy,
+        priceWithoutTax,
+        invoice.invoiceType.code,
+      );
+
+      if (!validation.isValid) {
+        throw new BadRequestException(validation.message);
+      }
+
+      isProduct = true;
+    } else {
+      // Si no es producto, usar precios del DTO
+      priceBuy = Number(dto.priceBuy) || 0;
+      priceWithoutTax = Number(dto.priceWithoutTax) || 0;
+    }
+
+    // Validar precios
+    if (isNaN(priceWithoutTax) || priceWithoutTax < 0) {
+      throw new BadRequestException('El precio sin impuesto no es válido');
+    }
+
+    // Calcular precio con impuesto y subtotal
+    priceWithTax = Number((priceWithoutTax * (1 + taxRate)).toFixed(2));
+    subtotal = Number((amount * priceWithTax).toFixed(2));
+
+    // ====== CREAR DETALLE CON PRECIOS HISTÓRICOS ======
     const detail = this._invoiceDetaillRepository.create({
       amount,
-      priceWithoutTax,
-      priceWithTax,
-      subtotal,
+      priceBuy, // ✅ Precio de compra histórico
+      priceWithoutTax, // ✅ Precio de venta sin taxa histórico
+      priceWithTax, // ✅ Precio de venta con taxa calculado
+      subtotal, // ✅ Subtotal calculado
       taxeType,
       invoice,
       startDate: dto.startDate,
       endDate: dto.endDate,
     });
 
-    // Relaciones
-    let isProduct = false;
-    let product = null;
-
-    if (dto.productId) {
-      product = await this._productRepository.findOne({
-        where: { productId: dto.productId },
-      });
-      if (!product) throw new NotFoundException('Producto no encontrado');
+    // Asignar producto si existe
+    if (product) {
       detail.product = product;
-      isProduct = true;
     }
 
+    // ====== OTRAS RELACIONES ======
     if (dto.accommodationId) {
       const accommodation = await this._accommodationRepository.findOne({
         where: { accommodationId: dto.accommodationId },
@@ -221,7 +313,7 @@ export class InvoiceDetailService {
 
     const savedDetail = await this._invoiceDetaillRepository.save(detail);
 
-    // ✅ MANEJO DE STOCK DE PRODUCTO
+    // ====== MANEJO DE STOCK DE PRODUCTO ======
     if (isProduct) {
       const currentAmount = Number(product.amount) || 0;
 
@@ -242,11 +334,8 @@ export class InvoiceDetailService {
     // ✅ ACTUALIZAR TOTAL DE LA FACTURA
     await this.updateInvoiceTotal(invoiceId);
 
-    // ✅ ACTUALIZAR BALANCE (SOLO UNA VEZ)
-    // Primero actualizamos el balance de facturas
+    // ✅ ACTUALIZAR BALANCE
     await this._balanceService.updateBalanceWithInvoice(invoice);
-
-    // Luego actualizamos el balance de productos (si hay productos involucrados)
     if (isProduct) {
       await this._balanceService.updateBalanceWithCurrentProducts();
     }

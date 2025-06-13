@@ -39,6 +39,9 @@ export class InvoiceDetaill {
   amount?: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
+  priceBuy: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
   priceWithoutTax: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })

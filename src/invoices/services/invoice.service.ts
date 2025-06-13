@@ -1,3 +1,7 @@
+import { ExcursionRepository } from './../../shared/repositories/excursion.repository';
+import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
+import { ProductRepository } from './../../shared/repositories/product.repository';
+import { CreateInvoiceDetailDto } from './../dtos/invoiceDetaill.dto';
 import { InvoiceDetaill } from './../../shared/entities/invoiceDetaill.entity';
 import { BalanceService } from './../../shared/services/balance.service';
 import { Product } from './../../shared/entities/product.entity';
@@ -19,7 +23,6 @@ import { InvoiceRepository } from './../../shared/repositories/invoice.repositor
 import { InvoiceTypeRepository } from './../../shared/repositories/invoiceType.repository';
 import {
   CreateInvoiceDto,
-  CreateInvoiceWithDetailsDto,
   GetInvoiceWithDetailsDto,
   UpdateInvoiceDto,
 } from '../dtos/invoice.dto';
@@ -35,7 +38,151 @@ export class InvoiceService {
     private readonly _invoiceDetailRepository: InvoiceDetaillRepository,
     private readonly _userRepository: UserRepository,
     private readonly _balanceService: BalanceService,
+    private readonly _productRepository: ProductRepository,
+    private readonly _accommodationRepository: AccommodationRepository,
+    private readonly _excursionRepository: ExcursionRepository,
   ) {}
+
+  private async _calculateInvoiceDetails(
+    detailsDto: CreateInvoiceDetailDto[],
+  ): Promise<{
+    details: InvoiceDetaill[];
+    total: number;
+    subtotalWithTax: number;
+    subtotalWithoutTax: number;
+    hasProducts: boolean;
+  }> {
+    const details: InvoiceDetaill[] = [];
+    let subtotalWithoutTax = 0;
+    let subtotalWithTax = 0;
+    let total = 0;
+    let hasProducts = false;
+
+    for (const detailDto of detailsDto) {
+      let taxRate = 0;
+      let taxeType = null;
+
+      // Obtener tipo de impuesto
+      if (detailDto.taxeTypeId) {
+        taxeType = await this._taxeTypeRepository.findOne({
+          where: { taxeTypeId: detailDto.taxeTypeId },
+        });
+        if (!taxeType) {
+          throw new NotFoundException('Tipo de impuesto no encontrado');
+        }
+        taxRate =
+          taxeType.percentage > 1
+            ? taxeType.percentage / 100
+            : taxeType.percentage;
+      }
+
+      const amount = Number(detailDto.amount);
+      if (isNaN(amount) || amount <= 0) {
+        throw new BadRequestException('La cantidad debe ser mayor a cero');
+      }
+
+      // Variables para precios
+      let priceBuy = 0;
+      let priceWithoutTax = 0;
+      let priceWithTax = 0;
+      let detailSubtotal = 0;
+
+      // ====== MANEJO DE PRODUCTOS CON PRECIOS HISTÓRICOS ======
+      if (detailDto.productId) {
+        const product = await this._productRepository.findOne({
+          where: { productId: detailDto.productId },
+        });
+        if (!product) {
+          throw new NotFoundException('Producto no encontrado');
+        }
+
+        // Usar precios históricos si se proporcionan, sino usar precios actuales
+        priceBuy =
+          detailDto.priceBuy !== undefined
+            ? Number(detailDto.priceBuy)
+            : Number(product.priceBuy);
+
+        priceWithoutTax =
+          detailDto.priceWithoutTax !== undefined
+            ? Number(detailDto.priceWithoutTax)
+            : Number(product.priceSale);
+
+        hasProducts = true;
+      } else {
+        // Para servicios (hospedaje, excursiones)
+        priceBuy = Number(detailDto.priceBuy) || 0;
+        priceWithoutTax = Number(detailDto.priceWithoutTax) || 0;
+      }
+
+      // Calcular precios
+      priceWithTax = Number((priceWithoutTax * (1 + taxRate)).toFixed(2));
+      detailSubtotal = Number((amount * priceWithTax).toFixed(2));
+
+      // Crear detalle
+      const detail = this._invoiceDetailRepository.create({
+        amount,
+        priceBuy,
+        priceWithoutTax,
+        priceWithTax,
+        subtotal: detailSubtotal,
+        taxeType,
+        startDate: detailDto.startDate,
+        endDate: detailDto.endDate,
+      });
+
+      // Asignar relaciones
+      if (detailDto.productId) {
+        const product = await this._productRepository.findOne({
+          where: { productId: detailDto.productId },
+        });
+        detail.product = product;
+      }
+
+      if (detailDto.accommodationId) {
+        const accommodation = await this._accommodationRepository.findOne({
+          where: { accommodationId: detailDto.accommodationId },
+        });
+        if (!accommodation) {
+          throw new NotFoundException('Hospedaje no encontrado');
+        }
+        detail.accommodation = accommodation;
+      }
+
+      if (detailDto.excursionId) {
+        const excursion = await this._excursionRepository.findOne({
+          where: { excursionId: detailDto.excursionId },
+        });
+        if (!excursion) {
+          throw new NotFoundException('Excursión no encontrada');
+        }
+        detail.excursion = excursion;
+      }
+
+      details.push(detail);
+
+      // Acumular totales
+      const lineSubtotalWithoutTax = amount * priceWithoutTax;
+      const lineSubtotalWithTax = amount * priceWithTax;
+      const taxAmount = lineSubtotalWithTax - lineSubtotalWithoutTax;
+
+      subtotalWithoutTax += lineSubtotalWithoutTax;
+      subtotalWithTax += taxAmount;
+      total += lineSubtotalWithTax;
+    }
+
+    // Redondear totales
+    subtotalWithoutTax = Math.round(subtotalWithoutTax * 100) / 100;
+    subtotalWithTax = Math.round(subtotalWithTax * 100) / 100;
+    total = Math.round(total * 100) / 100;
+
+    return {
+      details,
+      total,
+      subtotalWithTax,
+      subtotalWithoutTax,
+      hasProducts,
+    };
+  }
 
   async create(dto: CreateInvoiceDto, employeeId: string): Promise<Invoice> {
     const {
@@ -187,76 +334,6 @@ export class InvoiceService {
       await queryRunner.release();
     }
   }
-
-  // ✅ MÉTODO AUXILIAR MEJORADO
-  private async _calculateInvoiceDetails(
-    details: CreateInvoiceWithDetailsDto['details'],
-  ) {
-    let invoiceTotal = 0;
-    let subtotalWithoutTax = 0;
-    let subtotalWithTax = 0;
-    let hasProducts = false;
-    const invoiceDetails = [];
-
-    for (const detail of details) {
-      let taxRate = 0;
-      let taxeType = null;
-
-      if (detail.taxeTypeId) {
-        taxeType = await this._taxeTypeRepository.findOne({
-          where: { taxeTypeId: detail.taxeTypeId },
-          select: ['taxeTypeId', 'percentage', 'name'],
-        });
-        if (!taxeType) {
-          throw new BadRequestException('Tipo de impuesto no encontrado');
-        }
-        taxRate = taxeType.percentage / 100;
-      }
-
-      const priceWithoutTax = Number(detail.priceWithoutTax);
-      const amount = Number(detail.amount);
-
-      if (isNaN(priceWithoutTax) || isNaN(amount)) {
-        throw new BadRequestException('Los valores numéricos no son válidos');
-      }
-
-      const priceWithTax = priceWithoutTax * (1 + taxRate);
-      const subtotal = amount * priceWithTax;
-
-      subtotalWithoutTax += amount * priceWithoutTax;
-      subtotalWithTax += subtotal;
-      invoiceTotal += subtotal;
-
-      // ✅ VERIFICAR SI HAY PRODUCTOS
-      if (detail.productId) {
-        hasProducts = true;
-      }
-
-      invoiceDetails.push({
-        amount,
-        priceWithoutTax,
-        priceWithTax,
-        subtotal,
-        taxeType,
-        product: detail.productId ? { productId: detail.productId } : null,
-        accommodation: detail.accommodationId
-          ? { accommodationId: detail.accommodationId }
-          : null,
-        excursion: detail.excursionId
-          ? { excursionId: detail.excursionId }
-          : null,
-      });
-    }
-
-    return {
-      details: invoiceDetails,
-      total: invoiceTotal,
-      subtotalWithoutTax,
-      subtotalWithTax,
-      hasProducts, // ✅ NUEVO: indica si hay productos
-    };
-  }
-
   async findOne(invoiceId: number): Promise<GetInvoiceWithDetailsDto> {
     const invoice = await this._invoiceRepository.findOne({
       where: { invoiceId },
