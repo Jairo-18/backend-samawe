@@ -135,7 +135,11 @@ export class InvoicedPaginatedService {
         invoiceId: invoice.invoiceId,
         code: invoice.code,
         invoiceElectronic: invoice.invoiceElectronic,
-        subtotal:
+        subtotalWithoutTax:
+          typeof invoice.subtotalWithoutTax === 'string'
+            ? parseFloat(invoice.subtotalWithoutTax) || 0
+            : invoice.subtotalWithoutTax || 0,
+        subtotalWithTax:
           typeof invoice.subtotalWithTax === 'string'
             ? parseFloat(invoice.subtotalWithTax) || 0
             : invoice.subtotalWithTax || 0,
