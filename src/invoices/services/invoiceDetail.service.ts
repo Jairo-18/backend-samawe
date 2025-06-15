@@ -38,40 +38,40 @@ export class InvoiceDetailService {
   ) {}
 
   async getRelatedDataToCreate(): Promise<CreateRelatedDataInvoiceDto> {
-    const invoiceType =
-      await this._repositoriesService.getEntities<InvoiceType>(
-        this._repositoriesService.repositories.invoiceType,
-      );
-
-    const taxeType = await this._repositoriesService.getEntities<TaxeType>(
-      this._repositoriesService.repositories.taxeType,
-    );
-
-    const payType = await this._repositoriesService.getEntities<PayType>(
-      this._repositoriesService.repositories.payType,
-    );
-
-    const paidType = await this._repositoriesService.getEntities<PaidType>(
-      this._repositoriesService.repositories.paidType,
-    );
-
-    const categoryType =
-      await this._repositoriesService.getEntities<CategoryType>(
-        this._repositoriesService.repositories.categoryType,
-      );
-
-    const identificationType =
-      await this._repositoriesService.getEntities<IdentificationType>(
-        this._repositoriesService.repositories.identificationType,
-      );
-
-    return {
+    const {
       invoiceType,
       taxeType,
       payType,
       paidType,
-      identificationType,
       categoryType,
+      identificationType,
+    } = this._repositoriesService.repositories;
+
+    const [
+      invoiceTypes,
+      taxeTypes,
+      payTypes,
+      paidTypes,
+      categoryTypes,
+      identificationTypes,
+    ] = await Promise.all([
+      this._repositoriesService.getEntities<InvoiceType>(invoiceType),
+      this._repositoriesService.getEntities<TaxeType>(taxeType),
+      this._repositoriesService.getEntities<PayType>(payType),
+      this._repositoriesService.getEntities<PaidType>(paidType),
+      this._repositoriesService.getEntities<CategoryType>(categoryType),
+      this._repositoriesService.getEntities<IdentificationType>(
+        identificationType,
+      ),
+    ]);
+
+    return {
+      invoiceType: invoiceTypes,
+      taxeType: taxeTypes,
+      payType: payTypes,
+      paidType: paidTypes,
+      categoryType: categoryTypes,
+      identificationType: identificationTypes,
     };
   }
 
