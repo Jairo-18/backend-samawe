@@ -3,7 +3,6 @@ import { AccommodationRepository } from './../../shared/repositories/accommodati
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { CreateInvoiceDetailDto } from './../dtos/invoiceDetaill.dto';
 import { InvoiceDetaill } from './../../shared/entities/invoiceDetaill.entity';
-import { BalanceService } from './../../shared/services/balance.service';
 import { Product } from './../../shared/entities/product.entity';
 import {
   Injectable,
@@ -11,7 +10,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Invoice } from './../../shared/entities/invoice.entity';
-
 import { PaidType } from './../../shared/entities/paidType.entity';
 import { PayType } from './../../shared/entities/payType.entity';
 import { PaidTypeRepository } from './../../shared/repositories/paidType.repository';
@@ -26,7 +24,7 @@ import {
   GetInvoiceWithDetailsDto,
   UpdateInvoiceDto,
 } from '../dtos/invoice.dto';
-import { DataSource } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class InvoiceService {
@@ -38,11 +36,10 @@ export class InvoiceService {
     private readonly _paidTypeRepository: PaidTypeRepository,
     private readonly _invoiceDetailRepository: InvoiceDetaillRepository,
     private readonly _userRepository: UserRepository,
-    private readonly _balanceService: BalanceService,
     private readonly _productRepository: ProductRepository,
     private readonly _accommodationRepository: AccommodationRepository,
     private readonly _excursionRepository: ExcursionRepository,
-    private readonly _dataSource: DataSource,
+    private readonly _eventEmitter: EventEmitter2,
   ) {}
 
   private async _calculateInvoiceDetails(
@@ -247,10 +244,10 @@ export class InvoiceService {
         return { saved, hasProducts };
       });
 
-    await this._balanceService.updateBalanceWithInvoice(invoiceEntity);
-    if (hasProducts) {
-      await this._balanceService.updateBalanceWithCurrentProducts();
-    }
+    this._eventEmitter.emit('invoice.created', {
+      invoice: invoiceEntity,
+      hasProducts,
+    });
 
     return invoiceEntity;
   }
@@ -310,11 +307,7 @@ export class InvoiceService {
 
       await queryRunner.commitTransaction();
 
-      await this._balanceService.removeInvoiceFromBalance(invoice);
-
-      if (hasProducts) {
-        await this._balanceService.updateBalanceWithCurrentProducts();
-      }
+      this._eventEmitter.emit('invoice.deleted', { invoice, hasProducts });
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -322,6 +315,7 @@ export class InvoiceService {
       await queryRunner.release();
     }
   }
+
   async findOne(invoiceId: number): Promise<GetInvoiceWithDetailsDto> {
     const invoice = await this._invoiceRepository.findOne({
       where: { invoiceId },

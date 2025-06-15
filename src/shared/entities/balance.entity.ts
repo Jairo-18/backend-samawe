@@ -3,9 +3,11 @@ import {
   CreateDateColumn,
   Entity,
   PrimaryGeneratedColumn,
+  Index,
 } from 'typeorm';
 import { BalanceType } from '../constants/balanceType.constants';
 
+@Index(['type', 'periodDate'], { unique: true })
 @Entity('Balance')
 export class Balance {
   @PrimaryGeneratedColumn()

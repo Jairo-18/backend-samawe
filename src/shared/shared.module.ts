@@ -1,3 +1,4 @@
+import { InvoiceEventsListener } from './services/invoiceEventsListener.service';
 import { BalanceService } from './services/balance.service';
 import { InvoiceDetaillRepository } from './repositories/invoiceDetaill.repository';
 import { InvoiceRepository } from './repositories/invoice.repository';
@@ -44,6 +45,7 @@ import { InvoiceTypeRepository } from './repositories/invoiceType.repository';
 import { InvoiceDetaill } from './entities/invoiceDetaill.entity';
 import { BalanceRepository } from './repositories/balance.repository';
 import { Balance } from './entities/balance.entity';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({})
 export class SharedModule {
@@ -51,6 +53,7 @@ export class SharedModule {
     return {
       module: SharedModule,
       imports: [
+        EventEmitterModule.forRoot(),
         TypeOrmModule.forRootAsync({
           inject: [ConfigService],
           useFactory: (configService: ConfigService) => ({
@@ -128,6 +131,7 @@ export class SharedModule {
         UserRepository,
         BalanceService,
         RepositoryService,
+        InvoiceEventsListener,
       ],
       exports: [
         TypeOrmModule,
@@ -152,6 +156,7 @@ export class SharedModule {
         UserRepository,
         BalanceService,
         RepositoryService,
+        InvoiceEventsListener,
       ],
     };
   }

@@ -1,6 +1,4 @@
 import { Product } from './../../shared/entities/product.entity';
-import { BalanceRepository } from './../../shared/repositories/balance.repository';
-import { BalanceService } from './../../shared/services/balance.service';
 import { CategoryType } from './../../shared/entities/categoryType.entity';
 import { IdentificationType } from './../../shared/entities/identificationType.entity';
 import { PaidType } from './../../shared/entities/paidType.entity';
@@ -24,6 +22,7 @@ import {
   CreateInvoiceDetailDto,
   CreateRelatedDataInvoiceDto,
 } from '../dtos/invoiceDetaill.dto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class InvoiceDetailService {
@@ -35,8 +34,7 @@ export class InvoiceDetailService {
     private readonly _excursionRepository: ExcursionRepository,
     private readonly _taxeTypeRepository: TaxeTypeRepository,
     private readonly _repositoriesService: RepositoryService,
-    private readonly _balanceService: BalanceService,
-    private readonly _balanceRepository: BalanceRepository,
+    private readonly _eventEmitter: EventEmitter2,
   ) {}
 
   async getRelatedDataToCreate(): Promise<CreateRelatedDataInvoiceDto> {
@@ -153,16 +151,15 @@ export class InvoiceDetailService {
         return {
           isValid: false,
           message: `⚠️ ATENCIÓN: Los precios del producto "${product.name}" han cambiado:
-          
-Precios actuales del producto:
-- Precio de compra: $${currentPriceBuy}
-- Precio de venta: $${currentPriceSale}
+              Precios actuales del producto:
+              - Precio de compra: $${currentPriceBuy}
+              - Precio de venta: $${currentPriceSale}
 
-Precios en esta factura:
-- Precio de compra: $${priceBuy}
-- Precio de venta: $${priceWithoutTax}
+              Precios en esta factura:
+              - Precio de compra: $${priceBuy}
+              - Precio de venta: $${priceWithoutTax}
 
-RECOMENDACIÓN: Considera crear un producto diferente para mantener la integridad contable, ya que esto podría alterar la contabilidad de la aplicación.`,
+              RECOMENDACIÓN: Considera crear un producto diferente para mantener la integridad contable, ya que esto podría alterar la contabilidad de la aplicación.`,
         };
       }
     }
@@ -320,7 +317,7 @@ RECOMENDACIÓN: Considera crear un producto diferente para mantener la integrida
       if (invoice.invoiceType.code === 'FV') {
         if (currentAmount < amount) {
           throw new BadRequestException(
-            `No hay suficiente stock para el producto ${product.name}`,
+            `No hay suficientes unidades para el producto ${product.name}`,
           );
         }
         product.amount = currentAmount - amount;
@@ -334,12 +331,10 @@ RECOMENDACIÓN: Considera crear un producto diferente para mantener la integrida
     // ✅ ACTUALIZAR TOTAL DE LA FACTURA
     await this.updateInvoiceTotal(invoiceId);
 
-    // ✅ ACTUALIZAR BALANCE
-    await this._balanceService.updateBalanceWithInvoice(invoice);
-    if (isProduct) {
-      await this._balanceService.updateBalanceWithCurrentProducts();
-    }
-
+    this._eventEmitter.emit('invoice.detail.created', {
+      invoice,
+      isProduct,
+    });
     return savedDetail;
   }
 
@@ -394,14 +389,10 @@ RECOMENDACIÓN: Considera crear un producto diferente para mantener la integrida
     // ✅ RECALCULAR TOTAL DE LA FACTURA
     await this.updateInvoiceTotal(invoice.invoiceId);
 
-    // ✅ ACTUALIZAR BALANCE (MÉTODO SIMPLIFICADO)
-    // Recalculamos los balances de facturas para todos los períodos
-    await this._balanceService.updateBalanceWithInvoice(invoice);
-
-    // Si había producto involucrado, actualizamos balance de productos
-    if (detail.product) {
-      await this._balanceService.updateBalanceWithCurrentProducts();
-    }
+    this._eventEmitter.emit('invoice.detail.deleted', {
+      invoice,
+      isProduct: !!detail.product,
+    });
 
     return {
       invoiceId: invoice.invoiceId,

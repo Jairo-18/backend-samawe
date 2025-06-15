@@ -1,48 +1,30 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { EarningUC } from '../useCases/earningUC.uc';
-import {
-  InventoryTotalDto,
-  InvoiceTotalsDto,
-  CountAndTotalItemsDto,
-  TotalWithProducts,
-} from '../dtos/earning.dto';
-import { AuthGuard } from '@nestjs/passport';
+import { Controller, Get } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 
-@Controller('earning')
+import {
+  AllInvoiceSummariesDto,
+  BalanceProductSummaryDto,
+  ProductStockCountDto,
+} from '../dtos/earning.dto';
+import { EarningService } from '../services/earning.service';
+
+@Controller('balance')
 @ApiTags('Ganancias / Reportes')
 export class EarningController {
-  constructor(private readonly _earningUC: EarningUC) {}
+  constructor(private readonly balanceSummaryService: EarningService) {}
 
-  @Get('general-earnigs')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: InvoiceTotalsDto })
-  async getInvoiceTotals(): Promise<InvoiceTotalsDto> {
-    return this._earningUC.getInvoiceTotals();
+  @Get('product-summary')
+  getProductSummary(): Promise<BalanceProductSummaryDto> {
+    return this.balanceSummaryService.getProductSummary();
   }
 
-  @Get('count-total-items')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: CountAndTotalItemsDto })
-  async getSoldStats(): Promise<CountAndTotalItemsDto> {
-    return this._earningUC.getSoldStats();
+  @Get('invoice-summary')
+  getInvoiceSummary(): Promise<AllInvoiceSummariesDto> {
+    return this.balanceSummaryService.getAllInvoiceSummaries();
   }
 
-  @Get('inventory-total')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: InventoryTotalDto })
-  async getInventory(): Promise<InventoryTotalDto> {
-    return this._earningUC.getInventory();
-  }
-
-  @Get('total-sales-with-inventory')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: TotalWithProducts })
-  async getTotalSalesPlusInventory(): Promise<TotalWithProducts> {
-    return this._earningUC.getTotalSalesPlusInventory();
+  @Get('total-stock')
+  getTotalStock(): Promise<ProductStockCountDto> {
+    return this.balanceSummaryService.getTotalStock();
   }
 }

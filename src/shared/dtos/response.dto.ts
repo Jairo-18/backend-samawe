@@ -16,7 +16,7 @@ import { UpdateManyResults } from '../interfaces/results.interface';
 export interface BaseResponseDto {
   title?: string;
   message?: string;
-  statusCode: number;
+  statusCode?: number;
   error?: string;
 }
 
@@ -132,13 +132,13 @@ export class DeleteReCordResponseDto implements BaseResponseDto {
     type: String,
     example: DELETED_MESSAGE,
   })
-  message: string;
+  message?: string;
 
   @ApiProperty({
     type: Number,
     example: HttpStatus.OK,
   })
-  statusCode: number;
+  statusCode?: number;
 }
 
 export interface BaseBulkResponseDto {

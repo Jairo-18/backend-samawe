@@ -1,9 +1,3 @@
-import {
-  InventoryTotalDto,
-  InvoiceTotalsDto,
-  CountAndTotalItemsDto,
-  TotalWithProducts,
-} from '../dtos/earning.dto';
 import { EarningService } from '../services/earning.service';
 import { Injectable } from '@nestjs/common';
 
@@ -11,19 +5,15 @@ import { Injectable } from '@nestjs/common';
 export class EarningUC {
   constructor(private readonly _earningService: EarningService) {}
 
-  async getInvoiceTotals(): Promise<InvoiceTotalsDto> {
-    return this._earningService.getInvoiceTotalsOnly();
-  }
+  // getProductSummary(): Promise<BalanceProductSummaryDto> {
+  //   return this._earningService.getProductSummary();
+  // }
 
-  async getSoldStats(): Promise<CountAndTotalItemsDto> {
-    return this._earningService.getSoldStatsOnly();
-  }
+  // getInvoiceSummary(): Promise<BalanceInvoiceSummaryDto> {
+  //   return this._earningService.getInvoiceSummary();
+  // }
 
-  async getInventory(): Promise<InventoryTotalDto> {
-    return this._earningService.getInventoryOnly();
-  }
-
-  async getTotalSalesPlusInventory(): Promise<TotalWithProducts> {
-    return this._earningService.getTotalSalesPlusInventoryOnly();
-  }
+  // getTotalStock(): Promise<ProductStockCountDto> {
+  //   return this._earningService.getTotalStock();
+  // }
 }
