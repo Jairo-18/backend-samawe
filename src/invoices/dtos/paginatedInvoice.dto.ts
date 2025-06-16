@@ -1,9 +1,14 @@
+import { OrderConst } from './../../shared/constants/order.constants';
 import { IsBoolean, IsDateString, IsOptional, IsString } from 'class-validator';
 import { ParamsPaginationDto } from './../../shared/dtos/pagination.dto';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 
 export class PaginatedListInvoicesParamsDto extends ParamsPaginationDto {
+  @ApiPropertyOptional({ enum: OrderConst, default: OrderConst.DESC })
+  @IsOptional()
+  override order?: OrderConst = OrderConst.DESC;
+
   @ApiProperty({
     example: 2,
     description: 'ID del tipo de factura',

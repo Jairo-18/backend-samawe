@@ -1,12 +1,11 @@
-import { ProductRepository } from './../repositories/product.repository';
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Between, IsNull } from 'typeorm';
+import { ProductRepository } from './../repositories/product.repository';
 import { BalanceRepository } from './../repositories/balance.repository';
+import { InvoiceRepository } from './../repositories/invoice.repository';
 import { Invoice } from './../entities/invoice.entity';
-import { BalanceType } from '../constants/balanceType.constants';
-import { MoreThanOrEqual } from 'typeorm';
-
 import { Balance } from '../entities/balance.entity';
-import { InvoiceRepository } from '../repositories/invoice.repository';
+import { BalanceType } from '../constants/balanceType.constants';
 
 @Injectable()
 export class BalanceService {
@@ -34,19 +33,15 @@ export class BalanceService {
     switch (type) {
       case BalanceType.DAILY:
         return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
       case BalanceType.WEEKLY: {
         const day = now.getDay();
         const diff = now.getDate() - day + (day === 0 ? -6 : 1);
         return new Date(now.getFullYear(), now.getMonth(), diff);
       }
-
       case BalanceType.MONTHLY:
         return new Date(now.getFullYear(), now.getMonth(), 1);
-
       case BalanceType.YEARLY:
         return new Date(now.getFullYear(), 0, 1);
-
       default:
         return new Date(now.getFullYear(), now.getMonth(), now.getDate());
     }
@@ -54,7 +49,6 @@ export class BalanceService {
 
   private getPeriodDateFromDate(type: BalanceType, date: Date): Date {
     const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
     switch (type) {
       case BalanceType.WEEKLY: {
         const day = d.getDay();
@@ -68,13 +62,11 @@ export class BalanceService {
         d.setMonth(0, 1);
         break;
     }
-
     return d;
   }
 
   private getPeriodEndDate(type: BalanceType, periodDate: Date): Date {
     const endDate = new Date(periodDate);
-
     switch (type) {
       case BalanceType.DAILY:
         endDate.setDate(endDate.getDate() + 1);
@@ -89,11 +81,9 @@ export class BalanceService {
         endDate.setFullYear(endDate.getFullYear() + 1);
         break;
     }
-
     return endDate;
   }
 
-  // Método para recalcular el balance completo de un período
   private async recalculateBalanceForPeriod(
     type: BalanceType,
     periodDate: Date,
@@ -101,36 +91,28 @@ export class BalanceService {
     const periodEndDate = this.getPeriodEndDate(type, periodDate);
 
     await this._balanceRepository.manager.transaction(async (manager) => {
-      // Obtener todas las facturas del período
       const invoices = await this._invoiceRepository.find({
         where: {
-          createdAt: MoreThanOrEqual(periodDate),
+          createdAt: Between(periodDate, periodEndDate),
+          deletedAt: IsNull(),
         },
         relations: ['invoiceType'],
       });
 
-      // Filtrar las facturas que están dentro del período
-      const filteredInvoices = invoices.filter(
-        (invoice) =>
-          invoice.createdAt >= periodDate && invoice.createdAt < periodEndDate,
-      );
-
-      // Calcular totales
       let totalInvoiceSale = 0;
       let totalInvoiceBuy = 0;
 
-      for (const invoice of filteredInvoices) {
+      for (const invoice of invoices) {
         const amount = Number(invoice.total) || 0;
-        const isSale = invoice.invoiceType.code === 'FV';
+        const invoiceTypeCode = invoice.invoiceType?.code;
 
-        if (isSale) {
+        if (invoiceTypeCode === 'FV') {
           totalInvoiceSale += amount;
-        } else {
+        } else if (invoiceTypeCode === 'FC') {
           totalInvoiceBuy += amount;
         }
       }
 
-      // Buscar o crear el balance
       let balance = await manager.findOne(Balance, {
         where: { type, periodDate },
         lock: { mode: 'pessimistic_write' },
@@ -143,10 +125,15 @@ export class BalanceService {
         });
       }
 
-      // Actualizar con los valores recalculados
+      // 👉 siempre actualiza estos campos, aunque ya exista
       balance.totalInvoiceSale = totalInvoiceSale;
       balance.totalInvoiceBuy = totalInvoiceBuy;
       balance.balanceInvoice = totalInvoiceSale - totalInvoiceBuy;
+
+      // Opcional: también puedes resetear los campos de producto si lo ves necesario
+      balance.totalProductPriceSale = balance.totalProductPriceSale ?? 0;
+      balance.totalProductPriceBuy = balance.totalProductPriceBuy ?? 0;
+      balance.balanceProduct = balance.balanceProduct ?? 0;
 
       await manager.save(balance);
     });
@@ -163,18 +150,15 @@ export class BalanceService {
     }
 
     const invoiceDate = new Date(invoice.createdAt);
-
-    // Recalcular el balance para todos los períodos que incluyen esta factura
     for (const type of Object.values(BalanceType)) {
       const periodDate = this.getPeriodDateFromDate(type, invoiceDate);
       await this.recalculateBalanceForPeriod(type, periodDate);
     }
+    await this.recalculateAllBalances();
   }
 
   async removeInvoiceFromBalance(invoice: Invoice): Promise<void> {
     const invoiceDate = new Date(invoice.createdAt);
-
-    // Recalcular el balance para todos los períodos que incluían esta factura
     for (const type of Object.values(BalanceType)) {
       const periodDate = this.getPeriodDateFromDate(type, invoiceDate);
       await this.recalculateBalanceForPeriod(type, periodDate);
@@ -221,6 +205,74 @@ export class BalanceService {
 
         await manager.save(balance);
       });
+    }
+  }
+
+  async recalculateAllBalances(): Promise<void> {
+    const firstInvoice = await this._invoiceRepository
+      .createQueryBuilder('invoice')
+      .orderBy('invoice.createdAt', 'ASC')
+      .getOne();
+
+    const lastInvoice = await this._invoiceRepository
+      .createQueryBuilder('invoice')
+      .orderBy('invoice.createdAt', 'DESC')
+      .getOne();
+
+    if (!firstInvoice || !lastInvoice) return;
+
+    const startDate = new Date(firstInvoice.createdAt);
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = new Date(lastInvoice.createdAt);
+    endDate.setHours(0, 0, 0, 0);
+
+    const currentDaily = new Date(startDate);
+    while (currentDaily <= endDate) {
+      await this.recalculateBalanceForPeriod(
+        BalanceType.DAILY,
+        new Date(currentDaily),
+      );
+      currentDaily.setDate(currentDaily.getDate() + 1);
+    }
+
+    const currentWeekly = this.getPeriodDateFromDate(
+      BalanceType.WEEKLY,
+      startDate,
+    );
+    const weeklyEnd = this.getPeriodDateFromDate(BalanceType.WEEKLY, endDate);
+    while (currentWeekly <= weeklyEnd) {
+      await this.recalculateBalanceForPeriod(
+        BalanceType.WEEKLY,
+        new Date(currentWeekly),
+      );
+      currentWeekly.setDate(currentWeekly.getDate() + 7);
+    }
+
+    const currentMonthly = this.getPeriodDateFromDate(
+      BalanceType.MONTHLY,
+      startDate,
+    );
+    const monthlyEnd = this.getPeriodDateFromDate(BalanceType.MONTHLY, endDate);
+    while (currentMonthly <= monthlyEnd) {
+      await this.recalculateBalanceForPeriod(
+        BalanceType.MONTHLY,
+        new Date(currentMonthly),
+      );
+      currentMonthly.setMonth(currentMonthly.getMonth() + 1);
+    }
+
+    const currentYearly = this.getPeriodDateFromDate(
+      BalanceType.YEARLY,
+      startDate,
+    );
+    const yearlyEnd = this.getPeriodDateFromDate(BalanceType.YEARLY, endDate);
+    while (currentYearly <= yearlyEnd) {
+      await this.recalculateBalanceForPeriod(
+        BalanceType.YEARLY,
+        new Date(currentYearly),
+      );
+      currentYearly.setFullYear(currentYearly.getFullYear() + 1);
     }
   }
 }
