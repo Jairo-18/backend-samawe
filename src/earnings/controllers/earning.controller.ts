@@ -4,6 +4,7 @@ import { ApiTags } from '@nestjs/swagger';
 import {
   AllInvoiceSummariesDto,
   BalanceProductSummaryDto,
+  InvoiceChartListDto,
   ProductStockCountDto,
 } from '../dtos/earning.dto';
 import { EarningService } from '../services/earning.service';
@@ -26,5 +27,10 @@ export class EarningController {
   @Get('total-stock')
   getTotalStock(): Promise<ProductStockCountDto> {
     return this.balanceSummaryService.getTotalStock();
+  }
+
+  @Get('invoice-chart-list')
+  getInvoiceChartList(): Promise<InvoiceChartListDto> {
+    return this.balanceSummaryService.getInvoiceChartList();
   }
 }

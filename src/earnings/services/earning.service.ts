@@ -1,9 +1,12 @@
+import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   BalanceProductSummaryDto,
   BalanceInvoiceSummaryDto,
   ProductStockCountDto,
   AllInvoiceSummariesDto,
+  InvoiceChartListDto,
+  InvoiceChartItemDto,
 } from './../dtos/earning.dto';
 import { BalanceRepository } from './../../shared/repositories/balance.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
@@ -15,6 +18,7 @@ export class EarningService {
   constructor(
     private readonly _balanceRepository: BalanceRepository,
     private readonly _productRepository: ProductRepository,
+    private readonly _invoiceRepository: InvoiceRepository,
   ) {}
 
   async getLatestDailyBalance(): Promise<Balance> {
@@ -91,5 +95,91 @@ export class EarningService {
       .select('SUM(p.amount)', 'sum')
       .getRawOne();
     return { totalStock: Number(sum || 0) };
+  }
+
+  async getInvoiceChartList(): Promise<InvoiceChartListDto> {
+    const now = new Date();
+
+    // Definimos la función getRange primero
+    const getRange = (type: 'daily' | 'weekly' | 'monthly' | 'yearly') => {
+      const start = new Date(now);
+      const end = new Date(now);
+      switch (type) {
+        case 'daily':
+          start.setHours(0, 0, 0, 0);
+          end.setHours(23, 59, 59, 999);
+          break;
+        case 'weekly':
+          const day = now.getDay() || 7;
+          start.setDate(now.getDate() - day + 1);
+          start.setHours(0, 0, 0, 0);
+          end.setDate(start.getDate() + 6);
+          end.setHours(23, 59, 59, 999);
+          break;
+        case 'monthly':
+          start.setDate(1);
+          start.setHours(0, 0, 0, 0);
+          end.setMonth(start.getMonth() + 1, 0);
+          end.setHours(23, 59, 59, 999);
+          break;
+        case 'yearly':
+          start.setMonth(0, 1);
+          start.setHours(0, 0, 0, 0);
+          end.setMonth(11, 31);
+          end.setHours(23, 59, 59, 999);
+          break;
+      }
+      return { start, end };
+    };
+
+    // Definimos el array types
+    const types: ('daily' | 'weekly' | 'monthly' | 'yearly')[] = [
+      'daily',
+      'weekly',
+      'monthly',
+      'yearly',
+    ];
+
+    const results = await Promise.all(
+      types.map(async (type) => {
+        const { start, end } = getRange(type);
+
+        const invoices = await this._invoiceRepository
+          .createQueryBuilder('invoice')
+          .leftJoinAndSelect('invoice.invoiceType', 'invoiceType')
+          .where('invoice.createdAt BETWEEN :start AND :end', { start, end })
+          .andWhere('invoice.deletedAt IS NULL')
+          .andWhere('invoiceType.deletedAt IS NULL')
+          .select([
+            'invoice.code AS code',
+            'invoice.total AS total',
+            'invoice.createdAt AS "createdAt"',
+            'invoiceType.code AS "invoiceTypeCode"',
+          ])
+          .orderBy('invoice.createdAt', 'ASC')
+          .getRawMany();
+
+        const formatted: InvoiceChartItemDto[] = invoices.map((inv) => ({
+          code: inv.code,
+          total: Number(inv.total),
+          type:
+            inv.invoiceTypeCode === 'FV'
+              ? 'FV'
+              : inv.invoiceTypeCode === 'FC'
+                ? 'FC'
+                : 'other',
+          createdAt: new Date(inv.createdAt),
+        }));
+
+        return { type, data: formatted };
+      }),
+    );
+
+    const response = {} as InvoiceChartListDto;
+    results.forEach((r) => {
+      response[r.type] = r.data;
+    });
+
+    return response;
   }
 }

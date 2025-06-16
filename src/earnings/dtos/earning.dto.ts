@@ -22,3 +22,17 @@ export class AllInvoiceSummariesDto {
   monthly: BalanceInvoiceSummaryDto | null;
   yearly: BalanceInvoiceSummaryDto | null;
 }
+
+export class InvoiceChartItemDto {
+  code: string;
+  type: 'FV' | 'FC' | 'other'; // Asegúrate que coincida con lo que devuelves
+  total: number;
+  createdAt: Date;
+}
+
+export class InvoiceChartListDto {
+  daily: InvoiceChartItemDto[];
+  weekly: InvoiceChartItemDto[];
+  monthly: InvoiceChartItemDto[];
+  yearly: InvoiceChartItemDto[];
+}
