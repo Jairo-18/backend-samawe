@@ -1,16 +1,19 @@
 import { ProductRepository } from './../repositories/product.repository';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { BalanceRepository } from './../repositories/balance.repository';
 import { Invoice } from './../entities/invoice.entity';
 import { BalanceType } from '../constants/balanceType.constants';
-import { Between, In } from 'typeorm';
+import { MoreThanOrEqual } from 'typeorm';
+
 import { Balance } from '../entities/balance.entity';
+import { InvoiceRepository } from '../repositories/invoice.repository';
 
 @Injectable()
 export class BalanceService {
   constructor(
     private readonly _balanceRepository: BalanceRepository,
     private readonly _productRepository: ProductRepository,
+    private readonly _invoiceRepository: InvoiceRepository,
   ) {}
 
   private getTodayDate(): Date {
@@ -90,65 +93,92 @@ export class BalanceService {
     return endDate;
   }
 
-  async updateBalanceWithInvoice(invoice: Invoice): Promise<void> {
-    const isSale = invoice.invoiceType.code === 'FV';
-    const amount = Number(invoice.total) || 0;
+  // Método para recalcular el balance completo de un período
+  private async recalculateBalanceForPeriod(
+    type: BalanceType,
+    periodDate: Date,
+  ): Promise<void> {
+    const periodEndDate = this.getPeriodEndDate(type, periodDate);
+
+    await this._balanceRepository.manager.transaction(async (manager) => {
+      // Obtener todas las facturas del período
+      const invoices = await this._invoiceRepository.find({
+        where: {
+          createdAt: MoreThanOrEqual(periodDate),
+        },
+        relations: ['invoiceType'],
+      });
+
+      // Filtrar las facturas que están dentro del período
+      const filteredInvoices = invoices.filter(
+        (invoice) =>
+          invoice.createdAt >= periodDate && invoice.createdAt < periodEndDate,
+      );
+
+      // Calcular totales
+      let totalInvoiceSale = 0;
+      let totalInvoiceBuy = 0;
+
+      for (const invoice of filteredInvoices) {
+        const amount = Number(invoice.total) || 0;
+        const isSale = invoice.invoiceType.code === 'FV';
+
+        if (isSale) {
+          totalInvoiceSale += amount;
+        } else {
+          totalInvoiceBuy += amount;
+        }
+      }
+
+      // Buscar o crear el balance
+      let balance = await manager.findOne(Balance, {
+        where: { type, periodDate },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!balance) {
+        balance = manager.create(Balance, {
+          type,
+          periodDate,
+        });
+      }
+
+      // Actualizar con los valores recalculados
+      balance.totalInvoiceSale = totalInvoiceSale;
+      balance.totalInvoiceBuy = totalInvoiceBuy;
+      balance.balanceInvoice = totalInvoiceSale - totalInvoiceBuy;
+
+      await manager.save(balance);
+    });
+  }
+
+  async updateBalanceByInvoiceId(invoiceId: number): Promise<void> {
+    const invoice = await this._invoiceRepository.findOne({
+      where: { invoiceId },
+      relations: ['invoiceType'],
+    });
+
+    if (!invoice) {
+      throw new NotFoundException(`Factura con ID ${invoiceId} no encontrada`);
+    }
+
     const invoiceDate = new Date(invoice.createdAt);
 
-    if (isNaN(amount))
-      throw new Error(
-        `Invalid amount in invoice ${invoice.invoiceId}: ${invoice.total}`,
-      );
-    if (!invoiceDate || isNaN(invoiceDate.getTime()))
-      throw new Error(`Invalid date in invoice ${invoice.invoiceId}`);
-
+    // Recalcular el balance para todos los períodos que incluyen esta factura
     for (const type of Object.values(BalanceType)) {
       const periodDate = this.getPeriodDateFromDate(type, invoiceDate);
-
-      await this._balanceRepository.manager.transaction(async (manager) => {
-        let balance = await manager.findOne(Balance, {
-          where: { type, periodDate },
-          lock: { mode: 'pessimistic_write' },
-        });
-
-        const invoices = await manager.find(Invoice, {
-          where: {
-            createdAt: Between(
-              periodDate,
-              this.getPeriodEndDate(type, periodDate),
-            ),
-            invoiceType: { code: In(['FV', 'FC']) },
-          },
-          relations: ['invoiceType'],
-        });
-
-        let totalSales = 0;
-        let totalPurchases = 0;
-
-        for (const inv of invoices) {
-          const invAmount = Number(inv.total) || 0;
-          if (inv.invoiceType.code === 'FV') totalSales += invAmount;
-          else totalPurchases += invAmount;
-        }
-
-        if (!balance) {
-          balance = manager.create(Balance, {
-            type,
-            periodDate,
-          });
-        }
-
-        balance.totalInvoiceSale = totalSales;
-        balance.totalInvoiceBuy = totalPurchases;
-        balance.balanceInvoice = totalSales - totalPurchases;
-
-        await manager.save(balance);
-      });
+      await this.recalculateBalanceForPeriod(type, periodDate);
     }
   }
 
   async removeInvoiceFromBalance(invoice: Invoice): Promise<void> {
-    await this.updateBalanceWithInvoice(invoice);
+    const invoiceDate = new Date(invoice.createdAt);
+
+    // Recalcular el balance para todos los períodos que incluían esta factura
+    for (const type of Object.values(BalanceType)) {
+      const periodDate = this.getPeriodDateFromDate(type, invoiceDate);
+      await this.recalculateBalanceForPeriod(type, periodDate);
+    }
   }
 
   async updateBalanceWithCurrentProducts(): Promise<void> {

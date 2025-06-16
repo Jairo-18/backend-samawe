@@ -13,7 +13,9 @@ export class InvoiceEventsListener {
     hasProducts: boolean;
   }) {
     try {
-      await this._balanceService.updateBalanceWithInvoice(payload.invoice);
+      await this._balanceService.updateBalanceByInvoiceId(
+        payload.invoice.invoiceId,
+      );
       if (payload.hasProducts) {
         await this._balanceService.updateBalanceWithCurrentProducts();
       }
@@ -42,7 +44,10 @@ export class InvoiceEventsListener {
     invoice: Invoice;
     isProduct: boolean;
   }) {
-    await this._balanceService.updateBalanceWithInvoice(payload.invoice);
+    await this._balanceService.updateBalanceByInvoiceId(
+      payload.invoice.invoiceId,
+    );
+
     if (payload.isProduct) {
       await this._balanceService.updateBalanceWithCurrentProducts();
     }
@@ -53,7 +58,10 @@ export class InvoiceEventsListener {
     invoice: Invoice;
     isProduct: boolean;
   }) {
-    await this._balanceService.updateBalanceWithInvoice(payload.invoice);
+    await this._balanceService.updateBalanceByInvoiceId(
+      payload.invoice.invoiceId,
+    );
+
     if (payload.isProduct) {
       await this._balanceService.updateBalanceWithCurrentProducts();
     }
