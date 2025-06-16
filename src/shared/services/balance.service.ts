@@ -167,9 +167,10 @@ export class BalanceService {
     }
 
     const balanceProduct = totalProductPriceSale - totalProductPriceBuy;
+    const today = this.getTodayDate();
 
     for (const type of Object.values(BalanceType)) {
-      const periodDate = this.getPeriodDate(type);
+      const periodDate = this.getPeriodDateFromDate(type, today);
 
       await this._balanceRepository.manager.transaction(async (manager) => {
         let balance = await manager.findOne(Balance, {
