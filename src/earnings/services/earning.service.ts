@@ -149,7 +149,10 @@ export class EarningService {
           .leftJoinAndSelect('invoice.invoiceType', 'invoiceType')
           .where(
             `invoice.createdAt AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota' BETWEEN :start AND :end`,
-            { start, end },
+            {
+              start: start.toISOString().slice(0, 19).replace('T', ' '),
+              end: end.toISOString().slice(0, 19).replace('T', ' '),
+            },
           )
           .andWhere('invoice.deletedAt IS NULL')
           .andWhere('invoiceType.deletedAt IS NULL')
