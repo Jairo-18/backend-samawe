@@ -147,7 +147,10 @@ export class EarningService {
         const invoices = await this._invoiceRepository
           .createQueryBuilder('invoice')
           .leftJoinAndSelect('invoice.invoiceType', 'invoiceType')
-          .where('invoice.createdAt BETWEEN :start AND :end', { start, end })
+          .where(
+            `invoice.createdAt AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota' BETWEEN :start AND :end`,
+            { start, end },
+          )
           .andWhere('invoice.deletedAt IS NULL')
           .andWhere('invoiceType.deletedAt IS NULL')
           .select([
