@@ -100,18 +100,24 @@ export class EarningService {
   async getInvoiceChartList(): Promise<InvoiceChartListDto> {
     const now = new Date();
 
-    // Definimos la función getRange primero
     const getRange = (type: 'daily' | 'weekly' | 'monthly' | 'yearly') => {
-      const start = new Date(now);
-      const end = new Date(now);
+      const colombiaOffset = -5 * 60; // UTC-5 en minutos
+      const localTime = now.getTime();
+      const localOffset = now.getTimezoneOffset() * 60000;
+      const utc = localTime + localOffset;
+      const colombiaTime = new Date(utc + colombiaOffset * 60000);
+
+      const start = new Date(colombiaTime);
+      const end = new Date(colombiaTime);
+
       switch (type) {
         case 'daily':
           start.setHours(0, 0, 0, 0);
           end.setHours(23, 59, 59, 999);
           break;
         case 'weekly':
-          const day = now.getDay() || 7;
-          start.setDate(now.getDate() - day + 1);
+          const day = colombiaTime.getDay() || 7;
+          start.setDate(colombiaTime.getDate() - day + 1);
           start.setHours(0, 0, 0, 0);
           end.setDate(start.getDate() + 6);
           end.setHours(23, 59, 59, 999);
@@ -129,10 +135,13 @@ export class EarningService {
           end.setHours(23, 59, 59, 999);
           break;
       }
-      return { start, end };
+
+      const startUTC = new Date(start.getTime() - colombiaOffset * 60000);
+      const endUTC = new Date(end.getTime() - colombiaOffset * 60000);
+
+      return { start: startUTC, end: endUTC };
     };
 
-    // Definimos el array types
     const types: ('daily' | 'weekly' | 'monthly' | 'yearly')[] = [
       'daily',
       'weekly',
@@ -147,13 +156,10 @@ export class EarningService {
         const invoices = await this._invoiceRepository
           .createQueryBuilder('invoice')
           .leftJoinAndSelect('invoice.invoiceType', 'invoiceType')
-          .where(
-            `invoice.createdAt AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota' BETWEEN :start AND :end`,
-            {
-              start: start.toISOString().slice(0, 19).replace('T', ' '),
-              end: end.toISOString().slice(0, 19).replace('T', ' '),
-            },
-          )
+          .where('invoice.createdAt BETWEEN :start AND :end', {
+            start: start.toISOString(),
+            end: end.toISOString(),
+          })
           .andWhere('invoice.deletedAt IS NULL')
           .andWhere('invoiceType.deletedAt IS NULL')
           .select([
