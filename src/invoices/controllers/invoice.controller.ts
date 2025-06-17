@@ -95,8 +95,8 @@ export class InvoiceController {
   }
 
   @Get(':id')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  // @ApiBearerAuth()
+  // @UseGuards(AuthGuard())
   @ApiOkResponse({ type: GetInvoiceWithDetailsResponseDto })
   @ApiNotFoundResponse({ type: NotFoundResponseDto })
   async findOne(

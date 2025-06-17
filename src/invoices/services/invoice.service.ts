@@ -327,13 +327,8 @@ export class InvoiceService {
         'employee',
         'invoiceDetails',
         'invoiceDetails.product',
-        'invoiceDetails.product.categoryType',
         'invoiceDetails.accommodation',
-        'invoiceDetails.accommodation.bedType',
-        'invoiceDetails.accommodation.categoryType',
         'invoiceDetails.excursion',
-        'invoiceDetails.excursion.categoryType',
-        'invoiceDetails.taxeType',
       ],
     });
 
@@ -348,11 +343,6 @@ export class InvoiceService {
       subtotalWithoutTax: invoice.subtotalWithoutTax.toString(),
       subtotalWithTax: invoice.subtotalWithTax.toString(),
       total: invoice.total.toString(),
-      startDate: invoice.startDate,
-      endDate: invoice.endDate,
-      createdAt: invoice.createdAt,
-      updatedAt: invoice.updatedAt,
-      deletedAt: invoice.deletedAt,
       invoiceType: {
         invoiceTypeId: invoice.invoiceType.invoiceTypeId,
         code: invoice.invoiceType.code,
@@ -380,52 +370,40 @@ export class InvoiceService {
         lastName: invoice.employee.lastName,
         identificationNumber: invoice.employee.identificationNumber,
       },
-      invoiceDetails: invoice.invoiceDetails.map((detail) => ({
-        invoiceDetailId: detail.invoiceDetailId,
-        amount: detail.amount,
-        priceWithoutTax: detail.priceWithoutTax.toString(),
-        priceWithTax: detail.priceWithTax.toString(),
-        subtotal: detail.subtotal.toString(),
-        startDate: detail.startDate,
-        endDate: detail.endDate,
-        taxeType: detail.taxeType
-          ? {
-              taxeTypeId: detail.taxeType.taxeTypeId,
-              name: detail.taxeType.name,
-              percentage: detail.taxeType.percentage,
-            }
-          : null,
-        product: detail.product && {
-          productId: detail.product.productId,
-          name: detail.product.name,
-          code: detail.product.code,
-          categoryType: {
-            categoryTypeId: detail.product.categoryType.categoryTypeId,
-            name: detail.product.categoryType.name,
-            code: detail.product.categoryType.code,
+      invoiceDetails: invoice.invoiceDetails.map((detail) => {
+        const baseDetail = {
+          invoiceDetailId: detail.invoiceDetailId,
+          amount: Number(detail.amount),
+          priceWithoutTax: detail.priceWithoutTax.toString(),
+          priceWithTax: detail.priceWithTax.toString(),
+          subtotal: detail.subtotal.toString(),
+          product: detail.product && {
+            productId: detail.product.productId,
+            name: detail.product.name,
+            code: detail.product.code,
           },
-        },
-        accommodation: detail.accommodation && {
-          accommodationId: detail.accommodation.accommodationId,
-          name: detail.accommodation.name,
-          code: detail.accommodation.code,
-          categoryType: {
-            categoryTypeId: detail.accommodation.categoryType.categoryTypeId,
-            name: detail.accommodation.categoryType.name,
-            code: detail.accommodation.categoryType.code,
+          accommodation: detail.accommodation && {
+            accommodationId: detail.accommodation.accommodationId,
+            name: detail.accommodation.name,
+            code: detail.accommodation.code,
           },
-        },
-        excursion: detail.excursion && {
-          excursionId: detail.excursion.excursionId,
-          name: detail.excursion.name,
-          code: detail.excursion.code,
-          categoryType: {
-            categoryTypeId: detail.excursion.categoryType.categoryTypeId,
-            name: detail.excursion.categoryType.name,
-            code: detail.excursion.categoryType.code,
+          excursion: detail.excursion && {
+            excursionId: detail.excursion.excursionId,
+            name: detail.excursion.name,
+            code: detail.excursion.code,
           },
-        },
-      })),
+        };
+
+        if (detail.excursion || detail.accommodation) {
+          return {
+            ...baseDetail,
+            startDate: detail.startDate,
+            endDate: detail.endDate,
+          };
+        }
+
+        return baseDetail;
+      }),
     };
   }
 

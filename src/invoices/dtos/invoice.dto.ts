@@ -1,9 +1,7 @@
 import {
-  CategoryTypeDto,
   InvoiceTypeDto,
   PaidTypeDto,
   PayTypeDto,
-  TaxeTypeDto,
 } from './../../shared/dtos/types.dto';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { OnlyOneDefined } from '../../shared/validators/onlyOneDefined';
@@ -164,9 +162,6 @@ export class ProductMiniDto {
 
   @ApiProperty()
   code: string;
-
-  @ApiProperty({ type: () => CategoryTypeDto })
-  categoryType: CategoryTypeDto;
 }
 
 export class AccommodationMiniDto {
@@ -178,9 +173,6 @@ export class AccommodationMiniDto {
 
   @ApiProperty()
   code: string;
-
-  @ApiProperty({ type: () => CategoryTypeDto })
-  categoryType: CategoryTypeDto;
 }
 
 export class ExcursionMiniDto {
@@ -192,9 +184,6 @@ export class ExcursionMiniDto {
 
   @ApiProperty()
   code: string;
-
-  @ApiProperty({ type: () => CategoryTypeDto })
-  categoryType: CategoryTypeDto;
 }
 
 export class InvoiceDetailDto {
@@ -218,9 +207,6 @@ export class InvoiceDetailDto {
 
   @ApiProperty({ required: false })
   endDate?: Date;
-
-  @ApiProperty({ type: () => TaxeTypeDto, required: false })
-  taxeType?: TaxeTypeDto;
 
   @ApiProperty({ type: () => ProductMiniDto, required: false })
   product?: ProductMiniDto;
@@ -250,21 +236,6 @@ export class GetInvoiceWithDetailsDto {
 
   @ApiProperty()
   total: string;
-
-  @ApiProperty()
-  startDate: Date;
-
-  @ApiProperty()
-  endDate: Date;
-
-  @ApiProperty()
-  createdAt: Date;
-
-  @ApiProperty({ required: false })
-  updatedAt?: Date;
-
-  @ApiProperty({ required: false })
-  deletedAt?: Date;
 
   @ApiProperty({ type: () => InvoiceTypeDto })
   invoiceType: InvoiceTypeDto;
