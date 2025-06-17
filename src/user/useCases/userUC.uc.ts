@@ -2,6 +2,7 @@ import { UserService } from '../services/user.service';
 import {
   ChangePasswordDto,
   CreateUserDto,
+  RecoveryPasswordDto,
   UpdateUserDto,
 } from '../dtos/user.dto';
 import { Injectable } from '@nestjs/common';
@@ -34,8 +35,12 @@ export class UserUC {
     return await this._userService.update(id, userData);
   }
 
-  async changePassword(userId: string, body: ChangePasswordDto) {
-    return await this._userService.changePassword(userId, body);
+  async changePassword(body: ChangePasswordDto, id: string) {
+    return await this._userService.changePassword(body, id);
+  }
+
+  async recoveryPassword(body: RecoveryPasswordDto) {
+    return await this._userService.recoveryPassword(body);
   }
 
   async delete(id: string) {

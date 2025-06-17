@@ -1,6 +1,7 @@
 import {
   InvalidAccessDataResponseDto,
   LoginDto,
+  RecoveryPasswordBodyDto,
   RefreshTokenBodyDto,
   RefreshTokenResponseDto,
   SignInResponseDto,
@@ -81,6 +82,17 @@ export class AuthController {
     return {
       statusCode: HttpStatus.OK,
       message: 'Sesión finalizada correctamente',
+    };
+  }
+
+  @Post('/recovery-password')
+  async recoveryPassword(
+    @Body() body: RecoveryPasswordBodyDto,
+  ): Promise<{ statusCode: number; message: string }> {
+    await this._authUC.recoveryPassword(body);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Correo enviado correctamente',
     };
   }
 }

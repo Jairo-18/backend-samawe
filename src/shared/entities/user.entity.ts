@@ -72,6 +72,12 @@ export class User {
   @OneToMany(() => Invoice, (invoice) => invoice.user)
   invoices: Invoice[];
 
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  resetToken?: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  resetTokenExpiry?: Date;
+
   @CreateDateColumn({
     type: 'timestamp',
   })

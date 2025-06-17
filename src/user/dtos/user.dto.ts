@@ -184,18 +184,51 @@ export class UpdateUserDto {
   roleType: string;
 }
 
-export class ChangePasswordDto {
+export class ChangePasswordBaseDto {
   @ApiProperty({
-    example: 'passwordOld',
+    type: String,
     required: true,
+    example: '********',
   })
   @IsString()
-  currentPassword: string;
-
-  @ApiProperty({
-    example: 'newPassword',
-    required: true,
-  })
-  @IsString()
+  @IsNotEmpty()
   newPassword: string;
+  @ApiProperty({
+    type: String,
+    required: true,
+    example: '********',
+  })
+  @IsString()
+  @IsNotEmpty()
+  confirmNewPassword: string;
+}
+
+export class RecoveryPasswordDto extends ChangePasswordBaseDto {
+  @ApiProperty({
+    type: String,
+    required: true,
+    example: 'uuid',
+  })
+  @IsString()
+  @IsNotEmpty()
+  userId: string;
+  @ApiProperty({
+    type: String,
+    required: true,
+    example: 'token',
+  })
+  @IsString()
+  @IsNotEmpty()
+  resetToken: string;
+}
+
+export class ChangePasswordDto extends ChangePasswordBaseDto {
+  @ApiProperty({
+    type: String,
+    required: true,
+    example: '********',
+  })
+  @IsString()
+  @IsNotEmpty()
+  oldPassword: string;
 }

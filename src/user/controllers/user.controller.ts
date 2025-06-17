@@ -1,3 +1,8 @@
+import { UPDATED_MESSAGE } from './../../shared/constants/messages.constant';
+import {
+  NOT_FOUND_RESPONSE,
+  UPDATED_RESPONSE,
+} from './../../shared/constants/response.constant';
 import { CrudUserUC } from './../useCases/crudUserUC';
 import { User } from 'src/shared/entities/user.entity';
 
@@ -25,6 +30,7 @@ import {
   CreateUserDto,
   UpdateUserDto,
   GetUserResponseDto,
+  RecoveryPasswordDto,
 } from '../dtos/user.dto';
 
 import { UserUC } from '../useCases/userUC.uc';
@@ -38,7 +44,7 @@ import {
   Patch,
   Post,
   Query,
-  Request,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -52,16 +58,32 @@ export class UserController {
     private readonly _crudUserUC: CrudUserUC,
   ) {}
 
-  @Patch('change-password')
-  @ApiOkResponse({ description: 'Contraseña actualizada correctamente' })
+  @Patch('/recovery-password')
+  @ApiOkResponse(UPDATED_RESPONSE)
+  @ApiNotFoundResponse(NOT_FOUND_RESPONSE)
+  async recoveryPassword(
+    @Body() body: RecoveryPasswordDto,
+  ): Promise<UpdateRecordResponseDto> {
+    await this._userUC.recoveryPassword(body);
+    return {
+      message: UPDATED_MESSAGE,
+      statusCode: HttpStatus.OK,
+    };
+  }
+
+  @Post('/change-password')
+  @ApiOkResponse(UPDATED_RESPONSE)
+  @ApiNotFoundResponse(NOT_FOUND_RESPONSE)
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
-  async changePassword(@Request() req, @Body() body: ChangePasswordDto) {
-    const userId = req.user.id;
-    await this._userUC.changePassword(userId, body);
+  async changePassword(
+    @Body() body: ChangePasswordDto,
+    @Req() req,
+  ): Promise<UpdateRecordResponseDto> {
+    await this._userUC.changePassword(body, req.user.id);
     return {
+      message: UPDATED_MESSAGE,
       statusCode: HttpStatus.OK,
-      message: 'Contraseña actualizada correctamente',
     };
   }
 

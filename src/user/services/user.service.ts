@@ -1,19 +1,29 @@
+import { INVALID_ACCESS_DATA_MESSAGE } from './../../auth/constants/messages.constants';
+import {
+  NOT_FOUND_MESSAGE,
+  PASSWORDS_NOT_MATCH,
+} from './../../shared/constants/messages.constant';
 import { RoleTypeRepository } from './../../shared/repositories/roleType.repository';
-import { UpdateUserModel } from './../models/user.model';
+import { UpdateUserModel, UserFiltersModel } from './../models/user.model';
 import { PhoneCodeRepository } from './../../shared/repositories/phoneCode.repository';
-import { CreateUserDto, ChangePasswordDto } from '../dtos/user.dto';
+import {
+  CreateUserDto,
+  ChangePasswordDto,
+  RecoveryPasswordDto,
+} from '../dtos/user.dto';
 import { IdentificationTypeRepository } from '../../shared/repositories/identificationType.repository';
 import { UserRepository } from '../../shared/repositories/user.repository';
 import { User } from '../../shared/entities/user.entity';
 import {
-  BadRequestException,
   HttpException,
   HttpStatus,
   Injectable,
-  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { Not } from 'typeorm';
+import * as crypto from 'crypto';
+import { PasswordService } from './password.service';
 
 @Injectable()
 export class UserService {
@@ -22,6 +32,7 @@ export class UserService {
     private readonly _roleTypeRepository: RoleTypeRepository,
     private readonly _identificationTypeRepository: IdentificationTypeRepository,
     private readonly _phoneCodeRepository: PhoneCodeRepository,
+    private readonly _passwordService: PasswordService,
   ) {}
 
   async create(user: CreateUserDto): Promise<{ rowId: string }> {
@@ -302,34 +313,98 @@ export class UserService {
     return user;
   }
 
-  async changePassword(userId: string, body: ChangePasswordDto) {
-    const { currentPassword, newPassword } = body;
-
-    const user = await this.findByParams({ id: userId });
+  async changePassword(body: ChangePasswordDto, id: string) {
+    const user = await this._userRepository.findOne({
+      where: { userId: id },
+    });
     if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
+      throw new HttpException(NOT_FOUND_MESSAGE, HttpStatus.NOT_FOUND);
     }
 
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
-    if (!isMatch) {
-      throw new BadRequestException('La contraseña actual es incorrecta');
+    if (body.newPassword !== body.confirmNewPassword) {
+      throw new HttpException(PASSWORDS_NOT_MATCH, HttpStatus.CONFLICT);
     }
+    const passwordMatch = await this._passwordService.compare(
+      body.oldPassword,
+      user.password,
+    );
 
-    const isSamePassword = await bcrypt.compare(newPassword, user.password);
-    if (isSamePassword) {
-      throw new BadRequestException(
-        'La nueva contraseña no puede ser igual a la anterior',
+    if (!passwordMatch) {
+      throw new HttpException(
+        'Contraseña incorrecta.',
+        HttpStatus.UNAUTHORIZED,
       );
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await this._userRepository.update(userId, { password: hashedPassword });
-
-    return { message: 'Contraseña actualizada correctamente' };
+    await this._userRepository.update(
+      { userId: id },
+      { password: await this._passwordService.generateHash(body.newPassword) },
+    );
   }
 
   async delete(id: string) {
     await this.findOne(id);
     return await this._userRepository.delete(id);
+  }
+
+  async findOneByParams(
+    params: UserFiltersModel,
+    login: boolean = false,
+    errors: boolean = true,
+  ): Promise<User> {
+    const user = await this._userRepository.findOne({
+      where: { ...params.where },
+    });
+    if (!user && errors) {
+      if (!login) {
+        throw new HttpException(NOT_FOUND_MESSAGE, HttpStatus.NOT_FOUND);
+      } else {
+        throw new UnauthorizedException(INVALID_ACCESS_DATA_MESSAGE);
+      }
+    }
+    return user;
+  }
+
+  async generateResetToken(userId: string): Promise<string> {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiryDate = new Date();
+    expiryDate.setHours(expiryDate.getHours() + 1);
+
+    await this._userRepository.update(userId, {
+      resetToken: token,
+      resetTokenExpiry: expiryDate,
+    });
+
+    return token;
+  }
+
+  async recoveryPassword(body: RecoveryPasswordDto) {
+    try {
+      const user = await this._userRepository.findOne({
+        where: { userId: body.userId, resetToken: body.resetToken },
+      });
+      if (!user) {
+        throw new HttpException(NOT_FOUND_MESSAGE, HttpStatus.NOT_FOUND);
+      }
+      if (user.resetTokenExpiry < new Date()) {
+        throw new HttpException(
+          'Token inválido o expirado',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (body.newPassword !== body.confirmNewPassword) {
+        throw new HttpException(PASSWORDS_NOT_MATCH, HttpStatus.CONFLICT);
+      }
+      await this._userRepository.update(
+        { userId: body.userId },
+        {
+          password: await this._passwordService.generateHash(body.newPassword),
+          resetToken: null,
+          resetTokenExpiry: null,
+        },
+      );
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 }

@@ -1,5 +1,7 @@
+import { MailsService } from './../../shared/services/mails.service';
+import { MailTemplateService } from './../../shared/services/mail-template.service';
 import { NOT_FOUND_RESPONSE } from './../../shared/constants/response.constant';
-import { RefreshTokenBodyDto } from '../dtos/auth.dto';
+import { RecoveryPasswordBodyDto, RefreshTokenBodyDto } from '../dtos/auth.dto';
 import {
   TokenPayloadModel,
   UserAuthModel,
@@ -14,7 +16,6 @@ import {
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { AccessSessionsService } from './accessSessions.service';
-
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -24,6 +25,8 @@ export class AuthService {
     private readonly _jwtService: JwtService,
     private readonly _configService: ConfigService,
     private readonly _accessSessionsService: AccessSessionsService,
+    private readonly _mailService: MailsService,
+    private readonly _mailTemplateService: MailTemplateService,
   ) {}
 
   async signIn(credentials: Partial<UserAuthModel>) {
@@ -179,5 +182,33 @@ export class AuthService {
       throw new NotFoundException(NOT_FOUND_RESPONSE);
     }
     await this._accessSessionsService.delete(sessionExists.id, userId);
+  }
+
+  async recoveryPassword(body: RecoveryPasswordBodyDto) {
+    const user = await this._userService.findOneByParams(
+      {
+        where: { email: body.email },
+      },
+      false,
+      false,
+    );
+
+    if (!user) {
+      return;
+    }
+    const token: string = await this._userService.generateResetToken(
+      user.userId,
+    );
+    if (user) {
+      await this._mailService.sendEmail({
+        to: user.email,
+        subject: 'Recuperación de contraseña',
+        body: this._mailTemplateService.recoveryPasswordTemplate(
+          `https://samawe.netlify.app/auth/${user.userId}/change-password`,
+          user.firstName,
+          token,
+        ),
+      });
+    }
   }
 }

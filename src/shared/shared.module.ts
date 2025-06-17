@@ -1,3 +1,4 @@
+import { PasswordService } from './../user/services/password.service';
 import { InvoiceEventsListener } from './services/invoiceEventsListener.service';
 import { BalanceService } from './services/balance.service';
 import { InvoiceDetaillRepository } from './repositories/invoiceDetaill.repository';
@@ -7,7 +8,6 @@ import { PaidTypeRepository } from './repositories/paidType.repository';
 import { AdditionalRepository } from './repositories/additionalType.repository';
 import { ExcursionRepository } from './repositories/excursion.repository';
 import { StateTypeRepository } from './repositories/stateType.repository';
-
 import { BedTypeRepository } from './repositories/bedType.repository';
 import { AccommodationRepository } from './repositories/accommodation.repository';
 import { RepositoryService } from './services/repositoriry.service';
@@ -46,6 +46,9 @@ import { InvoiceDetaill } from './entities/invoiceDetaill.entity';
 import { BalanceRepository } from './repositories/balance.repository';
 import { Balance } from './entities/balance.entity';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { MailsService } from './services/mails.service';
+import { MailTemplateService } from './services/mail-template.service';
+import { MailerModule } from '@nestjs-modules/mailer';
 
 @Module({})
 export class SharedModule {
@@ -74,7 +77,6 @@ export class SharedModule {
             },
           }),
         }),
-
         PassportModule,
         TypeOrmModule.forFeature([
           AccessSessions,
@@ -107,6 +109,22 @@ export class SharedModule {
         PassportModule.register({
           defaultStrategy: 'jwt',
         }),
+        MailerModule.forRootAsync({
+          inject: [ConfigService],
+          useFactory: (configService: ConfigService) => ({
+            transport: {
+              host: configService.get<string>('mail.host'),
+              port: configService.get<number>('mail.port'),
+              secure: configService.get<boolean>('mail.secure'),
+              auth: {
+                user: configService.get<string>('mail.user'),
+                pass: configService.get<string>('mail.password'),
+              },
+              sender: configService.get<string>('mail.sender'),
+              to: configService.get<string>('mail.to'),
+            },
+          }),
+        }),
       ],
       controllers: [],
       providers: [
@@ -132,6 +150,9 @@ export class SharedModule {
         BalanceService,
         RepositoryService,
         InvoiceEventsListener,
+        MailsService,
+        MailTemplateService,
+        PasswordService,
       ],
       exports: [
         TypeOrmModule,
@@ -157,6 +178,9 @@ export class SharedModule {
         BalanceService,
         RepositoryService,
         InvoiceEventsListener,
+        MailsService,
+        MailTemplateService,
+        PasswordService,
       ],
     };
   }

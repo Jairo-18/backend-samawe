@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AuthService } from '../services/auth.service';
 import {
   LoginDto,
+  RecoveryPasswordBodyDto,
   RefreshTokenBodyDto,
   SignOutBodyDto,
 } from '../dtos/auth.dto';
@@ -20,5 +21,9 @@ export class AuthUC {
 
   async signOut(body: SignOutBodyDto) {
     return await this._authService.signOut(body);
+  }
+
+  async recoveryPassword(body: RecoveryPasswordBodyDto) {
+    return await this._authService.recoveryPassword(body);
   }
 }

@@ -1,7 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({
@@ -175,4 +175,11 @@ export class SignOutResponseDto implements BaseResponseDto {
     example: 'Logged out successfully',
   })
   message?: string;
+}
+
+export class RecoveryPasswordBodyDto {
+  @ApiProperty({ example: 'jhonlegarda1.2@gmail.com', required: true })
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
 }

@@ -25,6 +25,7 @@
     "migration:revert": "npm run typeorm -- -d typeorm.config.ts migration:revert"
   },
   "dependencies": {
+    "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/common": "^11.0.11",
     "@nestjs/config": "^4.0.1",
     "@nestjs/core": "^11.0.11",
@@ -45,6 +46,7 @@
     "express": "^4.21.2",
     "express-basic-auth": "^1.2.1",
     "helmet": "^8.0.0",
+    "nodemailer": "^7.0.3",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",

@@ -6,6 +6,7 @@ import { SharedModule } from './../shared/shared.module';
 import { UserController } from './controllers/user.controller';
 import { CrudUserService } from './services/crudUser.service';
 import { UserUC } from './useCases/userUC.uc';
+import { PasswordService } from './services/password.service';
 
 @Module({
   imports: [
@@ -13,7 +14,13 @@ import { UserUC } from './useCases/userUC.uc';
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [UserController],
-  providers: [UserUC, CrudUserUC, CrudUserService, UserService],
+  providers: [
+    UserUC,
+    CrudUserUC,
+    CrudUserService,
+    UserService,
+    PasswordService,
+  ],
   exports: [UserService],
 })
 export class UserModule {}
