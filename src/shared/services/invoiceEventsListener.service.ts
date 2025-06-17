@@ -7,23 +7,6 @@ import { OnEvent } from '@nestjs/event-emitter';
 export class InvoiceEventsListener {
   constructor(private readonly _balanceService: BalanceService) {}
 
-  @OnEvent('invoice.created', { async: true })
-  async handleInvoiceCreated(payload: {
-    invoice: Invoice;
-    hasProducts: boolean;
-  }) {
-    try {
-      await this._balanceService.updateBalanceByInvoiceId(
-        payload.invoice.invoiceId,
-      );
-      if (payload.hasProducts) {
-        await this._balanceService.updateBalanceWithCurrentProducts();
-      }
-    } catch (err) {
-      console.error('Error updating balance after invoice creation:', err);
-    }
-  }
-
   @OnEvent('invoice.deleted', { async: true })
   async handleInvoiceDeleted(payload: {
     invoice: Invoice;

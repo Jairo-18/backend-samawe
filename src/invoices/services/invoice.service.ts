@@ -192,7 +192,7 @@ export class InvoiceService {
       throw new BadRequestException('Tipo de factura no encontrado');
     if (!user) throw new BadRequestException('Cliente no encontrado');
 
-    const { saved: invoiceEntity, hasProducts } =
+    const { saved: invoiceEntity } =
       await this._invoiceRepository.manager.transaction(async (manager) => {
         const lastInvoice = await manager
           .getRepository(Invoice)
@@ -243,11 +243,6 @@ export class InvoiceService {
         const saved = await invoiceRepo.save(newInvoice);
         return { saved, hasProducts };
       });
-
-    this._eventEmitter.emit('invoice.created', {
-      invoice: invoiceEntity,
-      hasProducts,
-    });
 
     return invoiceEntity;
   }
