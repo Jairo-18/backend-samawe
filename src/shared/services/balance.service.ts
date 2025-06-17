@@ -125,15 +125,23 @@ export class BalanceService {
         });
       }
 
-      // 👉 siempre actualiza estos campos, aunque ya exista
       balance.totalInvoiceSale = totalInvoiceSale;
       balance.totalInvoiceBuy = totalInvoiceBuy;
       balance.balanceInvoice = totalInvoiceSale - totalInvoiceBuy;
 
-      // Opcional: también puedes resetear los campos de producto si lo ves necesario
-      balance.totalProductPriceSale = balance.totalProductPriceSale ?? 0;
-      balance.totalProductPriceBuy = balance.totalProductPriceBuy ?? 0;
-      balance.balanceProduct = balance.balanceProduct ?? 0;
+      // Al final de recalculateBalanceForPeriod, dentro del transaction
+      const today = this.getTodayDate();
+      const isCurrentPeriod =
+        this.getPeriodDateFromDate(type, today).getTime() ===
+        periodDate.getTime();
+
+      if (isCurrentPeriod) {
+        const { totalProductPriceSale, totalProductPriceBuy } =
+          await this.getProductTotals();
+        balance.totalProductPriceSale = totalProductPriceSale;
+        balance.totalProductPriceBuy = totalProductPriceBuy;
+        balance.balanceProduct = totalProductPriceSale - totalProductPriceBuy;
+      }
 
       await manager.save(balance);
     });
@@ -165,6 +173,27 @@ export class BalanceService {
     }
   }
 
+  private async getProductTotals(): Promise<{
+    totalProductPriceSale: number;
+    totalProductPriceBuy: number;
+  }> {
+    const products = await this._productRepository.find();
+
+    let totalProductPriceSale = 0;
+    let totalProductPriceBuy = 0;
+
+    for (const product of products) {
+      const amount = Number(product.amount ?? 0);
+      const priceSale = Number(product.priceSale ?? 0);
+      const priceBuy = Number(product.priceBuy ?? 0);
+
+      totalProductPriceSale += amount * priceSale;
+      totalProductPriceBuy += amount * priceBuy;
+    }
+
+    return { totalProductPriceSale, totalProductPriceBuy };
+  }
+
   async updateBalanceWithCurrentProducts(): Promise<void> {
     const products = await this._productRepository.find();
 
@@ -193,10 +222,7 @@ export class BalanceService {
         });
 
         if (!balance) {
-          balance = manager.create(Balance, {
-            type,
-            periodDate,
-          });
+          balance = manager.create(Balance, { type, periodDate });
         }
 
         balance.totalProductPriceSale = totalProductPriceSale;
