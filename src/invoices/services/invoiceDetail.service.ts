@@ -193,145 +193,151 @@ export class InvoiceDetailService {
    * Crea un nuevo detalle de factura con precios históricos
    */
   async create(invoiceId: number, dto: CreateInvoiceDetailDto) {
-    const [invoice, taxeType] = await Promise.all([
-      this._invoiceRepository.findOne({
-        where: { invoiceId },
-        relations: ['invoiceType'],
-      }),
-      dto.taxeTypeId
-        ? this._taxeTypeRepository.findOne({
-            where: { taxeTypeId: dto.taxeTypeId },
-          })
-        : Promise.resolve(null),
-    ]);
+    try {
+      const [invoice, taxeType] = await Promise.all([
+        this._invoiceRepository.findOne({
+          where: { invoiceId },
+          relations: ['invoiceType'],
+        }),
+        dto.taxeTypeId
+          ? this._taxeTypeRepository.findOne({
+              where: { taxeTypeId: dto.taxeTypeId },
+            })
+          : Promise.resolve(null),
+      ]);
 
-    if (!invoice) {
-      throw new NotFoundException(`Factura con ID ${invoiceId} no encontrada`);
-    }
-
-    if (dto.taxeTypeId && !taxeType) {
-      throw new NotFoundException('Tipo de impuesto no encontrado');
-    }
-
-    const taxRate =
-      taxeType && taxeType.percentage
-        ? taxeType.percentage > 1
-          ? taxeType.percentage / 100
-          : taxeType.percentage
-        : 0;
-
-    const amount = Number(dto.amount);
-    if (isNaN(amount) || amount <= 0) {
-      throw new BadRequestException('La cantidad debe ser mayor a cero');
-    }
-
-    let priceBuy = 0;
-    let priceWithoutTax = 0;
-    let priceWithTax = 0;
-    let subtotal = 0;
-    let isProduct = false;
-    let product = null;
-
-    if (dto.productId) {
-      product = await this._productRepository.findOne({
-        where: { productId: dto.productId },
-      });
-      if (!product) {
-        throw new NotFoundException('Producto no encontrado');
+      if (!invoice) {
+        throw new NotFoundException(
+          `Factura con ID ${invoiceId} no encontrada`,
+        );
       }
 
-      const prices = this.getHistoricalPrices(product, dto);
-      priceBuy = prices.priceBuy;
-      priceWithoutTax = prices.priceWithoutTax;
+      if (dto.taxeTypeId && !taxeType) {
+        throw new NotFoundException('Tipo de impuesto no encontrado');
+      }
 
-      const validation = this.validateProductPriceConsistency(
-        product,
+      const taxRate =
+        taxeType && taxeType.percentage
+          ? taxeType.percentage > 1
+            ? taxeType.percentage / 100
+            : taxeType.percentage
+          : 0;
+
+      const amount = Number(dto.amount);
+      if (isNaN(amount) || amount <= 0) {
+        throw new BadRequestException('La cantidad debe ser mayor a cero');
+      }
+
+      let priceBuy = 0;
+      let priceWithoutTax = 0;
+      let priceWithTax = 0;
+      let subtotal = 0;
+      let isProduct = false;
+      let product = null;
+
+      if (dto.productId) {
+        product = await this._productRepository.findOne({
+          where: { productId: dto.productId },
+        });
+        if (!product) {
+          throw new NotFoundException('Producto no encontrado');
+        }
+
+        const prices = this.getHistoricalPrices(product, dto);
+        priceBuy = prices.priceBuy;
+        priceWithoutTax = prices.priceWithoutTax;
+
+        const validation = this.validateProductPriceConsistency(
+          product,
+          priceBuy,
+          priceWithoutTax,
+          invoice.invoiceType.code,
+        );
+
+        if (!validation.isValid) {
+          throw new BadRequestException(validation.message);
+        }
+
+        isProduct = true;
+      } else {
+        priceBuy = Number(dto.priceBuy) || 0;
+        priceWithoutTax = Number(dto.priceWithoutTax) || 0;
+      }
+
+      if (isNaN(priceWithoutTax) || priceWithoutTax < 0) {
+        throw new BadRequestException('El precio sin impuesto no es válido');
+      }
+
+      priceWithTax = Number((priceWithoutTax * (1 + taxRate)).toFixed(2));
+      subtotal = Number((amount * priceWithTax).toFixed(2));
+
+      const detail = this._invoiceDetaillRepository.create({
+        amount,
         priceBuy,
         priceWithoutTax,
-        invoice.invoiceType.code,
-      );
+        priceWithTax,
+        subtotal,
+        taxeType,
+        invoice,
+        startDate: dto.startDate,
+        endDate: dto.endDate,
+      });
 
-      if (!validation.isValid) {
-        throw new BadRequestException(validation.message);
+      if (product) detail.product = product;
+
+      const [accommodation, excursion] = await Promise.all([
+        dto.accommodationId
+          ? this._accommodationRepository.findOne({
+              where: { accommodationId: dto.accommodationId },
+            })
+          : Promise.resolve(null),
+        dto.excursionId
+          ? this._excursionRepository.findOne({
+              where: { excursionId: dto.excursionId },
+            })
+          : Promise.resolve(null),
+      ]);
+
+      if (dto.accommodationId && !accommodation) {
+        throw new NotFoundException('Hospedaje no encontrado');
+      }
+      if (dto.excursionId && !excursion) {
+        throw new NotFoundException('Excursión no encontrada');
       }
 
-      isProduct = true;
-    } else {
-      priceBuy = Number(dto.priceBuy) || 0;
-      priceWithoutTax = Number(dto.priceWithoutTax) || 0;
-    }
+      if (accommodation) detail.accommodation = accommodation;
+      if (excursion) detail.excursion = excursion;
 
-    if (isNaN(priceWithoutTax) || priceWithoutTax < 0) {
-      throw new BadRequestException('El precio sin impuesto no es válido');
-    }
+      const savedDetail = await this._invoiceDetaillRepository.save(detail);
 
-    priceWithTax = Number((priceWithoutTax * (1 + taxRate)).toFixed(2));
-    subtotal = Number((amount * priceWithTax).toFixed(2));
-
-    const detail = this._invoiceDetaillRepository.create({
-      amount,
-      priceBuy,
-      priceWithoutTax,
-      priceWithTax,
-      subtotal,
-      taxeType,
-      invoice,
-      startDate: dto.startDate,
-      endDate: dto.endDate,
-    });
-
-    if (product) detail.product = product;
-
-    const [accommodation, excursion] = await Promise.all([
-      dto.accommodationId
-        ? this._accommodationRepository.findOne({
-            where: { accommodationId: dto.accommodationId },
-          })
-        : Promise.resolve(null),
-      dto.excursionId
-        ? this._excursionRepository.findOne({
-            where: { excursionId: dto.excursionId },
-          })
-        : Promise.resolve(null),
-    ]);
-
-    if (dto.accommodationId && !accommodation) {
-      throw new NotFoundException('Hospedaje no encontrado');
-    }
-    if (dto.excursionId && !excursion) {
-      throw new NotFoundException('Excursión no encontrada');
-    }
-
-    if (accommodation) detail.accommodation = accommodation;
-    if (excursion) detail.excursion = excursion;
-
-    const savedDetail = await this._invoiceDetaillRepository.save(detail);
-
-    if (isProduct) {
-      const currentAmount = Number(product.amount) || 0;
-      if (invoice.invoiceType.code === 'FV') {
-        if (currentAmount < amount) {
-          throw new BadRequestException(
-            `No hay suficientes unidades para el producto ${product.name}`,
-          );
+      if (isProduct) {
+        const currentAmount = Number(product.amount) || 0;
+        if (invoice.invoiceType.code === 'FV') {
+          if (currentAmount < amount) {
+            throw new BadRequestException(
+              `No hay suficientes unidades para el producto ${product.name}`,
+            );
+          }
+          product.amount = currentAmount - amount;
+        } else if (invoice.invoiceType.code === 'FC') {
+          product.amount = currentAmount + amount;
         }
-        product.amount = currentAmount - amount;
-      } else if (invoice.invoiceType.code === 'FC') {
-        product.amount = currentAmount + amount;
       }
+
+      await Promise.all([
+        isProduct ? this._productRepository.save(product) : Promise.resolve(),
+        this.updateInvoiceTotal(invoiceId),
+      ]);
+
+      this._eventEmitter.emit('invoice.detail.created', {
+        invoice,
+        isProduct,
+      });
+
+      return savedDetail;
+    } catch (error) {
+      return error;
     }
-
-    await Promise.all([
-      isProduct ? this._productRepository.save(product) : Promise.resolve(),
-      this.updateInvoiceTotal(invoiceId),
-    ]);
-
-    this._eventEmitter.emit('invoice.detail.created', {
-      invoice,
-      isProduct,
-    });
-
-    return savedDetail;
   }
 
   async delete(invoiceDetailId: number) {
