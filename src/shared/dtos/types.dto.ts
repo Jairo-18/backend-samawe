@@ -33,6 +33,16 @@ export class BedTypeDto extends BaseTypeDto {
   bedTypeId: number;
 }
 
+export class IdentificationTypeDto extends BaseTypeDto {
+  @ApiProperty()
+  identificationTypeId: number;
+}
+
+export class PhoneCodeDto extends BaseTypeDto {
+  @ApiProperty()
+  phoneCodeId: number;
+}
+
 export class TaxeTypeDto {
   @ApiProperty()
   taxeTypeId: number;

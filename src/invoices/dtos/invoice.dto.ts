@@ -1,7 +1,9 @@
 import {
+  IdentificationTypeDto,
   InvoiceTypeDto,
   PaidTypeDto,
   PayTypeDto,
+  PhoneCodeDto,
 } from './../../shared/dtos/types.dto';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { OnlyOneDefined } from '../../shared/validators/onlyOneDefined';
@@ -139,7 +141,7 @@ export class UpdateInvoiceDto {
   invoiceElectronic?: boolean;
 }
 
-export class UserMiniDto {
+export class EmployeMiniDto {
   @ApiProperty()
   userId: string;
 
@@ -151,6 +153,29 @@ export class UserMiniDto {
 
   @ApiProperty()
   identificationNumber: string;
+}
+
+export class UserMiniDto {
+  @ApiProperty()
+  userId: string;
+
+  @ApiProperty()
+  firstName: string;
+
+  @ApiProperty()
+  lastName: string;
+
+  @ApiProperty()
+  phone: string;
+
+  @ApiProperty()
+  identificationNumber: string;
+
+  @ApiProperty({ type: () => IdentificationTypeDto })
+  identificationType: IdentificationTypeDto;
+
+  @ApiProperty({ type: () => PhoneCodeDto })
+  phoneCode: PhoneCodeDto;
 }
 
 export class ProductMiniDto {
@@ -249,8 +274,8 @@ export class GetInvoiceWithDetailsDto {
   @ApiProperty({ type: () => UserMiniDto })
   user: UserMiniDto;
 
-  @ApiProperty({ type: () => UserMiniDto })
-  employee: UserMiniDto;
+  @ApiProperty({ type: () => EmployeMiniDto })
+  employee: EmployeMiniDto;
 
   @ApiProperty({ type: () => [InvoiceDetailDto] })
   invoiceDetails: InvoiceDetailDto[];

@@ -324,6 +324,8 @@ export class InvoiceService {
         'invoiceDetails.product',
         'invoiceDetails.accommodation',
         'invoiceDetails.excursion',
+        'user.phoneCode',
+        'user.identificationType',
       ],
     });
 
@@ -358,7 +360,25 @@ export class InvoiceService {
         firstName: invoice.user.firstName,
         lastName: invoice.user.lastName,
         identificationNumber: invoice.user.identificationNumber,
+        phone: invoice.user.phone,
+        phoneCode: invoice.user.phoneCode
+          ? {
+              phoneCodeId: Number(invoice.user.phoneCode.phoneCodeId), // asegúrate de que sea número
+              code: invoice.user.phoneCode.code,
+              name: invoice.user.phoneCode.name, // <--- este era el que faltaba
+            }
+          : undefined,
+        identificationType: invoice.user.identificationType
+          ? {
+              identificationTypeId: Number(
+                invoice.user.identificationType.identificationTypeId,
+              ), // <--- corregido a number
+              code: invoice.user.identificationType.code,
+              name: invoice.user.identificationType.name,
+            }
+          : undefined,
       },
+
       employee: {
         userId: invoice.employee.userId,
         firstName: invoice.employee.firstName,
