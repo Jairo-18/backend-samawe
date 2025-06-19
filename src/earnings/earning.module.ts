@@ -1,9 +1,9 @@
+import { StatisticsService } from './services/statistics.service';
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { SharedModule } from './../shared/shared.module';
 import { EarningController } from './controllers/earning.controller';
 import { EarningService } from './services/earning.service';
-import { EarningUC } from './useCases/earningUC.uc';
 
 @Module({
   imports: [
@@ -11,6 +11,6 @@ import { EarningUC } from './useCases/earningUC.uc';
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [EarningController],
-  providers: [EarningUC, EarningService],
+  providers: [StatisticsService, EarningService],
 })
 export class EarningModule {}

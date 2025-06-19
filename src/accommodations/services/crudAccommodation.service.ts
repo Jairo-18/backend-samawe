@@ -9,7 +9,9 @@ import { RepositoryService } from '../../shared/services/repositoriry.service';
 import { Injectable } from '@nestjs/common';
 import {
   CreateRelatedDataServicesAndProductsDto,
+  PaginatedAccommodationSelectParamsDto,
   PaginatedListAccommodationsParamsDto,
+  PartialAccommodationDto,
 } from '../dtos/crudAccommodation.dto';
 import { Equal, FindOptionsWhere, ILike } from 'typeorm';
 
@@ -143,5 +145,39 @@ export class CrudAccommodationService {
     });
 
     return new ResponsePaginationDto(accommodations, pageMetaDto);
+  }
+
+  async paginatedPartialAccommodations(
+    params: PaginatedAccommodationSelectParamsDto,
+  ): Promise<ResponsePaginationDto<PartialAccommodationDto>> {
+    const skip = (params.page - 1) * params.perPage;
+    const where = [];
+
+    if (params.search) {
+      const search = params.search.trim();
+      where.push({ name: ILike(`%${search}%`) });
+    } else {
+      where.push({});
+    }
+
+    const [entities, itemCount] =
+      await this._accommodationRepository.findAndCount({
+        where,
+        skip,
+        take: params.perPage,
+        order: { name: params.order ?? 'ASC' },
+        select: ['name'], // solo nombre
+      });
+
+    const items: PartialAccommodationDto[] = entities.map((e) => ({
+      name: e.name!,
+    }));
+
+    const pageMetaDto = new PageMetaDto({
+      itemCount,
+      pageOptionsDto: params,
+    });
+
+    return new ResponsePaginationDto(items, pageMetaDto);
   }
 }

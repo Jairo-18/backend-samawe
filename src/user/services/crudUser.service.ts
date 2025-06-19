@@ -10,6 +10,7 @@ import { Injectable } from '@nestjs/common';
 import {
   CreateUserRelatedDataDto,
   PaginatedListUsersParamsDto,
+  PaginatedUserSelectParamsDto,
 } from '../dtos/crudUser.dto';
 import { FindOptionsWhere, ILike } from 'typeorm';
 
@@ -126,6 +127,37 @@ export class CrudUserService {
       delete newUser.phoneCode;
 
       return newUser;
+    });
+
+    const pageMetaDto = new PageMetaDto({
+      itemCount,
+      pageOptionsDto: params,
+    });
+
+    return new ResponsePaginationDto(users, pageMetaDto);
+  }
+
+  async paginatedUserSelect(params: PaginatedUserSelectParamsDto) {
+    const skip = (params.page - 1) * params.perPage;
+
+    const where = [];
+
+    if (params.search) {
+      const term = `%${params.search.trim()}%`;
+
+      where.push(
+        { firstName: ILike(term) },
+        { lastName: ILike(term) },
+        { identificationNumber: ILike(term) },
+      );
+    }
+
+    const [users, itemCount] = await this._userRepository.findAndCount({
+      where: where.length ? where : undefined,
+      skip,
+      take: params.perPage,
+      order: { firstName: 'ASC' },
+      select: ['userId', 'firstName', 'lastName', 'identificationNumber'],
     });
 
     const pageMetaDto = new PageMetaDto({

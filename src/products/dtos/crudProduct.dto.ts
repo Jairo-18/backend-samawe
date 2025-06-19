@@ -65,4 +65,32 @@ export class PaginatedListProductsParamsDto extends ParamsPaginationDto {
   @IsOptional()
   @IsString()
   priceSale?: number;
+
+  @ApiProperty({
+    example: false,
+    description: 'Boolean',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  isActive?: boolean;
+}
+
+export class PaginatedProductSelectParamsDto extends ParamsPaginationDto {
+  @ApiProperty({
+    example: 'Coca',
+    description: 'Texto de búsqueda por nombre del producto',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
+}
+
+export class PartialProductDto {
+  @ApiProperty({
+    example: 'Coca Cola',
+    description: 'Nombre del producto',
+  })
+  name: string;
 }

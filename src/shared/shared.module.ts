@@ -1,3 +1,4 @@
+import { CronService } from './services/cron.service';
 import { PasswordService } from './../user/services/password.service';
 import { InvoiceEventsListener } from './services/invoiceEventsListener.service';
 import { BalanceService } from './services/balance.service';
@@ -49,6 +50,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MailsService } from './services/mails.service';
 import { MailTemplateService } from './services/mail-template.service';
 import { MailerModule } from '@nestjs-modules/mailer';
+import { GeneralInvoiceDetaillService } from './services/generalInvoiceDetaill.service';
 
 @Module({})
 export class SharedModule {
@@ -153,6 +155,8 @@ export class SharedModule {
         MailsService,
         MailTemplateService,
         PasswordService,
+        CronService,
+        GeneralInvoiceDetaillService,
       ],
       exports: [
         TypeOrmModule,
@@ -181,6 +185,8 @@ export class SharedModule {
         MailsService,
         MailTemplateService,
         PasswordService,
+        CronService,
+        GeneralInvoiceDetaillService,
       ],
     };
   }

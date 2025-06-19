@@ -33,6 +33,9 @@ export class Product {
   @Column('decimal', { precision: 10, scale: 2 })
   priceSale: number;
 
+  @Column({ type: 'boolean', default: true })
+  isActive: boolean;
+
   @ManyToOne(() => CategoryType, (categoryType) => categoryType.product)
   @JoinColumn({ name: 'categoryTypeId' })
   categoryType: CategoryType;

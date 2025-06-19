@@ -1,4 +1,7 @@
-import { PaginatedListUsersParamsDto } from '../dtos/crudUser.dto';
+import {
+  PaginatedListUsersParamsDto,
+  PaginatedUserSelectParamsDto,
+} from '../dtos/crudUser.dto';
 import { CrudUserService } from '../services/crudUser.service';
 import { Injectable } from '@nestjs/common';
 
@@ -12,5 +15,9 @@ export class CrudUserUC {
 
   async paginatedList(params: PaginatedListUsersParamsDto) {
     return await this._crudUserService.paginatedList(params);
+  }
+
+  async paginatedPartialUser(params: PaginatedUserSelectParamsDto) {
+    return await this._crudUserService.paginatedUserSelect(params);
   }
 }

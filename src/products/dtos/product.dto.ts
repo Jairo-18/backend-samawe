@@ -12,6 +12,7 @@ import {
   IsOptional,
   IsPositive,
   IsNumber,
+  IsBoolean,
 } from 'class-validator';
 
 export class CreateProductDto {
@@ -76,6 +77,15 @@ export class CreateProductDto {
   priceSale: number;
 
   @ApiProperty({
+    example: true,
+    description: 'Indica si el producto está activo',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @ApiProperty({
     example: 1,
     description: 'ID del tipo de categoría (relación con CategoryType)',
     required: true,
@@ -128,6 +138,15 @@ export class UpdateProductDto {
   @IsPositive()
   @IsOptional()
   priceSale?: number;
+
+  @ApiProperty({
+    example: true,
+    description: 'Indica si el producto está activo',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 
   @ApiProperty({
     example: 1,

@@ -1,4 +1,8 @@
-import { PaginatedListProductsParamsDto } from './../dtos/crudProduct.dto';
+import {
+  PaginatedListProductsParamsDto,
+  PaginatedProductSelectParamsDto,
+  PartialProductDto,
+} from './../dtos/crudProduct.dto';
 import { Product } from './../../shared/entities/product.entity';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import {
@@ -44,6 +48,16 @@ export class ProductController {
     private readonly _productUC: ProductUC,
     private readonly _crudProductUC: CrudProductUC,
   ) {}
+
+  @Get('/paginated-partial')
+  @ApiOkResponse({ type: ResponsePaginationDto<PartialProductDto> })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async getPaginatedPartial(
+    @Query() params: PaginatedProductSelectParamsDto,
+  ): Promise<ResponsePaginationDto<PartialProductDto>> {
+    return this._crudProductUC.paginatedPartialProduct(params);
+  }
 
   @Post('create')
   @ApiBearerAuth()

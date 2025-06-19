@@ -2,7 +2,11 @@ import { ProductRepository } from './../../shared/repositories/product.repositor
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { Product } from './../../shared/entities/product.entity';
-import { PaginatedListProductsParamsDto } from './../dtos/crudProduct.dto';
+import {
+  PaginatedListProductsParamsDto,
+  PaginatedProductSelectParamsDto,
+  PartialProductDto,
+} from './../dtos/crudProduct.dto';
 import { Injectable } from '@nestjs/common';
 import { Equal, FindOptionsWhere, ILike } from 'typeorm';
 
@@ -38,6 +42,10 @@ export class CrudProductService {
 
     if (params.priceSale !== undefined) {
       baseConditions.priceSale = Equal(params.priceSale);
+    }
+
+    if (params.isActive !== undefined) {
+      baseConditions.isActive = Equal(params.isActive);
     }
 
     if (params.categoryType) {
@@ -93,5 +101,38 @@ export class CrudProductService {
     });
 
     return new ResponsePaginationDto(products, pageMetaDto);
+  }
+
+  async paginatedPartialProducts(
+    params: PaginatedProductSelectParamsDto,
+  ): Promise<ResponsePaginationDto<PartialProductDto>> {
+    const skip = (params.page - 1) * params.perPage;
+    const where = [];
+
+    if (params.search) {
+      const search = params.search.trim();
+      where.push({ name: ILike(`%${search}%`) });
+    } else {
+      where.push({});
+    }
+
+    const [entities, itemCount] = await this._productRepository.findAndCount({
+      where,
+      skip,
+      take: params.perPage,
+      order: { name: params.order ?? 'ASC' },
+      select: ['name'], // solo nombre
+    });
+
+    const items: PartialProductDto[] = entities.map((e) => ({
+      name: e.name!,
+    }));
+
+    const pageMetaDto = new PageMetaDto({
+      itemCount,
+      pageOptionsDto: params,
+    });
+
+    return new ResponsePaginationDto(items, pageMetaDto);
   }
 }

@@ -94,14 +94,33 @@ export class PaginatedListUsersParamsDto extends ParamsPaginationDto {
   roleType?: string;
 }
 
-// export interface UserDataResponse {
-//   userId: string;
-//   identificationType: number;
-//   identificationNumber: string;
-//   roleId: number;
-//   username: string;
-//   email: string;
-//   createdAt: Date;
-//   phone: string;
-//   avatarUrl: string;
-// }
+export class PaginatedUserSelectParamsDto extends ParamsPaginationDto {
+  @ApiProperty({
+    example: 'Jhon',
+    description: 'Buscar por nombre, apellido o identificación',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
+}
+
+export class PartialUserDto {
+  @ApiProperty({
+    example: 'Jhon',
+    description: 'Nombre del usuario',
+  })
+  firstName: string;
+
+  @ApiProperty({
+    example: 'Legarda',
+    description: 'Apellido del usuario',
+  })
+  lastName: string;
+
+  @ApiProperty({
+    example: '1120066430',
+    description: 'Número de identificación del usuario',
+  })
+  identificationNumber: string;
+}

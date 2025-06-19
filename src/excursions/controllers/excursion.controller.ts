@@ -1,4 +1,8 @@
-import { PaginatedListExcursionsParamsDto } from './../dtos/crudExcursion.dto';
+import {
+  PaginatedExcursionSelectParamsDto,
+  PaginatedListExcursionsParamsDto,
+  PartialExcursionDto,
+} from './../dtos/crudExcursion.dto';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { Excursion } from './../../shared/entities/excursion.entity';
 import { CrudExcursionUC } from './../useCases/crudExcursionUC.uc';
@@ -44,6 +48,16 @@ export class ExcursionController {
     private readonly _excursionUC: ExcursionUC,
     private readonly _crudExcursionUC: CrudExcursionUC,
   ) {}
+
+  @Get('/paginated-partial')
+  @ApiOkResponse({ type: ResponsePaginationDto<PartialExcursionDto> })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async getPaginatedPartial(
+    @Query() params: PaginatedExcursionSelectParamsDto,
+  ): Promise<ResponsePaginationDto<PartialExcursionDto>> {
+    return this._crudExcursionUC.paginatedPartialExcursion(params);
+  }
 
   @Post('create')
   @ApiBearerAuth()

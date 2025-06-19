@@ -66,3 +66,22 @@ export class PaginatedListExcursionsParamsDto extends ParamsPaginationDto {
   @IsString()
   categoryType?: number;
 }
+
+export class PaginatedExcursionSelectParamsDto extends ParamsPaginationDto {
+  @ApiProperty({
+    example: 'Paseo río',
+    description: 'Texto de búsqueda por nombre de la pasadía',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
+}
+
+export class PartialExcursionDto {
+  @ApiProperty({
+    example: 'Paseo rio',
+    description: 'Nombre de la excursion',
+  })
+  name: string;
+}

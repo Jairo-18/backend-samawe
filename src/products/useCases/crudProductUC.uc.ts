@@ -1,4 +1,7 @@
-import { PaginatedListProductsParamsDto } from '../dtos/crudProduct.dto';
+import {
+  PaginatedListProductsParamsDto,
+  PaginatedProductSelectParamsDto,
+} from '../dtos/crudProduct.dto';
 import { CrudProductService } from '../services/crudProduct.service';
 import { Injectable } from '@nestjs/common';
 
@@ -8,5 +11,9 @@ export class CrudProductUC {
 
   async paginatedList(params: PaginatedListProductsParamsDto) {
     return await this._crudProductService.paginatedList(params);
+  }
+
+  async paginatedPartialProduct(params: PaginatedProductSelectParamsDto) {
+    return await this._crudProductService.paginatedPartialProducts(params);
   }
 }

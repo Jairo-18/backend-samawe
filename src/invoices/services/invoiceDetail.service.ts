@@ -1,4 +1,4 @@
-import { Product } from './../../shared/entities/product.entity';
+import { StateTypeRepository } from './../../shared/repositories/stateType.repository';
 import { CategoryType } from './../../shared/entities/categoryType.entity';
 import { IdentificationType } from './../../shared/entities/identificationType.entity';
 import { PaidType } from './../../shared/entities/paidType.entity';
@@ -14,6 +14,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  InternalServerErrorException,
+  HttpException,
 } from '@nestjs/common';
 import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
 import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
@@ -23,6 +25,7 @@ import {
   CreateRelatedDataInvoiceDto,
 } from '../dtos/invoiceDetaill.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { GeneralInvoiceDetaillService } from 'src/shared/services/generalInvoiceDetaill.service';
 
 @Injectable()
 export class InvoiceDetailService {
@@ -34,7 +37,9 @@ export class InvoiceDetailService {
     private readonly _excursionRepository: ExcursionRepository,
     private readonly _taxeTypeRepository: TaxeTypeRepository,
     private readonly _repositoriesService: RepositoryService,
+    private readonly _stateTypeRepository: StateTypeRepository,
     private readonly _eventEmitter: EventEmitter2,
+    private readonly _generalInvoiceDetaillService: GeneralInvoiceDetaillService,
   ) {}
 
   async getRelatedDataToCreate(): Promise<CreateRelatedDataInvoiceDto> {
@@ -75,123 +80,6 @@ export class InvoiceDetailService {
     };
   }
 
-  private async updateInvoiceTotal(invoiceId: number): Promise<void> {
-    try {
-      const details = await this._invoiceDetaillRepository.find({
-        where: { invoice: { invoiceId } },
-      });
-
-      let subtotalWithoutTax = 0;
-      let subtotalWithTax = 0;
-      let total = 0;
-
-      for (const detail of details) {
-        const priceWithoutTax = Number(detail.priceWithoutTax) || 0;
-        const priceWithTax = Number(detail.priceWithTax) || 0;
-        const amount = Number(detail.amount) || 0;
-
-        if (priceWithoutTax < 0 || priceWithTax < 0 || amount < 0) {
-          continue;
-        }
-
-        const lineSubtotalWithoutTax = priceWithoutTax * amount;
-        const lineSubtotalWithTax = priceWithTax * amount;
-        const taxAmount = lineSubtotalWithTax - lineSubtotalWithoutTax;
-
-        subtotalWithoutTax += lineSubtotalWithoutTax;
-        subtotalWithTax += taxAmount;
-        total += lineSubtotalWithTax;
-      }
-
-      // Redondear para evitar problemas de precisión decimal
-      subtotalWithoutTax = Math.round(subtotalWithoutTax * 100) / 100;
-      subtotalWithTax = Math.round(subtotalWithTax * 100) / 100;
-      total = Math.round(total * 100) / 100;
-
-      const updateResult = await this._invoiceRepository.update(invoiceId, {
-        subtotalWithoutTax,
-        subtotalWithTax,
-        total,
-      });
-
-      if (updateResult.affected === 0) {
-        throw new NotFoundException(
-          `No se pudo actualizar la factura con ID ${invoiceId}`,
-        );
-      }
-    } catch (error) {
-      console.error(
-        `Error actualizando totales de factura ${invoiceId}:`,
-        error,
-      );
-      throw new BadRequestException(
-        `Error actualizando totales de la factura: ${error.message}`,
-      );
-    }
-  }
-
-  /**
-   * Valida si los precios del producto han cambiado y sugiere crear uno nuevo
-   */
-  private validateProductPriceConsistency(
-    product: Product,
-    priceBuy: number,
-    priceWithoutTax: number,
-    invoiceTypeCode: string,
-  ): { isValid: boolean; message?: string } {
-    const currentPriceBuy = Number(product.priceBuy);
-    const currentPriceSale = Number(product.priceSale);
-
-    // Solo validar para facturas de compra
-    if (invoiceTypeCode === 'FC') {
-      const priceBuyDiff = Math.abs(currentPriceBuy - priceBuy) > 0.01;
-      const priceSaleDiff = Math.abs(currentPriceSale - priceWithoutTax) > 0.01;
-
-      if (priceBuyDiff || priceSaleDiff) {
-        return {
-          isValid: false,
-          message: `⚠️ ATENCIÓN: Los precios del producto "${product.name}" han cambiado:
-              Precios actuales del producto:
-              - Precio de compra: $${currentPriceBuy}
-              - Precio de venta: $${currentPriceSale}
-
-              Precios en esta factura:
-              - Precio de compra: $${priceBuy}
-              - Precio de venta: $${priceWithoutTax}
-
-              RECOMENDACIÓN: Considera crear un producto diferente para mantener la integridad contable, ya que esto podría alterar la contabilidad de la aplicación.`,
-        };
-      }
-    }
-
-    return { isValid: true };
-  }
-
-  /**
-   * Obtiene los precios históricos del producto o los precios actuales
-   */
-  private getHistoricalPrices(
-    product: Product,
-    dto: any,
-  ): { priceBuy: number; priceWithoutTax: number } {
-    // Si se proporcionan precios específicos en el DTO, usarlos (precios históricos)
-    if (dto.priceBuy !== undefined && dto.priceWithoutTax !== undefined) {
-      return {
-        priceBuy: Number(dto.priceBuy),
-        priceWithoutTax: Number(dto.priceWithoutTax),
-      };
-    }
-
-    // Si no, usar los precios actuales del producto
-    return {
-      priceBuy: Number(product.priceBuy),
-      priceWithoutTax: Number(product.priceSale),
-    };
-  }
-
-  /**
-   * Crea un nuevo detalle de factura con precios históricos
-   */
   async create(invoiceId: number, dto: CreateInvoiceDetailDto) {
     try {
       const [invoice, taxeType] = await Promise.all([
@@ -216,16 +104,26 @@ export class InvoiceDetailService {
         throw new NotFoundException('Tipo de impuesto no encontrado');
       }
 
-      const taxRate =
-        taxeType && taxeType.percentage
-          ? taxeType.percentage > 1
-            ? taxeType.percentage / 100
-            : taxeType.percentage
-          : 0;
+      const taxRate = taxeType?.percentage
+        ? taxeType.percentage > 1
+          ? taxeType.percentage / 100
+          : taxeType.percentage
+        : 0;
 
       const amount = Number(dto.amount);
       if (isNaN(amount) || amount <= 0) {
         throw new BadRequestException('La cantidad debe ser mayor a cero');
+      }
+
+      // Validación de fechas
+      if (
+        dto.startDate &&
+        dto.endDate &&
+        new Date(dto.startDate) >= new Date(dto.endDate)
+      ) {
+        throw new BadRequestException(
+          'La fecha de inicio debe ser anterior a la fecha de fin',
+        );
       }
 
       let priceBuy = 0;
@@ -243,16 +141,20 @@ export class InvoiceDetailService {
           throw new NotFoundException('Producto no encontrado');
         }
 
-        const prices = this.getHistoricalPrices(product, dto);
+        const prices = this._generalInvoiceDetaillService.getHistoricalPrices(
+          product,
+          dto,
+        );
         priceBuy = prices.priceBuy;
         priceWithoutTax = prices.priceWithoutTax;
 
-        const validation = this.validateProductPriceConsistency(
-          product,
-          priceBuy,
-          priceWithoutTax,
-          invoice.invoiceType.code,
-        );
+        const validation =
+          this._generalInvoiceDetaillService.validateProductPriceConsistency(
+            product,
+            priceBuy,
+            priceWithoutTax,
+            invoice.invoiceType.code,
+          );
 
         if (!validation.isValid) {
           throw new BadRequestException(validation.message);
@@ -289,6 +191,7 @@ export class InvoiceDetailService {
         dto.accommodationId
           ? this._accommodationRepository.findOne({
               where: { accommodationId: dto.accommodationId },
+              relations: ['stateType'],
             })
           : Promise.resolve(null),
         dto.excursionId
@@ -305,7 +208,48 @@ export class InvoiceDetailService {
         throw new NotFoundException('Excursión no encontrada');
       }
 
-      if (accommodation) detail.accommodation = accommodation;
+      if (accommodation) {
+        // Validación más robusta del estado
+        if (!accommodation.stateType) {
+          throw new BadRequestException(
+            'El alojamiento no tiene un estado definido',
+          );
+        }
+
+        const stateName = accommodation.stateType.name?.toString().trim();
+        if (!stateName) {
+          throw new BadRequestException(
+            'El nombre del estado no está definido',
+          );
+        }
+
+        const blockedStates = ['Mantenimiento', 'Fuera de Servicio', 'Ocupado'];
+        if (blockedStates.includes(stateName)) {
+          const stateMessage =
+            stateName === 'Ocupado'
+              ? 'ocupada'
+              : stateName === 'Mantenimiento'
+                ? 'en mantenimiento'
+                : 'fuera de servicio';
+
+          throw new BadRequestException(`Esta habitación está ${stateMessage}`);
+        }
+
+        detail.accommodation = accommodation;
+
+        // Cambiar estado a Ocupado
+        const ocupadoState = await this._stateTypeRepository.findOne({
+          where: { name: 'Ocupado' },
+        });
+
+        if (!ocupadoState) {
+          throw new NotFoundException('No se encontró el estado "Ocupado"');
+        }
+
+        accommodation.stateType = ocupadoState;
+        await this._accommodationRepository.save(accommodation); // Guardar inmediatamente
+      }
+
       if (excursion) detail.excursion = excursion;
 
       const savedDetail = await this._invoiceDetaillRepository.save(detail);
@@ -324,10 +268,12 @@ export class InvoiceDetailService {
         }
       }
 
-      await Promise.all([
+      const savePromises = [
         isProduct ? this._productRepository.save(product) : Promise.resolve(),
-        this.updateInvoiceTotal(invoiceId),
-      ]);
+        this._generalInvoiceDetaillService.updateInvoiceTotal(invoiceId),
+      ];
+
+      await Promise.all(savePromises);
 
       this._eventEmitter.emit('invoice.detail.created', {
         invoice,
@@ -336,14 +282,25 @@ export class InvoiceDetailService {
 
       return savedDetail;
     } catch (error) {
-      return error;
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Ocurrió un error al crear el detalle',
+      );
     }
   }
 
   async delete(invoiceDetailId: number) {
     const detail = await this._invoiceDetaillRepository.findOne({
       where: { invoiceDetailId },
-      relations: ['invoice', 'product', 'invoice.invoiceType'],
+      relations: [
+        'invoice',
+        'product',
+        'invoice.invoiceType',
+        'accommodation',
+        'accommodation.stateType',
+      ],
     });
 
     if (!detail) {
@@ -352,7 +309,7 @@ export class InvoiceDetailService {
       );
     }
 
-    const { invoice, product, amount: detailAmount } = detail;
+    const { invoice, product, accommodation, amount: detailAmount } = detail;
     const invoiceTypeCode = invoice.invoiceType.code;
     const isSale = invoiceTypeCode === 'FV';
     const isBuy = invoiceTypeCode === 'FC';
@@ -385,10 +342,23 @@ export class InvoiceDetailService {
       ops.push(this._productRepository.save(product));
     }
 
+    // 🆕 LIBERAR ACCOMMODATION SI EXISTE
+    if (accommodation) {
+      // Buscar el stateType "Disponible" y asignarlo
+      const disponibleState = await this._stateTypeRepository.findOne({
+        where: { name: 'Disponible' },
+      });
+
+      if (disponibleState) {
+        accommodation.stateType = disponibleState;
+        ops.push(this._accommodationRepository.save(accommodation));
+      }
+    }
+
     // ✅ ELIMINAR DETALLE Y ACTUALIZAR TOTAL EN PARALELO
     ops.push(
       this._invoiceDetaillRepository.remove(detail),
-      this.updateInvoiceTotal(invoice.invoiceId),
+      this._generalInvoiceDetaillService.updateInvoiceTotal(invoice.invoiceId),
     );
 
     await Promise.all(ops);

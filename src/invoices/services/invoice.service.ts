@@ -1,3 +1,4 @@
+import { StateType } from './../../shared/entities/stateType.entity';
 import { ExcursionRepository } from './../../shared/repositories/excursion.repository';
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
@@ -250,7 +251,13 @@ export class InvoiceService {
   async delete(invoiceId: number): Promise<void> {
     const invoice = await this._invoiceRepository.findOne({
       where: { invoiceId },
-      relations: ['invoiceType', 'invoiceDetails', 'invoiceDetails.product'],
+      relations: [
+        'invoiceType',
+        'invoiceDetails',
+        'invoiceDetails.product',
+        'invoiceDetails.accommodation',
+        'invoiceDetails.accommodation.stateType',
+      ],
       withDeleted: true,
     });
 
@@ -268,7 +275,12 @@ export class InvoiceService {
       const isVenta = invoice.invoiceType.code === 'FV';
       let hasProducts = false;
 
+      const disponibleState = await queryRunner.manager.findOne(StateType, {
+        where: { name: 'Disponible' },
+      });
+
       for (const detail of invoice.invoiceDetails) {
+        // ✅ Revertir stock si es producto
         if (detail.product) {
           hasProducts = true;
           const product = await queryRunner.manager.findOneOrFail(Product, {
@@ -291,6 +303,12 @@ export class InvoiceService {
           }
 
           await queryRunner.manager.save(product);
+        }
+
+        // ✅ Liberar habitación si existe
+        if (detail.accommodation && disponibleState) {
+          detail.accommodation.stateType = disponibleState;
+          await queryRunner.manager.save(detail.accommodation);
         }
       }
 

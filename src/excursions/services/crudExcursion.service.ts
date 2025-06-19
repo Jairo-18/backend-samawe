@@ -1,5 +1,9 @@
 import { Excursion } from './../../shared/entities/excursion.entity';
-import { PaginatedListExcursionsParamsDto } from './../dtos/crudExcursion.dto';
+import {
+  PaginatedExcursionSelectParamsDto,
+  PaginatedListExcursionsParamsDto,
+  PartialExcursionDto,
+} from './../dtos/crudExcursion.dto';
 import { ExcursionRepository } from './../../shared/repositories/excursion.repository';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
@@ -94,5 +98,38 @@ export class CrudExcursionService {
     });
 
     return new ResponsePaginationDto(excursions, pageMetaDto);
+  }
+
+  async paginatedPartialExcursions(
+    params: PaginatedExcursionSelectParamsDto,
+  ): Promise<ResponsePaginationDto<PartialExcursionDto>> {
+    const skip = (params.page - 1) * params.perPage;
+    const where = [];
+
+    if (params.search) {
+      const search = params.search.trim();
+      where.push({ name: ILike(`%${search}%`) });
+    } else {
+      where.push({});
+    }
+
+    const [entities, itemCount] = await this._excursionRepository.findAndCount({
+      where,
+      skip,
+      take: params.perPage,
+      order: { name: params.order ?? 'ASC' },
+      select: ['name'], // solo nombre
+    });
+
+    const items: PartialExcursionDto[] = entities.map((e) => ({
+      name: e.name!,
+    }));
+
+    const pageMetaDto = new PageMetaDto({
+      itemCount,
+      pageOptionsDto: params,
+    });
+
+    return new ResponsePaginationDto(items, pageMetaDto);
   }
 }

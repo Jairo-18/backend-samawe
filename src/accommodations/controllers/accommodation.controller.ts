@@ -1,7 +1,9 @@
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import {
   CreateRelatedDataServicesAndProductsResponseDto,
+  PaginatedAccommodationSelectParamsDto,
   PaginatedListAccommodationsParamsDto,
+  PartialAccommodationDto,
 } from './../dtos/crudAccommodation.dto';
 import { Accommodation } from './../../shared/entities/accommodation.entity';
 import { CrudAccommodationUC } from '../useCases/crudAccommodationUC.uc';
@@ -47,6 +49,16 @@ export class AccommodationController {
     private readonly _accommodationUC: AccommodationUC,
     private readonly _crudAccommodationUC: CrudAccommodationUC,
   ) {}
+
+  @Get('/paginated-partial')
+  @ApiOkResponse({ type: ResponsePaginationDto<PartialAccommodationDto> })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async getPaginatedPartial(
+    @Query() params: PaginatedAccommodationSelectParamsDto,
+  ): Promise<ResponsePaginationDto<PartialAccommodationDto>> {
+    return this._crudAccommodationUC.paginatedPartialAccommodation(params);
+  }
 
   @Post('create')
   @ApiBearerAuth()

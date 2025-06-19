@@ -9,6 +9,8 @@ import { User } from 'src/shared/entities/user.entity';
 import {
   CreateUserRelatedDataReponseDto,
   PaginatedListUsersParamsDto,
+  PaginatedUserSelectParamsDto,
+  PartialUserDto,
 } from '../dtos/crudUser.dto';
 import {
   CreatedRecordResponseDto,
@@ -57,6 +59,16 @@ export class UserController {
     private readonly _userUC: UserUC,
     private readonly _crudUserUC: CrudUserUC,
   ) {}
+
+  @Get('/paginated-partial')
+  @ApiOkResponse({ type: ResponsePaginationDto<PartialUserDto> })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async getPaginatedPartial(
+    @Query() params: PaginatedUserSelectParamsDto,
+  ): Promise<ResponsePaginationDto<PartialUserDto>> {
+    return this._crudUserUC.paginatedPartialUser(params);
+  }
 
   @Patch('/recovery-password')
   @ApiOkResponse(UPDATED_RESPONSE)

@@ -137,3 +137,22 @@ export class PaginatedListAccommodationsParamsDto extends ParamsPaginationDto {
   @IsString()
   stateType?: number;
 }
+
+export class PaginatedAccommodationSelectParamsDto extends ParamsPaginationDto {
+  @ApiProperty({
+    example: 'Cabaña',
+    description: 'Texto de búsqueda por nombre del hospedaje',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
+}
+
+export class PartialAccommodationDto {
+  @ApiProperty({
+    example: 'Cabaña',
+    description: 'Nombre del hospedaje',
+  })
+  name: string;
+}
