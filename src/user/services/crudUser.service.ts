@@ -117,14 +117,14 @@ export class CrudUserService {
     const users = entities.map((user) => {
       const newUser = {
         ...user,
-        roleTypeId: user?.roleType?.roleTypeId,
-        identificationTypeId: user?.identificationType?.identificationTypeId,
-        phoneCodeId: user?.phoneCode?.phoneCodeId,
+        // No necesitas roleTypeId, identificationTypeId, phoneCodeId aquí
+        // ya que están dentro de los objetos roleType, etc.
       };
 
-      delete newUser.roleType;
-      delete newUser.identificationType;
-      delete newUser.phoneCode;
+      // ¡NO elimines estas propiedades!
+      // delete newUser.roleType;
+      // delete newUser.identificationType;
+      // delete newUser.phoneCode;
 
       return newUser;
     });
