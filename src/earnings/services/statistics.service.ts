@@ -70,20 +70,113 @@ export class StatisticsService {
       .getRawMany();
   }
 
+  /**
+   * Obtiene estadísticas diarias de ventas (solo del día actual)
+   * @returns Totales de productos, hospedajes y excursiones vendidos hoy
+   */
+  async getDailySalesStatistics() {
+    // Obtener fecha de hoy (solo fecha, sin hora)
+    const today = new Date();
+    const startOfDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+    const endOfDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate() + 1,
+    );
+
+    return await this._invoiceDetailRepository
+      .createQueryBuilder('detail')
+      .leftJoin('detail.invoice', 'invoice')
+      .leftJoin('detail.product', 'product')
+      .leftJoin('detail.accommodation', 'accommodation')
+      .leftJoin('detail.excursion', 'excursion')
+      .select([
+        // Total de productos vendidos
+        'COALESCE(SUM(CASE WHEN detail.productId IS NOT NULL THEN detail.subtotal ELSE 0 END), 0) AS "totalProductsSold"',
+        // Total de hospedajes vendidos
+        'COALESCE(SUM(CASE WHEN detail.accommodationId IS NOT NULL THEN detail.subtotal ELSE 0 END), 0) AS "totalAccommodationsSold"',
+        // Total de excursiones vendidas (pasadías)
+        'COALESCE(SUM(CASE WHEN detail.excursionId IS NOT NULL THEN detail.subtotal ELSE 0 END), 0) AS "totalExcursionsSold"',
+        // Total general
+        'COALESCE(SUM(detail.subtotal), 0) AS "totalSales"',
+        // Conteo de items
+        'COUNT(CASE WHEN detail.productId IS NOT NULL THEN 1 END) AS "countProducts"',
+        'COUNT(CASE WHEN detail.accommodationId IS NOT NULL THEN 1 END) AS "countAccommodations"',
+        'COUNT(CASE WHEN detail.excursionId IS NOT NULL THEN 1 END) AS "countExcursions"',
+      ])
+      .where('invoice.createdAt >= :startOfDay', { startOfDay })
+      .andWhere('invoice.createdAt < :endOfDay', { endOfDay })
+      .getRawOne();
+  }
+
+  /**
+   * Obtiene estadísticas diarias de ventas para una fecha específica
+   * @param date Fecha específica (formato: YYYY-MM-DD o Date object)
+   * @returns Totales de productos, hospedajes y excursiones vendidos en esa fecha
+   */
+  async getDailySalesStatisticsByDate(date: string | Date) {
+    const targetDate = typeof date === 'string' ? new Date(date) : date;
+    const startOfDay = new Date(
+      targetDate.getFullYear(),
+      targetDate.getMonth(),
+      targetDate.getDate(),
+    );
+    const endOfDay = new Date(
+      targetDate.getFullYear(),
+      targetDate.getMonth(),
+      targetDate.getDate() + 1,
+    );
+
+    return await this._invoiceDetailRepository
+      .createQueryBuilder('detail')
+      .leftJoin('detail.invoice', 'invoice')
+      .leftJoin('detail.product', 'product')
+      .leftJoin('detail.accommodation', 'accommodation')
+      .leftJoin('detail.excursion', 'excursion')
+      .select([
+        // Total de productos vendidos
+        'COALESCE(SUM(CASE WHEN detail.productId IS NOT NULL THEN detail.subtotal ELSE 0 END), 0) AS "totalProductsSold"',
+        // Total de hospedajes vendidos
+        'COALESCE(SUM(CASE WHEN detail.accommodationId IS NOT NULL THEN detail.subtotal ELSE 0 END), 0) AS "totalAccommodationsSold"',
+        // Total de excursiones vendidas (pasadías)
+        'COALESCE(SUM(CASE WHEN detail.excursionId IS NOT NULL THEN detail.subtotal ELSE 0 END), 0) AS "totalExcursionsSold"',
+        // Total general
+        'COALESCE(SUM(detail.subtotal), 0) AS "totalSales"',
+        // Conteo de items
+        'COUNT(CASE WHEN detail.productId IS NOT NULL THEN 1 END) AS "countProducts"',
+        'COUNT(CASE WHEN detail.accommodationId IS NOT NULL THEN 1 END) AS "countAccommodations"',
+        'COUNT(CASE WHEN detail.excursionId IS NOT NULL THEN 1 END) AS "countExcursions"',
+      ])
+      .where('invoice.createdAt >= :startOfDay', { startOfDay })
+      .andWhere('invoice.createdAt < :endOfDay', { endOfDay })
+      .getRawOne();
+  }
+
   async getGeneralStatistics() {
-    const [products, accommodations, excursions, reservedAccommodations] =
-      await Promise.all([
-        this.countActiveInactiveProducts(),
-        this.countAccommodationsByState(),
-        this.countExcursionsByState(),
-        this.getReservedAccommodationsWithInvoices(),
-      ]);
+    const [
+      products,
+      accommodations,
+      excursions,
+      reservedAccommodations,
+      dailySales,
+    ] = await Promise.all([
+      this.countActiveInactiveProducts(),
+      this.countAccommodationsByState(),
+      this.countExcursionsByState(),
+      this.getReservedAccommodationsWithInvoices(),
+      this.getDailySalesStatistics(), // 👈 Nueva estadística agregada
+    ]);
 
     return {
       products,
       accommodations,
       excursions,
-      reservedAccommodations, // 👈 extra agregado
+      reservedAccommodations,
+      dailySales, // 👈 Estadísticas diarias incluidas
     };
   }
 }
