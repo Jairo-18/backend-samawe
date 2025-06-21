@@ -1,3 +1,4 @@
+import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { StateTypeRepository } from './../../shared/repositories/stateType.repository';
 import { BedTypeRepository } from './../../shared/repositories/bedType.repository';
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
@@ -23,6 +24,7 @@ export class AccommodationService {
     private readonly _categoryTypeRepository: CategoryTypeRepository,
     private readonly _bedTypeRepository: BedTypeRepository,
     private readonly _stateTypeRepository: StateTypeRepository,
+    private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
   ) {}
 
   async create(
@@ -177,8 +179,21 @@ export class AccommodationService {
     return await this._accommodationRepository.find();
   }
 
-  async delete(accommodationId: string) {
-    await this.findOne(accommodationId);
-    return await this._accommodationRepository.delete(accommodationId);
+  async delete(accommodationId: number): Promise<void> {
+    const accommodation = await this.findOne(accommodationId.toString());
+
+    const count = await this._invoiceDetaillRepository.count({
+      where: {
+        accommodation: { accommodationId },
+      },
+    });
+
+    if (count > 0) {
+      throw new BadRequestException(
+        `El hospedaje ${accommodation.name} está asociado a una factura y no puede eliminarse.`,
+      );
+    }
+
+    await this._accommodationRepository.delete(accommodationId);
   }
 }

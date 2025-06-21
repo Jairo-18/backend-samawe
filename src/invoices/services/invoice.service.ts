@@ -193,6 +193,11 @@ export class InvoiceService {
       throw new BadRequestException('Tipo de factura no encontrado');
     if (!user) throw new BadRequestException('Cliente no encontrado');
 
+    // NUEVA VALIDACIÓN: Verificar si el usuario está activo
+    if (!user.isActive) {
+      throw new BadRequestException('Este usuario está inactivo');
+    }
+
     const { saved: invoiceEntity } =
       await this._invoiceRepository.manager.transaction(async (manager) => {
         const lastInvoice = await manager

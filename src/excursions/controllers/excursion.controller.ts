@@ -137,7 +137,7 @@ export class ExcursionController {
   @ApiOkResponse({ type: DeleteReCordResponseDto })
   @ApiNotFoundResponse({ type: NotFoundResponseDto })
   async delete(
-    @Param('id') excursionId: string,
+    @Param('id') excursionId: number,
   ): Promise<DeleteReCordResponseDto> {
     await this._excursionUC.delete(excursionId);
     return {

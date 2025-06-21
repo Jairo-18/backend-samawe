@@ -141,6 +141,11 @@ export class InvoiceDetailService {
           throw new NotFoundException('Producto no encontrado');
         }
 
+        // NUEVA VALIDACIÓN: Verificar si el producto está activo
+        if (!product.isActive) {
+          throw new BadRequestException('Este producto está inactivo');
+        }
+
         const prices = this._generalInvoiceDetaillService.getHistoricalPrices(
           product,
           dto,
@@ -223,16 +228,25 @@ export class InvoiceDetailService {
           );
         }
 
-        const blockedStates = ['Mantenimiento', 'Fuera de Servicio', 'Ocupado'];
-        if (blockedStates.includes(stateName)) {
-          const stateMessage =
-            stateName === 'Ocupado'
-              ? 'ocupada'
-              : stateName === 'Mantenimiento'
-                ? 'en mantenimiento'
-                : 'fuera de servicio';
+        // NUEVA VALIDACIÓN: Verificar si el hospedaje está disponible
+        if (stateName !== 'Disponible') {
+          let stateMessage = '';
 
-          throw new BadRequestException(`Esta habitación está ${stateMessage}`);
+          switch (stateName) {
+            case 'Mantenimiento':
+              stateMessage = 'El hospedaje está en mantenimiento';
+              break;
+            case 'Ocupado':
+              stateMessage = 'El hospedaje está ocupado';
+              break;
+            case 'Fuera de Servicio':
+              stateMessage = 'El hospedaje está fuera de servicio';
+              break;
+            default:
+              stateMessage = 'El hospedaje no está disponible';
+          }
+
+          throw new BadRequestException(stateMessage);
         }
 
         detail.accommodation = accommodation;

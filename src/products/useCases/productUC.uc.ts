@@ -23,7 +23,7 @@ export class ProductUC {
     return await this._productService.findOne(productId);
   }
 
-  async delete(productId: string) {
+  async delete(productId: number) {
     return await this._productService.delete(productId);
   }
 }

@@ -40,6 +40,7 @@ export interface UpdateUserModel {
   email: string;
   phoneCode: string;
   phone: string;
+  isActive: boolean;
   roleType: string;
 }
 

@@ -1,3 +1,4 @@
+import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { StateTypeRepository } from './../../shared/repositories/stateType.repository';
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
 import {
@@ -21,6 +22,7 @@ export class ExcursionService {
     private readonly _excursionRepository: ExcursionRepository,
     private readonly _categoryTypeRepository: CategoryTypeRepository,
     private readonly _stateTypeRepository: StateTypeRepository,
+    private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
   ) {}
 
   async create(createExcursionDto: CreateExcursionDto): Promise<Excursion> {
@@ -155,8 +157,21 @@ export class ExcursionService {
     return await this._excursionRepository.find();
   }
 
-  async delete(excursionId: string) {
-    await this.findOne(excursionId);
-    return await this._excursionRepository.delete(excursionId);
+  async delete(excursionId: number): Promise<void> {
+    const excursion = await this.findOne(excursionId.toString());
+
+    const count = await this._invoiceDetaillRepository.count({
+      where: {
+        excursion: { excursionId },
+      },
+    });
+
+    if (count > 0) {
+      throw new BadRequestException(
+        `La excursión ${excursion.name} está asociada a una factura y no puede eliminarse.`,
+      );
+    }
+
+    await this._excursionRepository.delete(excursionId);
   }
 }

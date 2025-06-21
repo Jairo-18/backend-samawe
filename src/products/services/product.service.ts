@@ -1,3 +1,4 @@
+import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { Product } from './../../shared/entities/product.entity';
@@ -15,6 +16,7 @@ export class ProductService {
   constructor(
     private readonly _productRepository: ProductRepository,
     private readonly _categoryTypeRepository: CategoryTypeRepository,
+    private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
@@ -125,8 +127,21 @@ export class ProductService {
     return product;
   }
 
-  async delete(productId: string) {
-    await this.findOne(productId);
-    return await this._productRepository.delete(productId);
+  async delete(productId: number): Promise<void> {
+    const product = await this.findOne(productId.toString());
+
+    const invoiceDetailCount = await this._invoiceDetaillRepository.count({
+      where: {
+        product: { productId }, // sigue siendo number
+      },
+    });
+
+    if (invoiceDetailCount > 0) {
+      throw new BadRequestException(
+        `El producto ${product.name} está asociado a una factura y no puede eliminarse.`,
+      );
+    }
+
+    await this._productRepository.delete(productId);
   }
 }

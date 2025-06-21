@@ -153,7 +153,7 @@ export class AccommodationController {
   @ApiOkResponse({ type: DeleteReCordResponseDto })
   @ApiNotFoundResponse({ type: NotFoundResponseDto })
   async delete(
-    @Param('id') accommodationId: string,
+    @Param('id') accommodationId: number,
   ): Promise<DeleteReCordResponseDto> {
     await this._accommodationUC.delete(accommodationId);
     return {

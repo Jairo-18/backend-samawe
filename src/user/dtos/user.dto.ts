@@ -10,6 +10,7 @@ import {
   IsUUID,
   IsOptional,
   ValidateIf,
+  IsBoolean,
 } from 'class-validator';
 import { HttpStatus } from '@nestjs/common';
 import { GET_ALL_USER_EXAMPLE } from '../constants/examples.conts';
@@ -95,6 +96,15 @@ export class CreateUserDto {
   confirmPassword: string;
 
   @ApiProperty({
+    example: true,
+    description: 'Indica si el producto está activo',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @ApiProperty({
     example: 'UUID DEL ROL',
     description: 'Rol aignado / uuid',
     required: false,
@@ -173,6 +183,15 @@ export class UpdateUserDto {
   @IsString()
   @IsOptional()
   phone: string;
+
+  @ApiProperty({
+    example: true,
+    description: 'Indica si el producto está activo',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isActive: boolean;
 
   @ApiProperty({
     example: 'uuid-del-role',

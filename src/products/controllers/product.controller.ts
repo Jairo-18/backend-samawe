@@ -137,7 +137,7 @@ export class ProductController {
   @ApiOkResponse({ type: DeleteReCordResponseDto })
   @ApiNotFoundResponse({ type: NotFoundResponseDto })
   async delete(
-    @Param('id') producId: string,
+    @Param('id') producId: number,
   ): Promise<DeleteReCordResponseDto> {
     await this._productUC.delete(producId);
     return {

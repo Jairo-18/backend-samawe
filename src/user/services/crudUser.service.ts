@@ -12,7 +12,7 @@ import {
   PaginatedListUsersParamsDto,
   PaginatedUserSelectParamsDto,
 } from '../dtos/crudUser.dto';
-import { FindOptionsWhere, ILike } from 'typeorm';
+import { Equal, FindOptionsWhere, ILike } from 'typeorm';
 
 @Injectable()
 export class CrudUserService {
@@ -80,6 +80,10 @@ export class CrudUserService {
       baseConditions.identificationType = {
         identificationTypeId: params.identificationType,
       };
+    }
+
+    if (params.isActive !== undefined) {
+      baseConditions.isActive = Equal(params.isActive);
     }
 
     if (params.phoneCode) {
@@ -153,7 +157,13 @@ export class CrudUserService {
       skip,
       take: params.perPage,
       order: { firstName: 'ASC' },
-      select: ['userId', 'firstName', 'lastName', 'identificationNumber'],
+      select: [
+        'userId',
+        'firstName',
+        'lastName',
+        'identificationNumber',
+        'isActive',
+      ],
     });
 
     const pageMetaDto = new PageMetaDto({

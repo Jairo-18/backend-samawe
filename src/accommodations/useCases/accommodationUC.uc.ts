@@ -31,7 +31,7 @@ export class AccommodationUC {
     );
   }
 
-  async delete(accommodationId: string) {
+  async delete(accommodationId: number) {
     return await this._accommodationService.delete(accommodationId);
   }
 }

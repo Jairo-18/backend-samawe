@@ -1,3 +1,4 @@
+import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
 import { INVALID_ACCESS_DATA_MESSAGE } from './../../auth/constants/messages.constants';
 import {
   NOT_FOUND_MESSAGE,
@@ -15,6 +16,7 @@ import { IdentificationTypeRepository } from '../../shared/repositories/identifi
 import { UserRepository } from '../../shared/repositories/user.repository';
 import { User } from '../../shared/entities/user.entity';
 import {
+  BadRequestException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -33,6 +35,7 @@ export class UserService {
     private readonly _identificationTypeRepository: IdentificationTypeRepository,
     private readonly _phoneCodeRepository: PhoneCodeRepository,
     private readonly _passwordService: PasswordService,
+    private readonly _invoiceRepository: InvoiceRepository,
   ) {}
 
   async create(user: CreateUserDto): Promise<{ rowId: string }> {
@@ -342,9 +345,24 @@ export class UserService {
     );
   }
 
-  async delete(id: string) {
-    await this.findOne(id);
-    return await this._userRepository.delete(id);
+  async delete(id: string): Promise<void> {
+    const user = await this.findOne(id);
+
+    const existsInInvoices = await this._invoiceRepository.exist({
+      where: [
+        { user: { userId: id } }, // como cliente
+        { employee: { userId: id } }, // como empleado
+      ],
+    });
+
+    if (existsInInvoices) {
+      const fullName = `${user.firstName} ${user.lastName}`;
+      throw new BadRequestException(
+        `El usuario ${fullName} está asociado a una factura y no puede eliminarse.`,
+      );
+    }
+
+    await this._userRepository.delete(id);
   }
 
   async findOneByParams(

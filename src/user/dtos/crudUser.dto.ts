@@ -92,6 +92,15 @@ export class PaginatedListUsersParamsDto extends ParamsPaginationDto {
   @IsOptional()
   @IsUUID()
   roleType?: string;
+
+  @ApiProperty({
+    example: false,
+    description: 'Boolean',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  isActive?: boolean;
 }
 
 export class PaginatedUserSelectParamsDto extends ParamsPaginationDto {

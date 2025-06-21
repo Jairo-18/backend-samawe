@@ -25,7 +25,7 @@ export class ExcursionUC {
     return await this._excursionService.findAll();
   }
 
-  async delete(excursionId: string) {
+  async delete(excursionId: number) {
     return await this._excursionService.delete(excursionId);
   }
 }
