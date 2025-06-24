@@ -109,18 +109,29 @@ export class InvoicedPaginatedService {
         taxeTypeId: params.taxeTypeId,
       });
     }
-
     if (params.search) {
-      const search = `%${params.search}%`;
-      query.andWhere(
-        `(invoice.code ILIKE :search OR 
-          user.firstName ILIKE :search OR 
-          user.lastName ILIKE :search OR 
-          user.identificationNumber ILIKE :search OR 
-          employee.firstName ILIKE :search OR 
-          employee.lastName ILIKE :search)`,
-        { search },
-      );
+      const search = params.search.trim();
+      const isNumeric = !isNaN(Number(search));
+      const searchStr = `%${search}%`;
+
+      const conditions: string[] = [
+        'invoice.code ILIKE :searchStr',
+        'user.firstName ILIKE :searchStr',
+        'user.lastName ILIKE :searchStr',
+        'user.identificationNumber ILIKE :searchStr',
+        'employee.firstName ILIKE :searchStr',
+        'employee.lastName ILIKE :searchStr',
+      ];
+
+      if (isNumeric) {
+        conditions.push(
+          'CAST(invoice.total AS TEXT) ILIKE :searchStr',
+          'CAST(invoice.subtotalWithTax AS TEXT) ILIKE :searchStr',
+          'CAST(invoice.subtotalWithoutTax AS TEXT) ILIKE :searchStr',
+        );
+      }
+
+      query.andWhere(`(${conditions.join(' OR ')})`, { searchStr });
     }
 
     query
