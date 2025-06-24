@@ -111,6 +111,8 @@ export class CrudAccommodationService {
       if (!isNaN(searchNumber)) {
         searchConditions.push(
           { amountPerson: Equal(searchNumber) },
+          { amountRoom: Equal(searchNumber) },
+          { amountBathroom: Equal(searchNumber) },
           { priceBuy: Equal(searchNumber) },
           { priceSale: Equal(searchNumber) },
         );

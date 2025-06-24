@@ -20,6 +20,7 @@ export class CrudProductService {
 
     const baseConditions: FindOptionsWhere<Product> = {};
 
+    // Filtros individuales
     if (params.name) {
       baseConditions.name = ILike(`%${params.name}%`);
     }
@@ -59,10 +60,10 @@ export class CrudProductService {
       const search = params.search.trim();
       const searchConditions: FindOptionsWhere<Product>[] = [
         { name: ILike(`%${search}%`) },
+        { code: ILike(`%${search}%`) },
         { description: ILike(`%${search}%`) },
       ];
 
-      // Si el valor global parece un número, también filtrar campos numéricos
       const searchNumber = Number(search);
       if (!isNaN(searchNumber)) {
         searchConditions.push(
@@ -72,6 +73,7 @@ export class CrudProductService {
         );
       }
 
+      // Combina cada condición con los filtros base
       searchConditions.forEach((condition) => {
         where.push({ ...baseConditions, ...condition });
       });
@@ -87,13 +89,10 @@ export class CrudProductService {
       relations: ['categoryType'],
     });
 
-    // Ajustar salida
-    const products = entities.map((product) => {
-      return {
-        ...product,
-        categoryTypeId: product?.categoryType?.categoryTypeId,
-      };
-    });
+    const products = entities.map((product) => ({
+      ...product,
+      categoryTypeId: product?.categoryType?.categoryTypeId,
+    }));
 
     const pageMetaDto = new PageMetaDto({
       itemCount,
