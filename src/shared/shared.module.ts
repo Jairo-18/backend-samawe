@@ -71,7 +71,7 @@ export class SharedModule {
             entities: [__dirname + '/src/**/*.entity{.ts,.js}'],
             autoLoadEntities: true,
             ssl: {
-              rejectUnauthorized: false,
+              rejectUnauthorized: configService.get('db.ssl'),
             },
             extra: {
               max: 10,

@@ -65,6 +65,10 @@ async function bootstrap() {
     '/docs',
     express.static(join(__dirname, '../node_modules/swagger-ui-dist')),
   );
-  await app.listen(configService.get<number>('APP_PORT') || 3000);
+  const port = configService.get<number>('app.port') || 3000;
+  await app.listen(port);
+  console.log(
+    `🚀 App corriendo en el puerto ${port} [${configService.get('app.env')}]`,
+  );
 }
 bootstrap();

@@ -32,6 +32,7 @@ export const config = async () => {
       database: process.env.DB_DATABASE,
       user: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
+      ssl: process.env.DB_SSL === 'true',
     },
     mail: {
       host: process.env.MAIL_HOST,
