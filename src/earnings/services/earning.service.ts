@@ -26,7 +26,7 @@ export class EarningService {
       where: { type: BalanceType.DAILY },
       order: { periodDate: 'DESC' },
     });
-    if (!daily) throw new NotFoundException('Daily balance not found');
+    if (!daily) throw new NotFoundException('No hay un balance diario aún');
     return daily;
   }
 
@@ -41,7 +41,14 @@ export class EarningService {
 
   async getProductSummary(): Promise<BalanceProductSummaryDto> {
     const daily = await this.getLatestBalanceByType(BalanceType.DAILY);
-    if (!daily) throw new NotFoundException('Daily balance not found');
+    if (!daily) {
+      return {
+        totalProductPriceSale: 0,
+        totalProductPriceBuy: 0,
+        balanceProduct: 0,
+      };
+    }
+
     const { totalProductPriceSale, totalProductPriceBuy, balanceProduct } =
       daily;
     return { totalProductPriceSale, totalProductPriceBuy, balanceProduct };
@@ -51,7 +58,16 @@ export class EarningService {
     type: BalanceType,
   ): Promise<BalanceInvoiceSummaryDto> {
     const balance = await this.getLatestBalanceByType(type);
-    if (!balance) throw new NotFoundException(`${type} balance not found`);
+    if (!balance) {
+      return {
+        totalInvoiceSale: 0,
+        totalInvoiceBuy: 0,
+        balanceInvoice: 0,
+        periodDate: new Date().toISOString().split('T')[0],
+        type,
+      };
+    }
+
     const { totalInvoiceSale, totalInvoiceBuy, balanceInvoice, periodDate } =
       balance;
     return {
