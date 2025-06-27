@@ -56,6 +56,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { GeneralInvoiceDetaillService } from './services/generalInvoiceDetaill.service';
 
 import { Notification } from './entities/notification.entity';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({})
 export class SharedModule {
@@ -63,6 +64,7 @@ export class SharedModule {
     return {
       module: SharedModule,
       imports: [
+        ScheduleModule.forRoot(),
         EventEmitterModule.forRoot(),
         TypeOrmModule.forRootAsync({
           inject: [ConfigService],

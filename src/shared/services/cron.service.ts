@@ -18,7 +18,7 @@ export class CronService {
   ) {}
 
   // Cron cada 6 horas (00:00, 06:00, 12:00, 18:00) en horario de Bogotá
-  @Cron('0 */6 * * *', { timeZone: 'America/Bogota' })
+  @Cron('*/10 * * * *', { timeZone: 'America/Bogota' })
   async handleExpiredAccommodations() {
     try {
       await this.updateExpiredAccommodations();
