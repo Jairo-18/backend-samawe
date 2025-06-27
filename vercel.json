@@ -22,7 +22,7 @@
   "crons": [
     {
       "path": "/notifications/run?cronToken=123abc",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 13 * * *"
     }
   ]
 }
