@@ -47,6 +47,29 @@ export class InvoiceEventsListener {
     }
   }
 
+  @OnEvent('invoice.detail.deleted')
+  async handleInvoiceDetailDeleted(payload: {
+    invoice: Invoice;
+    isProduct: boolean;
+  }) {
+    const invoiceId = payload.invoice.invoiceId;
+
+    // Evitar múltiples procesamiento del mismo invoice
+    if (this.processingMutex.has(invoiceId)) {
+      await this.processingMutex.get(invoiceId);
+      return;
+    }
+
+    const processingPromise = this.processInvoiceDetail(payload);
+    this.processingMutex.set(invoiceId, processingPromise);
+
+    try {
+      await processingPromise;
+    } finally {
+      this.processingMutex.delete(invoiceId);
+    }
+  }
+
   private async processInvoiceDetail(payload: {
     invoice: Invoice;
     isProduct: boolean;
@@ -67,20 +90,6 @@ export class InvoiceEventsListener {
       } finally {
         this.isUpdatingProducts = false;
       }
-    }
-  }
-
-  @OnEvent('invoice.detail.deleted')
-  async handleInvoiceDetailDeleted(payload: {
-    invoice: Invoice;
-    isProduct: boolean;
-  }) {
-    await this._balanceService.updateBalanceByInvoiceId(
-      payload.invoice.invoiceId,
-    );
-
-    if (payload.isProduct) {
-      await this._balanceService.updateBalanceWithCurrentProducts();
     }
   }
 }

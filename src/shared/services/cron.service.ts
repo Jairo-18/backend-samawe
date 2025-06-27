@@ -1,9 +1,11 @@
+import { ProductRepository } from './../repositories/product.repository';
+import { NotificationService } from './../../notifications/services/notification.service';
 import { StateTypeRepository } from './../repositories/stateType.repository';
 import { AccommodationRepository } from './../repositories/accommodation.repository';
 import { InvoiceDetaillRepository } from './../repositories/invoiceDetaill.repository';
 import { Cron } from '@nestjs/schedule';
 import { Injectable } from '@nestjs/common';
-import { LessThan } from 'typeorm';
+import { NotificationType } from '../entities/notification.entity';
 
 @Injectable()
 export class CronService {
@@ -11,79 +13,104 @@ export class CronService {
     private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
     private readonly _stateTypeRepository: StateTypeRepository,
     private readonly _accommodationRepository: AccommodationRepository,
+    private readonly _notificationService: NotificationService,
+    private readonly _productRepository: ProductRepository,
   ) {}
-  @Cron('0 */12 * * *') // Ejecutar cada 12 horas (00:00 y 12:00)
+
+  // Cron cada 6 horas (00:00, 06:00, 12:00, 18:00) en horario de Bogotá
+  @Cron('0 */6 * * *', { timeZone: 'America/Bogota' })
   async handleExpiredAccommodations() {
-    console.log('Verificando accommodations expiradas...');
     try {
-      const result = await this.updateExpiredAccommodations();
-      if (result.updated > 0) {
-        console.log(
-          `Se liberaron ${result.updated} accommodations:`,
-          result.accommodations,
-        );
-      }
+      await this.updateExpiredAccommodations();
+      await this.checkLowStockProducts(); // 🆕
     } catch (error) {
-      console.error('Error en tarea programada de accommodations:', error);
+      console.error('❌ Error en cron general:', error.message);
     }
   }
 
   async updateExpiredAccommodations() {
-    try {
-      const now = new Date();
+    const now = new Date();
 
-      // Buscar todos los detalles con accommodation ocupadas que ya pasaron su endDate
-      const expiredDetails = await this._invoiceDetaillRepository.find({
-        where: {
-          endDate: LessThan(now),
-          accommodation: {
-            stateType: {
-              name: 'Ocupado',
-            },
-          },
-        },
-        relations: ['accommodation', 'accommodation.stateType'],
-      });
+    const expiredDetails = await this._invoiceDetaillRepository
+      .createQueryBuilder('detail')
+      .leftJoinAndSelect('detail.accommodation', 'accommodation')
+      .leftJoinAndSelect('accommodation.stateType', 'stateType')
+      .where('detail.endDate < :now', { now })
+      .andWhere('stateType.name = :state', { state: 'Ocupado' })
+      .getMany();
 
-      if (expiredDetails.length === 0) {
-        return { updated: 0 };
-      }
+    if (expiredDetails.length === 0) return { updated: 0 };
 
-      // Buscar el stateType "Disponible"
-      const disponibleState = await this._stateTypeRepository.findOne({
-        where: { name: 'Disponible' },
-      });
+    const mantenimientoState = await this._stateTypeRepository.findOne({
+      where: { name: 'Mantenimiento' },
+    });
 
-      if (!disponibleState) {
-        throw new Error('No se encontró el estado "Disponible"');
-      }
-
-      // Actualizar todas las accommodations expiradas a Disponible
-      const accommodationsToUpdate = expiredDetails
-        .map((detail) => detail.accommodation)
-        .filter(
-          (acc, index, self) =>
-            // Eliminar duplicados por accommodationId
-            self.findIndex((a) => a.accommodationId === acc.accommodationId) ===
-            index,
-        );
-
-      accommodationsToUpdate.forEach((acc) => {
-        acc.stateType = disponibleState;
-      });
-
-      await this._accommodationRepository.save(accommodationsToUpdate);
-
-      return {
-        updated: accommodationsToUpdate.length,
-        accommodations: accommodationsToUpdate.map((acc) => ({
-          id: acc.accommodationId,
-          name: acc.name || `Accommodation ${acc.accommodationId}`,
-        })),
-      };
-    } catch (error) {
-      console.error('Error actualizando accommodations expiradas:', error);
-      throw error;
+    if (!mantenimientoState) {
+      throw new Error('No se encontró el estado "Mantenimiento"');
     }
+
+    const accommodationsToUpdate = expiredDetails
+      .map((detail) => detail.accommodation)
+      .filter(
+        (acc, index, self) =>
+          self.findIndex((a) => a.accommodationId === acc.accommodationId) ===
+          index,
+      );
+
+    accommodationsToUpdate.forEach((acc) => {
+      acc.stateType = mantenimientoState;
+    });
+
+    await this._accommodationRepository.save(accommodationsToUpdate);
+
+    for (const acc of accommodationsToUpdate) {
+      await this._notificationService.notifyToRoles(
+        NotificationType.ROOM_MAINTENANCE,
+        'Hospedaje liberado',
+        `El hospedaje "${acc.name}" fue desocupado. Debes enviar a mantenimiento.`,
+        { accommodationId: acc.accommodationId },
+      );
+    }
+
+    return {
+      updated: accommodationsToUpdate.length,
+      accommodations: accommodationsToUpdate.map((acc) => ({
+        id: acc.accommodationId,
+        name: acc.name || `Accommodation ${acc.accommodationId}`,
+      })),
+    };
+  }
+
+  private async checkLowStockProducts() {
+    const threshold = 10;
+
+    const products = await this._productRepository.find({
+      where: { isActive: true },
+    });
+
+    const lowStock = products.filter((p) => (p.amount ?? 0) < threshold);
+
+    for (const product of lowStock) {
+      try {
+        await this._notificationService.notifyToRoles(
+          NotificationType.LOW_PRODUCT,
+          'Producto con bajo stock',
+          `El producto "${product.name}" tiene solo ${product.amount} unidades restantes.`,
+          {
+            productId: product.productId,
+            productName: product.name,
+            currentStock: product.amount,
+            threshold,
+          },
+        );
+      } catch (err) {
+        console.error(
+          `❌ Error notificando sobre stock bajo de ${product.name}:`,
+          err.message,
+        );
+      }
+    }
+
+    return lowStock.length;
   }
 }

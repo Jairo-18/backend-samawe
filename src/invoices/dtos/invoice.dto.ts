@@ -24,10 +24,10 @@ import { Type } from 'class-transformer';
 import { CreateInvoiceDetailDto } from './invoiceDetaill.dto';
 
 export class CreateInvoiceDto {
-  @ApiProperty({ example: 1, description: 'ID de la factura', required: false })
-  @IsNumber()
-  @IsOptional()
-  invoiceId: number;
+  // @ApiProperty({ example: 1, description: 'ID de la factura', required: false })
+  // @IsNumber()
+  // @IsOptional()
+  // invoiceId: number;
 
   @ApiProperty({
     example: 1,
@@ -39,7 +39,7 @@ export class CreateInvoiceDto {
   invoiceTypeId: number;
 
   @ApiProperty({
-    example: '538fd155-0392-4e67-bacb-99ad8796ce80',
+    example: 'eae05031-a181-4175-b09c-90177ef87f9b',
     description: 'ID del cliente (User) al que va dirigida la factura',
   })
   @IsUUID()

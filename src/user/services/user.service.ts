@@ -23,9 +23,9 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { Not } from 'typeorm';
 import * as crypto from 'crypto';
 import { PasswordService } from './password.service';
+import { Not } from 'typeorm';
 
 @Injectable()
 export class UserService {
@@ -284,8 +284,7 @@ export class UserService {
     return await this._userRepository.find();
   }
 
-  async findOne(userId: string): Promise<Partial<User>> {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async findOne(userId: string): Promise<Omit<User, 'password'>> {
     const { password, ...user } = await this._userRepository.findOne({
       where: { userId },
       relations: ['roleType', 'identificationType', 'phoneCode'],
@@ -424,5 +423,13 @@ export class UserService {
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  async findByRoles(roleNames: string[]): Promise<User[]> {
+    return this._userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.roleType', 'roleType')
+      .where('roleType.name IN (:...roleNames)', { roleNames })
+      .getMany();
   }
 }

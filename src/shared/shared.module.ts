@@ -1,3 +1,6 @@
+import { NotificationService } from './../notifications/services/notification.service';
+import { UserService } from './../user/services/user.service';
+import { NotificationRepository } from './repositories/notification.repository';
 import { CronService } from './services/cron.service';
 import { PasswordService } from './../user/services/password.service';
 import { InvoiceEventsListener } from './services/invoiceEventsListener.service';
@@ -52,6 +55,8 @@ import { MailTemplateService } from './services/mail-template.service';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { GeneralInvoiceDetaillService } from './services/generalInvoiceDetaill.service';
 
+import { Notification } from './entities/notification.entity';
+
 @Module({})
 export class SharedModule {
   static forRoot(): DynamicModule {
@@ -92,6 +97,7 @@ export class SharedModule {
           Invoice,
           InvoiceDetaill,
           InvoiceType,
+          Notification,
           PaidType,
           PayType,
           PhoneCode,
@@ -141,6 +147,7 @@ export class SharedModule {
         InvoiceRepository,
         InvoiceDetaillRepository,
         InvoiceTypeRepository,
+        NotificationRepository,
         PaidTypeRepository,
         PayTypeRepository,
         PhoneCodeRepository,
@@ -157,6 +164,8 @@ export class SharedModule {
         PasswordService,
         CronService,
         GeneralInvoiceDetaillService,
+        NotificationService,
+        UserService,
       ],
       exports: [
         TypeOrmModule,
@@ -171,6 +180,7 @@ export class SharedModule {
         InvoiceRepository,
         InvoiceDetaillRepository,
         InvoiceTypeRepository,
+        NotificationRepository,
         PaidTypeRepository,
         PayTypeRepository,
         PhoneCodeRepository,
@@ -187,6 +197,8 @@ export class SharedModule {
         PasswordService,
         CronService,
         GeneralInvoiceDetaillService,
+        NotificationService,
+        UserService,
       ],
     };
   }
