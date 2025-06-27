@@ -188,9 +188,6 @@ export class NotificationService {
     userId: string,
     params: ParamsPaginationDto,
   ): Promise<ResponsePaginationDto<any>> {
-    await this.updateExpiredAccommodations();
-    await this.checkLowStockProducts();
-
     const { page = 1, perPage = 10, order = 'DESC' } = params;
 
     const [data, total] = await this._notificationRepository.findAndCount({

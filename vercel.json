@@ -9,12 +9,20 @@
   "routes": [
     {
       "src": "/docs/(.*)",
-      "headers": { "cache-control": "s-maxage=1, stale-while-revalidate" },
+      "headers": {
+        "cache-control": "s-maxage=1, stale-while-revalidate"
+      },
       "dest": "/src/main.ts"
     },
     {
       "src": "/(.*)",
       "dest": "/src/main.ts"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/notifications/run?cronToken=123abc",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

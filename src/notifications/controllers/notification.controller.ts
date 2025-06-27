@@ -9,6 +9,7 @@ import {
   HttpCode,
   Param,
   Query,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { ParamsPaginationDto } from 'src/shared/dtos/pagination.dto';
@@ -61,5 +62,23 @@ export class NotificationController {
   @HttpCode(204)
   async markAllAsRead(@GetUser() user: User) {
     await this._notificationService.markAllAsRead(user.userId);
+  }
+
+  @Get('run')
+  @HttpCode(200)
+  async runCronJobs(@Query('cronToken') cronToken: string) {
+    if (cronToken !== process.env.CRON_TOKEN) {
+      throw new UnauthorizedException('Invalid cron token');
+    }
+
+    const expired =
+      await this._notificationService.updateExpiredAccommodations();
+    const lowStock = await this._notificationService.checkLowStockProducts();
+
+    return {
+      message: 'Tareas ejecutadas correctamente',
+      expiredRooms: expired,
+      lowStockCount: lowStock,
+    };
   }
 }
