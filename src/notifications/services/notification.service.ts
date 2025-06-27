@@ -1,3 +1,7 @@
+import { ProductRepository } from './../../shared/repositories/product.repository';
+import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
+import { StateTypeRepository } from './../../shared/repositories/stateType.repository';
+import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { ParamsPaginationDto } from 'src/shared/dtos/pagination.dto';
 import { NotificationType } from './../../shared/entities/notification.entity';
@@ -6,12 +10,96 @@ import { UserService } from './../../user/services/user.service';
 import { Injectable } from '@nestjs/common';
 import { PageMetaDto } from 'src/shared/dtos/pageMeta.dto';
 import { In } from 'typeorm';
+
 @Injectable()
 export class NotificationService {
   constructor(
     private readonly _notificationRepository: NotificationRepository,
     private readonly _userService: UserService,
+    private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
+    private readonly _stateTypeRepository: StateTypeRepository,
+    private readonly _accommodationRepository: AccommodationRepository,
+    private readonly _productRepository: ProductRepository,
   ) {}
+
+  async updateExpiredAccommodations() {
+    const now = new Date();
+
+    const expiredDetails = await this._invoiceDetaillRepository
+      .createQueryBuilder('detail')
+      .leftJoinAndSelect('detail.accommodation', 'accommodation')
+      .leftJoinAndSelect('accommodation.stateType', 'stateType')
+      .where('detail.endDate < :now', { now })
+      .andWhere('stateType.name = :state', { state: 'Ocupado' })
+      .getMany();
+
+    if (expiredDetails.length === 0) return { updated: 0 };
+
+    const mantenimientoState = await this._stateTypeRepository.findOne({
+      where: { name: 'Mantenimiento' },
+    });
+
+    if (!mantenimientoState) {
+      throw new Error('No se encontró el estado "Mantenimiento"');
+    }
+
+    const accommodationsToUpdate = expiredDetails
+      .map((detail) => detail.accommodation)
+      .filter(
+        (acc, index, self) =>
+          self.findIndex((a) => a.accommodationId === acc.accommodationId) ===
+          index,
+      );
+
+    accommodationsToUpdate.forEach((acc) => {
+      acc.stateType = mantenimientoState;
+    });
+
+    await this._accommodationRepository.save(accommodationsToUpdate);
+
+    for (const acc of accommodationsToUpdate) {
+      await this.notifyToRoles(
+        NotificationType.ROOM_MAINTENANCE,
+        'Hospedaje liberado',
+        `El hospedaje "${acc.name}" fue desocupado. Debes enviar a mantenimiento.`,
+        { accommodationId: acc.accommodationId },
+      );
+    }
+
+    return {
+      updated: accommodationsToUpdate.length,
+      accommodations: accommodationsToUpdate.map((acc) => ({
+        id: acc.accommodationId,
+        name: acc.name || `Accommodation ${acc.accommodationId}`,
+      })),
+    };
+  }
+
+  async checkLowStockProducts() {
+    const threshold = 10;
+
+    const products = await this._productRepository.find({
+      where: { isActive: true },
+    });
+
+    const lowStock = products.filter((p) => (p.amount ?? 0) < threshold);
+
+    for (const product of lowStock) {
+      await this.notifyToRoles(
+        NotificationType.LOW_PRODUCT,
+        'Producto con bajo stock',
+        `El producto "${product.name}" tiene solo ${product.amount} unidades restantes.`,
+        {
+          productId: product.productId,
+          productName: product.name,
+          currentStock: product.amount,
+          threshold,
+        },
+      );
+    }
+
+    return lowStock.length;
+  }
 
   async notifyToRoles(
     type: NotificationType,
@@ -19,17 +107,12 @@ export class NotificationService {
     message: string,
     metadata?: Record<string, any>,
   ) {
-    console.log('📢 Notificando a roles Empleado y Administrador...');
-
     const users = await this._userService.findByRoles([
       'Empleado',
       'Administrador',
     ]);
-    console.log(`👥 Usuarios encontrados: ${users.length}`);
-
     if (users.length === 0) return [];
 
-    // ✅ OPTIMIZACIÓN: Una sola consulta para todas las notificaciones existentes
     const userIds = users.map((user) => user.userId);
     const existingNotifications = await this._notificationRepository.find({
       where: {
@@ -39,7 +122,6 @@ export class NotificationService {
       relations: ['user'],
     });
 
-    // Crear un mapa para acceso rápido
     const existingByUser = new Map();
     existingNotifications.forEach((notification) => {
       const userId = notification.user.userId;
@@ -51,9 +133,6 @@ export class NotificationService {
 
     const notifs = await Promise.all(
       users.map(async (user) => {
-        console.log(`🔍 Procesando notificación para usuario ${user.userId}`);
-
-        // Buscar en el mapa local en lugar de hacer consulta
         const userNotifications = existingByUser.get(user.userId) || [];
         const exists = userNotifications.find(
           (notification) =>
@@ -61,9 +140,6 @@ export class NotificationService {
         );
 
         if (exists) {
-          console.log(
-            `♻️ Actualizando notificación existente para ${user.userId}`,
-          );
           exists.message = message;
           exists.title = title;
           exists.read = false;
@@ -71,7 +147,6 @@ export class NotificationService {
           return this._notificationRepository.save(exists);
         }
 
-        console.log(`🆕 Creando nueva notificación para ${user.userId}`);
         const newNotif = this._notificationRepository.create({
           user,
           type,
@@ -84,12 +159,10 @@ export class NotificationService {
       }),
     );
 
-    console.log(`✅ Notificaciones procesadas: ${notifs.length}`);
     return notifs.filter(Boolean);
   }
 
   async getNotificationsForUser(userId: string) {
-    console.log(`📥 Obteniendo notificaciones para usuario ${userId}`);
     return this._notificationRepository.find({
       where: { user: { userId } },
       order: { createdAt: 'DESC' },
@@ -97,7 +170,6 @@ export class NotificationService {
   }
 
   async markAllAsRead(userId: string) {
-    console.log(`📘 Marcando todas como leídas para ${userId}`);
     await this._notificationRepository.update(
       { user: { userId } },
       { read: true },
@@ -105,12 +177,10 @@ export class NotificationService {
   }
 
   async deleteNotification(notificationId: string) {
-    console.log(`🗑️ Eliminando notificación ${notificationId}`);
     await this._notificationRepository.delete(notificationId);
   }
 
   async deleteAllNotificationsForUser(userId: string) {
-    console.log(`🗑️ Eliminando todas las notificaciones del usuario ${userId}`);
     await this._notificationRepository.delete({ user: { userId } });
   }
 
@@ -118,7 +188,9 @@ export class NotificationService {
     userId: string,
     params: ParamsPaginationDto,
   ): Promise<ResponsePaginationDto<any>> {
-    console.log(`📄 Obteniendo notificaciones paginadas para ${userId}`);
+    await this.updateExpiredAccommodations();
+    await this.checkLowStockProducts();
+
     const { page = 1, perPage = 10, order = 'DESC' } = params;
 
     const [data, total] = await this._notificationRepository.findAndCount({
@@ -133,7 +205,6 @@ export class NotificationService {
       itemCount: total,
     });
 
-    console.log(`📄 Total de notificaciones encontradas: ${total}`);
     return new ResponsePaginationDto(data, pagination);
   }
 }

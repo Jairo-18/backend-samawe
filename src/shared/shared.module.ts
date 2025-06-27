@@ -1,7 +1,4 @@
-import { NotificationService } from './../notifications/services/notification.service';
-import { UserService } from './../user/services/user.service';
 import { NotificationRepository } from './repositories/notification.repository';
-import { CronService } from './services/cron.service';
 import { PasswordService } from './../user/services/password.service';
 import { InvoiceEventsListener } from './services/invoiceEventsListener.service';
 import { BalanceService } from './services/balance.service';
@@ -54,9 +51,7 @@ import { MailsService } from './services/mails.service';
 import { MailTemplateService } from './services/mail-template.service';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { GeneralInvoiceDetaillService } from './services/generalInvoiceDetaill.service';
-
 import { Notification } from './entities/notification.entity';
-import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({})
 export class SharedModule {
@@ -64,7 +59,6 @@ export class SharedModule {
     return {
       module: SharedModule,
       imports: [
-        ScheduleModule.forRoot(),
         EventEmitterModule.forRoot(),
         TypeOrmModule.forRootAsync({
           inject: [ConfigService],
@@ -164,10 +158,7 @@ export class SharedModule {
         MailsService,
         MailTemplateService,
         PasswordService,
-        CronService,
         GeneralInvoiceDetaillService,
-        NotificationService,
-        UserService,
       ],
       exports: [
         TypeOrmModule,
@@ -197,10 +188,7 @@ export class SharedModule {
         MailsService,
         MailTemplateService,
         PasswordService,
-        CronService,
         GeneralInvoiceDetaillService,
-        NotificationService,
-        UserService,
       ],
     };
   }
