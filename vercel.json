@@ -18,11 +18,5 @@
       "src": "/(.*)",
       "dest": "/src/main.ts"
     }
-  ],
-  "crons": [
-    {
-      "path": "/notifications/run?cronToken=123abc",
-      "schedule": "0 13 * * *"
-    }
   ]
 }

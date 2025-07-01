@@ -1,3 +1,4 @@
+import { InventoryService } from './services/inventory.service';
 import { StatisticsService } from './services/statistics.service';
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
@@ -11,6 +12,6 @@ import { EarningService } from './services/earning.service';
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [EarningController],
-  providers: [StatisticsService, EarningService],
+  providers: [StatisticsService, EarningService, InventoryService],
 })
 export class EarningModule {}

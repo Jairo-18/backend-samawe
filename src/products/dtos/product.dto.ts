@@ -54,7 +54,6 @@ export class CreateProductDto {
     required: true,
   })
   @IsNumber()
-  @IsPositive()
   @IsNotEmpty({ message: 'La cantidad es requerida' })
   amount: number;
 

@@ -1,4 +1,3 @@
-import { NotificationModule } from './notifications/notification.module';
 import { GenericTypeModule } from './types/genericType.module';
 import { ExcursionModule } from './excursions/excursion.module';
 import { ProductModule } from './products/product.module';
@@ -34,7 +33,6 @@ import { EarningModule } from './earnings/earning.module';
     GenericTypeModule,
     InvoiceModule,
     EarningModule,
-    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
