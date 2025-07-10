@@ -6,8 +6,9 @@ import { OnEvent } from '@nestjs/event-emitter';
 @Injectable()
 export class InvoiceEventsListener {
   constructor(private readonly _balanceService: BalanceService) {}
+
   private readonly processingMutex = new Map<number, Promise<void>>();
-  private isUpdatingProducts = false;
+  private productsUpdatePromise: Promise<void> | null = null;
 
   @OnEvent('invoice.deleted', { async: true })
   async handleInvoiceDeleted(payload: {
@@ -17,10 +18,11 @@ export class InvoiceEventsListener {
     try {
       await this._balanceService.removeInvoiceFromBalance(payload.invoice);
       if (payload.hasProducts) {
-        await this._balanceService.updateBalanceWithCurrentProducts();
+        await this.updateProductsBalance();
       }
     } catch (err) {
       console.error('Error updating balance after invoice deletion:', err);
+      throw err; // Re-lanzar para que el event emitter maneje el error
     }
   }
 
@@ -29,22 +31,7 @@ export class InvoiceEventsListener {
     invoice: Invoice;
     isProduct: boolean;
   }) {
-    const invoiceId = payload.invoice.invoiceId;
-
-    // Evitar múltiples procesamiento del mismo invoice
-    if (this.processingMutex.has(invoiceId)) {
-      await this.processingMutex.get(invoiceId);
-      return;
-    }
-
-    const processingPromise = this.processInvoiceDetail(payload);
-    this.processingMutex.set(invoiceId, processingPromise);
-
-    try {
-      await processingPromise;
-    } finally {
-      this.processingMutex.delete(invoiceId);
-    }
+    await this.processInvoiceDetailEvent(payload);
   }
 
   @OnEvent('invoice.detail.deleted')
@@ -52,19 +39,29 @@ export class InvoiceEventsListener {
     invoice: Invoice;
     isProduct: boolean;
   }) {
+    await this.processInvoiceDetailEvent(payload);
+  }
+
+  private async processInvoiceDetailEvent(payload: {
+    invoice: Invoice;
+    isProduct: boolean;
+  }) {
     const invoiceId = payload.invoice.invoiceId;
 
-    // Evitar múltiples procesamiento del mismo invoice
-    if (this.processingMutex.has(invoiceId)) {
-      await this.processingMutex.get(invoiceId);
-      return;
-    }
-
-    const processingPromise = this.processInvoiceDetail(payload);
-    this.processingMutex.set(invoiceId, processingPromise);
-
     try {
+      // Procesar el evento con mutex para evitar procesamiento duplicado
+      const processingPromise =
+        this.processingMutex.get(invoiceId) ||
+        this.processInvoiceDetail(payload);
+
+      this.processingMutex.set(invoiceId, processingPromise);
       await processingPromise;
+    } catch (err) {
+      console.error(
+        `Error processing invoice detail event for invoice ${invoiceId}:`,
+        err,
+      );
+      throw err;
     } finally {
       this.processingMutex.delete(invoiceId);
     }
@@ -74,22 +71,35 @@ export class InvoiceEventsListener {
     invoice: Invoice;
     isProduct: boolean;
   }) {
+    // Actualizar balance específico del invoice
     await this._balanceService.updateBalanceByInvoiceId(
       payload.invoice.invoiceId,
     );
 
+    // Si es un producto, actualizar balance global de productos
     if (payload.isProduct) {
-      // Serializar la actualización de productos globales
-      while (this.isUpdatingProducts) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-
-      this.isUpdatingProducts = true;
-      try {
-        await this._balanceService.updateBalanceWithCurrentProducts();
-      } finally {
-        this.isUpdatingProducts = false;
-      }
+      await this.updateProductsBalance();
     }
+  }
+
+  private async updateProductsBalance(): Promise<void> {
+    // Si ya hay una actualización en progreso, esperar a que termine
+    if (this.productsUpdatePromise) {
+      await this.productsUpdatePromise;
+      return;
+    }
+
+    // Crear nueva promesa de actualización
+    this.productsUpdatePromise = this._balanceService
+      .updateBalanceWithCurrentProducts()
+      .catch((err) => {
+        console.error('Error updating products balance:', err);
+        throw err;
+      })
+      .finally(() => {
+        this.productsUpdatePromise = null;
+      });
+
+    await this.productsUpdatePromise;
   }
 }
