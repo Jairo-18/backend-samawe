@@ -102,4 +102,16 @@ export class InvoiceEventsListener {
 
     await this.productsUpdatePromise;
   }
+
+  @OnEvent('invoice.details.bulk.created')
+  async handleInvoiceDetailsBulkCreated(payload: {
+    invoice: Invoice;
+    isProduct: boolean;
+    detailsCount: number;
+  }) {
+    await this.processInvoiceDetailEvent({
+      invoice: payload.invoice,
+      isProduct: payload.isProduct,
+    });
+  }
 }

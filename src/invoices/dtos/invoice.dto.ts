@@ -19,7 +19,6 @@ import {
   IsUUID,
   IsBoolean,
 } from 'class-validator';
-
 import { Type } from 'class-transformer';
 import { CreateInvoiceDetailDto } from './invoiceDetaill.dto';
 

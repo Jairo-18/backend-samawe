@@ -6,6 +6,7 @@ import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { SharedModule } from '../shared/shared.module';
 import { InvoiceDetailService } from './services/invoiceDetail.service';
+import { InvoiceDetaillMultiple } from './services/invoiceDetaillMultiple.service';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { InvoiceDetailService } from './services/invoiceDetail.service';
     InvoiceUC,
     InvoiceDetailService,
     InvoicedPaginatedService,
+    InvoiceDetaillMultiple,
   ],
 })
 export class InvoiceModule {}

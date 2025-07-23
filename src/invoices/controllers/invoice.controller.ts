@@ -1,7 +1,9 @@
+import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
+import { InvoiceDetaillMultiple } from './../services/invoiceDetaillMultiple.service';
 import { PaginatedListInvoicesParamsDto } from './../dtos/paginatedInvoice.dto';
 import { Invoice } from './../../shared/entities/invoice.entity';
 import {
-  CreateInvoiceDetailDto,
+  CreateMultipleInvoiceDetailsDto,
   CreateRelatedDataInvoiceResponseDto,
 } from './../dtos/invoiceDetaill.dto';
 import {
@@ -15,6 +17,7 @@ import {
   DeleteReCordResponseDto,
   DuplicatedResponseDto,
   NotFoundResponseDto,
+  SimpleSuccessResponseDto,
   UpdateRecordResponseDto,
 } from './../../shared/dtos/response.dto';
 import {
@@ -32,6 +35,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiConflictResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -39,12 +43,14 @@ import {
 } from '@nestjs/swagger';
 import { InvoiceUC } from '../useCases/invoiceUC.uc';
 import { AuthGuard } from '@nestjs/passport';
-import { ResponsePaginationDto } from 'src/shared/dtos/pagination.dto';
 
 @Controller('invoices')
 @ApiTags('Facturas')
 export class InvoiceController {
-  constructor(private readonly _invoiceUC: InvoiceUC) {}
+  constructor(
+    private readonly _invoiceUC: InvoiceUC,
+    private readonly _invoiceDetaillMultiple: InvoiceDetaillMultiple,
+  ) {}
 
   @Get('/paginated-list')
   @ApiOkResponse({ type: ResponsePaginationDto<Invoice> })
@@ -140,26 +146,24 @@ export class InvoiceController {
     };
   }
 
-  @Post(':invoiceId/details')
+  @Post('invoice/:invoiceId/details/bulk')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: CreateInvoiceDetailDto })
+  @ApiBody({ type: CreateMultipleInvoiceDetailsDto }) // ✅ muestra el body esperado
+  @ApiOkResponse({ type: SimpleSuccessResponseDto }) // ✅ muestra la respuesta
   @ApiNotFoundResponse({ type: NotFoundResponseDto })
-  async addDetail(
+  async createBulkDetails(
     @Param('invoiceId') invoiceId: number,
-    @Body() createDetailDto: CreateInvoiceDetailDto,
-  ): Promise<CreatedRecordResponseDto> {
-    const detailCreated = await this._invoiceUC.addDetail(
+    @Body() createMultipleDetailsDto: CreateMultipleInvoiceDetailsDto,
+  ): Promise<SimpleSuccessResponseDto> {
+    await this._invoiceDetaillMultiple.createMultipleDetails(
       invoiceId,
-      createDetailDto,
+      createMultipleDetailsDto.details,
     );
+
     return {
-      message: 'Detalle agregado a la factura',
+      message: 'Factura guardada',
       statusCode: HttpStatus.CREATED,
-      data: {
-        rowId: detailCreated.invoiceDetailId.toString(),
-        ...detailCreated,
-      },
     };
   }
 

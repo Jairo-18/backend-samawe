@@ -103,6 +103,11 @@ export class CreatedRecordResponseDto implements BaseResponseDto {
   data: ObjectCreatedResponseDto;
 }
 
+export class SimpleSuccessResponseDto {
+  message: string;
+  statusCode: number;
+}
+
 export class UpdateRecordResponseDto implements BaseResponseDto {
   @ApiProperty({
     type: String,

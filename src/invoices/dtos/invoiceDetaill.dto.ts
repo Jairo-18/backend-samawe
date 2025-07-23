@@ -7,12 +7,15 @@ import { CategoryType } from './../../shared/entities/categoryType.entity';
 import { HttpStatus } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsArray,
   IsDateString,
   IsNotEmpty,
   IsNumber,
   IsOptional,
+  ValidateNested,
 } from 'class-validator';
 import { IdentificationType } from 'src/user/models/user.model';
+import { Type } from 'class-transformer';
 
 export class CreateInvoiceDetailDto {
   @ApiPropertyOptional({
@@ -86,6 +89,18 @@ export class CreateInvoiceDetailDto {
   @IsOptional()
   @IsDateString()
   endDate?: Date;
+}
+
+export class CreateMultipleInvoiceDetailsDto {
+  @ApiProperty({
+    type: CreateInvoiceDetailDto,
+    isArray: true,
+    description: 'Lista de detalles a agregar',
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateInvoiceDetailDto)
+  details: CreateInvoiceDetailDto[];
 }
 
 export interface CreateRelatedDataInvoiceDto {
