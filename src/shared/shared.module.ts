@@ -1,3 +1,5 @@
+import { ProductImage } from './entities/productImage.entity';
+import { ProductImageRepository } from './repositories/productImage.repository';
 import { NotificationRepository } from './repositories/notification.repository';
 import { PasswordService } from './../user/services/password.service';
 import { InvoiceEventsListener } from './services/invoiceEventsListener.service';
@@ -102,6 +104,7 @@ export class SharedModule {
           TaxeType,
           StateType,
           User,
+          ProductImage,
         ]),
         JwtModule.registerAsync({
           inject: [ConfigService],
@@ -159,6 +162,7 @@ export class SharedModule {
         MailTemplateService,
         PasswordService,
         GeneralInvoiceDetaillService,
+        ProductImageRepository,
       ],
       exports: [
         TypeOrmModule,
@@ -189,6 +193,7 @@ export class SharedModule {
         MailTemplateService,
         PasswordService,
         GeneralInvoiceDetaillService,
+        ProductImageRepository,
       ],
     };
   }

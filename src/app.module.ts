@@ -1,3 +1,4 @@
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { GenericTypeModule } from './types/genericType.module';
 import { ExcursionModule } from './excursions/excursion.module';
 import { ProductModule } from './products/product.module';
@@ -33,6 +34,7 @@ import { EarningModule } from './earnings/earning.module';
     GenericTypeModule,
     InvoiceModule,
     EarningModule,
+    CloudinaryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

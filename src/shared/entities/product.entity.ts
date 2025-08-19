@@ -7,8 +7,10 @@ import {
   UpdateDateColumn,
   JoinColumn,
   ManyToOne,
+  OneToMany,
 } from 'typeorm';
 import { CategoryType } from './categoryType.entity';
+import { ProductImage } from './productImage.entity';
 
 @Entity({ name: 'Product' })
 export class Product {
@@ -35,6 +37,12 @@ export class Product {
 
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
+
+  @OneToMany(() => ProductImage, (image) => image.product, {
+    cascade: true,
+    eager: true,
+  })
+  images: ProductImage[];
 
   @ManyToOne(() => CategoryType, (categoryType) => categoryType.product)
   @JoinColumn({ name: 'categoryTypeId' })
