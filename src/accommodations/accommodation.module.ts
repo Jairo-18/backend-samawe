@@ -1,3 +1,6 @@
+import { AccommodationImageController } from './controllers/accommodationImage.controller';
+import { CloudinaryModule } from './../cloudinary/cloudinary.module';
+import { AccommodationImageService } from './services/accommodationImage.service';
 import { CrudAccommodationUC } from './useCases/crudAccommodationUC.uc';
 import { CrudAccommodationService } from './services/crudAccommodation.service';
 import { AccommodationService } from './services/accommodation.service';
@@ -11,13 +14,15 @@ import { AccommodationUC } from './useCases/accommodationUC.uc';
   imports: [
     SharedModule.forRoot(),
     PassportModule.register({ defaultStrategy: 'jwt' }),
+    CloudinaryModule,
   ],
-  controllers: [AccommodationController],
+  controllers: [AccommodationController, AccommodationImageController],
   providers: [
     AccommodationService,
     CrudAccommodationService,
     AccommodationUC,
     CrudAccommodationUC,
+    AccommodationImageService,
   ],
 })
 export class AccommodationModule {}

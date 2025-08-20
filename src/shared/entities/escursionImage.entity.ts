@@ -5,12 +5,12 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Product } from './product.entity';
+import { Excursion } from './excursion.entity';
 
-@Entity('ProductImage')
-export class ProductImage {
+@Entity('ExcursionImage')
+export class ExcursionImage {
   @PrimaryGeneratedColumn()
-  productImageId: number;
+  excursionImageId: number;
 
   @Column({ type: 'varchar', length: 500 })
   imageUrl: string;
@@ -18,9 +18,9 @@ export class ProductImage {
   @Column({ type: 'varchar', length: 255 })
   publicId: string;
 
-  @ManyToOne(() => Product, (product) => product.images, {
+  @ManyToOne(() => Excursion, (excursion) => excursion.images, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'productId' })
-  product: Product;
+  @JoinColumn({ name: 'excursionId' })
+  excursion: Excursion;
 }

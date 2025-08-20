@@ -1,3 +1,4 @@
+import { AccommodationImage } from './accommodationImage.entity';
 import {
   Column,
   CreateDateColumn,
@@ -7,6 +8,7 @@ import {
   UpdateDateColumn,
   JoinColumn,
   ManyToOne,
+  OneToMany,
 } from 'typeorm';
 import { CategoryType } from './categoryType.entity';
 import { BedType } from './bedType.entity';
@@ -64,6 +66,12 @@ export class Accommodation {
   @ManyToOne(() => CategoryType, (categoryType) => categoryType.accommodation)
   @JoinColumn({ name: 'categoryTypeId' })
   categoryType: CategoryType;
+
+  @OneToMany(() => AccommodationImage, (image) => image.accommodation, {
+    cascade: true,
+    eager: true,
+  })
+  images: AccommodationImage[];
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt?: Date;

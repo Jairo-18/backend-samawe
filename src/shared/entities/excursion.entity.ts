@@ -1,3 +1,4 @@
+import { ExcursionImage } from './escursionImage.entity';
 import {
   Column,
   CreateDateColumn,
@@ -7,6 +8,7 @@ import {
   UpdateDateColumn,
   JoinColumn,
   ManyToOne,
+  OneToMany,
 } from 'typeorm';
 import { CategoryType } from './categoryType.entity';
 import { StateType } from './stateType.entity';
@@ -38,6 +40,12 @@ export class Excursion {
   @ManyToOne(() => CategoryType, (categoryType) => categoryType.excursion)
   @JoinColumn({ name: 'categoryTypeId' })
   categoryType: CategoryType;
+
+  @OneToMany(() => ExcursionImage, (image) => image.excursion, {
+    cascade: true,
+    eager: true,
+  })
+  images: ExcursionImage[];
 
   @CreateDateColumn({
     type: 'timestamp',

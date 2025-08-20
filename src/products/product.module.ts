@@ -1,3 +1,4 @@
+import { ProductImageController } from './controllers/productImage.controller';
 import { ProductImageService } from './services/productImage.service';
 import { CloudinaryModule } from './../cloudinary/cloudinary.module';
 import { CrudProductService } from './services/crudProduct.service';
@@ -15,7 +16,7 @@ import { SharedModule } from './../shared/shared.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     CloudinaryModule,
   ],
-  controllers: [ProductController],
+  controllers: [ProductController, ProductImageController],
   providers: [
     ProductUC,
     CrudProductUC,

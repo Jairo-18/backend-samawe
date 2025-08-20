@@ -1,3 +1,5 @@
+import { ExcursionImageRepository } from './repositories/excursionImage.repository';
+import { AccommodationImageRepository } from './repositories/accommodationImage.repository';
 import { ProductImage } from './entities/productImage.entity';
 import { ProductImageRepository } from './repositories/productImage.repository';
 import { NotificationRepository } from './repositories/notification.repository';
@@ -54,6 +56,8 @@ import { MailTemplateService } from './services/mail-template.service';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { GeneralInvoiceDetaillService } from './services/generalInvoiceDetaill.service';
 import { Notification } from './entities/notification.entity';
+import { AccommodationImage } from './entities/accommodationImage.entity';
+import { ExcursionImage } from './entities/escursionImage.entity';
 
 @Module({})
 export class SharedModule {
@@ -105,6 +109,8 @@ export class SharedModule {
           StateType,
           User,
           ProductImage,
+          AccommodationImage,
+          ExcursionImage,
         ]),
         JwtModule.registerAsync({
           inject: [ConfigService],
@@ -163,6 +169,8 @@ export class SharedModule {
         PasswordService,
         GeneralInvoiceDetaillService,
         ProductImageRepository,
+        AccommodationImageRepository,
+        ExcursionImageRepository,
       ],
       exports: [
         TypeOrmModule,
@@ -194,6 +202,8 @@ export class SharedModule {
         PasswordService,
         GeneralInvoiceDetaillService,
         ProductImageRepository,
+        AccommodationImageRepository,
+        ExcursionImageRepository,
       ],
     };
   }

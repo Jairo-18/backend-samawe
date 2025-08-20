@@ -2,8 +2,10 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
 import { Transform } from 'class-transformer';
 
-// DTO para subir imagen
-export class UploadProductImageDto {
+/* --------------------------------- PRODUCTOS --------------------------------- */
+
+// DTO para subir imagen de producto
+export class UploadImageDto {
   @ApiProperty({
     type: 'string',
     format: 'binary',
@@ -12,12 +14,9 @@ export class UploadProductImageDto {
   file: Express.Multer.File;
 }
 
-// DTO para la respuesta de imagen
+// DTO de imagen de producto
 export class ProductImageResponseDto {
-  @ApiProperty({
-    example: 1,
-    description: 'ID único de la imagen del producto',
-  })
+  @ApiProperty({ example: 1, description: 'ID único de la imagen' })
   productImageId: number;
 
   @ApiProperty({
@@ -34,57 +33,51 @@ export class ProductImageResponseDto {
   publicId: string;
 }
 
-// DTO para respuesta de subida exitosa
+// DTOs de respuesta de producto
 export class UploadImageResponseDto {
   @ApiProperty({ example: 201 })
   statusCode: number;
 
-  @ApiProperty({ example: 'Imagen de producto subida exitosamente' })
+  @ApiProperty({ example: 'Imagen subida exitosamente' })
   message: string;
 
   @ApiProperty({ type: ProductImageResponseDto })
   data: ProductImageResponseDto;
 }
 
-// DTO para respuesta de eliminación exitosa
 export class DeleteImageResponseDto {
   @ApiProperty({ example: 200 })
   statusCode: number;
 
-  @ApiProperty({ example: 'Imagen de producto eliminada exitosamente' })
+  @ApiProperty({ example: 'Imagen eliminada exitosamente' })
   message: string;
 }
 
-// DTO para respuesta de reemplazo exitoso
 export class ReplaceImageResponseDto {
   @ApiProperty({ example: 200 })
   statusCode: number;
 
-  @ApiProperty({ example: 'Imagen de producto reemplazada exitosamente' })
+  @ApiProperty({ example: 'Imagen reemplazada exitosamente' })
   message: string;
 
   @ApiProperty({ type: ProductImageResponseDto })
   data: ProductImageResponseDto;
 }
 
-// DTO para listar imágenes de un producto
 export class GetProductImagesResponseDto {
   @ApiProperty({ example: 200 })
   statusCode: number;
 
   @ApiProperty({
     type: [ProductImageResponseDto],
-    description: 'Lista de imágenes del producto',
+    description: 'Lista de imágenes',
   })
   data: ProductImageResponseDto[];
 }
 
-// DTO para validar parámetros de ruta
+// DTO para parámetros de ruta de producto
 export class ProductImageParamsDto {
-  @ApiProperty({
-    example: 1,
-    description: 'ID del producto',
-  })
+  @ApiProperty({ example: 1, description: 'ID del producto' })
   @Transform(({ value }) => parseInt(value))
   @IsNumber()
   productId: number;
