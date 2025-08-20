@@ -1,5 +1,6 @@
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import {
+  AccommodationWithImagesDto,
   CreateRelatedDataServicesAndProductsResponseDto,
   PaginatedAccommodationSelectParamsDto,
   PaginatedListAccommodationsParamsDto,
@@ -128,7 +129,7 @@ export class AccommodationController {
   @UseGuards(AuthGuard())
   async getPaginatedList(
     @Query() params: PaginatedListAccommodationsParamsDto,
-  ): Promise<ResponsePaginationDto<Accommodation>> {
+  ): Promise<ResponsePaginationDto<AccommodationWithImagesDto>> {
     return await this._crudAccommodationUC.paginatedList(params);
   }
 

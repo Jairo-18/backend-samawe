@@ -131,14 +131,29 @@ export class CrudAccommodationService {
         skip,
         take: params.perPage,
         order: { createdAt: params.order ?? 'DESC' },
-        relations: ['categoryType', 'bedType', 'stateType'],
+        relations: ['categoryType', 'bedType', 'stateType'], // las imágenes se traen por eager
       });
 
     const accommodations = entities.map((accommodation) => ({
-      ...accommodation,
+      accommodationId: accommodation.accommodationId,
+      code: accommodation.code,
+      name: accommodation.name,
+      description: accommodation.description,
+      amountPerson: accommodation.amountPerson,
+      amountRoom: accommodation.amountRoom,
+      amountBathroom: accommodation.amountBathroom,
+      jacuzzi: accommodation.jacuzzi,
+      priceBuy: accommodation.priceBuy,
+      priceSale: accommodation.priceSale,
       categoryTypeId: accommodation.categoryType?.categoryTypeId,
       bedTypeId: accommodation.bedType?.bedTypeId,
       stateTypeId: accommodation.stateType?.stateTypeId,
+      images:
+        accommodation.images?.map((img) => ({
+          accommodationImageId: img.accommodationImageId,
+          imageUrl: img.imageUrl,
+          publicId: img.publicId,
+        })) || [],
     }));
 
     const pageMetaDto = new PageMetaDto({

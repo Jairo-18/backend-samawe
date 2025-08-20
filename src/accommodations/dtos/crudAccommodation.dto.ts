@@ -7,6 +7,9 @@ import { StateType } from './../../shared/entities/stateType.entity';
 import { HttpStatus } from '@nestjs/common';
 import { IsOptional, IsString } from 'class-validator';
 
+/**
+ * Datos relacionados para creación de hospedajes
+ */
 export interface CreateRelatedDataServicesAndProductsDto {
   stateType?: StateType[];
   categoryType: CategoryType[];
@@ -16,11 +19,9 @@ export interface CreateRelatedDataServicesAndProductsDto {
 export class CreateRelatedDataServicesAndProductsResponseDto
   implements BaseResponseDto
 {
-  @ApiProperty({
-    type: Number,
-    example: HttpStatus.OK,
-  })
+  @ApiProperty({ type: Number, example: HttpStatus.OK })
   statusCode: number;
+
   @ApiProperty({
     type: Object,
     example: 'Datos relacionados para productos y servicios',
@@ -28,6 +29,9 @@ export class CreateRelatedDataServicesAndProductsResponseDto
   data: CreateRelatedDataServicesAndProductsDto;
 }
 
+/**
+ * Parámetros de paginación para listado de hospedajes
+ */
 export class PaginatedListAccommodationsParamsDto extends ParamsPaginationDto {
   @ApiProperty({
     example: 'ACM-001',
@@ -128,16 +132,15 @@ export class PaginatedListAccommodationsParamsDto extends ParamsPaginationDto {
   @IsString()
   bedType?: number;
 
-  @ApiProperty({
-    example: 1,
-    description: 'ID del estado',
-    required: false,
-  })
+  @ApiProperty({ example: 1, description: 'ID del estado', required: false })
   @IsOptional()
   @IsString()
   stateType?: number;
 }
 
+/**
+ * Parámetros de selección parcial
+ */
 export class PaginatedAccommodationSelectParamsDto extends ParamsPaginationDto {
   @ApiProperty({
     example: 'Cabaña',
@@ -149,10 +152,74 @@ export class PaginatedAccommodationSelectParamsDto extends ParamsPaginationDto {
   search?: string;
 }
 
+/**
+ * DTO para un hospedaje parcial (solo nombre)
+ */
 export class PartialAccommodationDto {
-  @ApiProperty({
-    example: 'Cabaña',
-    description: 'Nombre del hospedaje',
-  })
+  @ApiProperty({ example: 'Cabaña', description: 'Nombre del hospedaje' })
   name: string;
+}
+
+/**
+ * DTO para la imagen de un hospedaje
+ */
+export class AccommodationImageDto {
+  @ApiProperty({ example: 1, description: 'ID de la imagen' })
+  accommodationImageId: number;
+
+  @ApiProperty({ example: 'https://...', description: 'URL de la imagen' })
+  imageUrl: string;
+
+  @ApiProperty({
+    example: 'publicId123',
+    description: 'ID público en Cloudinary',
+  })
+  publicId: string;
+}
+
+/**
+ * DTO para un hospedaje con imágenes
+ */
+export class AccommodationWithImagesDto {
+  @ApiProperty({ example: 1 })
+  accommodationId: number;
+
+  @ApiProperty({ example: 'ACM-001' })
+  code?: string;
+
+  @ApiProperty({ example: 'Hotel Playa Bonita' })
+  name: string;
+
+  @ApiProperty({ example: 'Hospedaje frente al mar con todas las comodidades' })
+  description?: string;
+
+  @ApiProperty({ example: 4 })
+  amountPerson?: number;
+
+  @ApiProperty({ example: 2 })
+  amountRoom?: number;
+
+  @ApiProperty({ example: 1 })
+  amountBathroom?: number;
+
+  @ApiProperty({ example: true })
+  jacuzzi: boolean;
+
+  @ApiProperty({ example: 12000 })
+  priceBuy: number;
+
+  @ApiProperty({ example: 23000 })
+  priceSale: number;
+
+  @ApiProperty({ example: 1 })
+  categoryTypeId?: number;
+
+  @ApiProperty({ example: 2 })
+  bedTypeId?: number;
+
+  @ApiProperty({ example: 1 })
+  stateTypeId?: number;
+
+  @ApiProperty({ type: [AccommodationImageDto] })
+  images: AccommodationImageDto[];
 }
