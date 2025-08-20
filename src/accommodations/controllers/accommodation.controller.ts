@@ -125,8 +125,8 @@ export class AccommodationController {
 
   @Get('/paginated-list')
   @ApiOkResponse({ type: ResponsePaginationDto<Accommodation> })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  // @ApiBearerAuth()
+  // @UseGuards(AuthGuard())
   async getPaginatedList(
     @Query() params: PaginatedListAccommodationsParamsDto,
   ): Promise<ResponsePaginationDto<AccommodationWithImagesDto>> {
