@@ -9,6 +9,7 @@ import {
 } from './../dtos/crudProduct.dto';
 import { Injectable } from '@nestjs/common';
 import { Equal, FindOptionsWhere, ILike } from 'typeorm';
+import { ProductInterfacePaginatedList } from '../interface/product.interface';
 
 @Injectable()
 export class CrudProductService {
@@ -89,10 +90,31 @@ export class CrudProductService {
       relations: ['categoryType'],
     });
 
-    const products = entities.map((product) => ({
-      ...product,
-      categoryTypeId: product?.categoryType?.categoryTypeId,
-    }));
+    const products: ProductInterfacePaginatedList[] = entities.map(
+      (product) => ({
+        productId: product.productId,
+        code: product.code,
+        name: product.name,
+        description: product.description,
+        amount: product.amount,
+        isActive: product.isActive,
+        priceBuy: product.priceBuy,
+        priceSale: product.priceSale,
+        categoryType: product.categoryType
+          ? {
+              categoryTypeId: product.categoryType.categoryTypeId,
+              code: product.categoryType.code,
+              name: product.categoryType.name,
+            }
+          : null,
+        images:
+          product.images?.map((img) => ({
+            productImageId: img.productImageId,
+            imageUrl: img.imageUrl,
+            publicId: img.publicId,
+          })) || [],
+      }),
+    );
 
     const pageMetaDto = new PageMetaDto({
       itemCount,

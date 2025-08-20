@@ -87,9 +87,32 @@ export class CrudExcursionService {
     });
 
     const excursions = entities.map((excursion) => ({
-      ...excursion,
-      categoryTypeId: excursion.categoryType?.categoryTypeId,
-      stateTypeId: excursion.stateType?.stateTypeId,
+      excursionId: excursion.excursionId,
+      code: excursion.code,
+      name: excursion.name,
+      description: excursion.description,
+      priceBuy: excursion.priceBuy,
+      priceSale: excursion.priceSale,
+      categoryType: excursion.categoryType
+        ? {
+            categoryTypeId: excursion.categoryType.categoryTypeId,
+            code: excursion.categoryType.code,
+            name: excursion.categoryType.name,
+          }
+        : null,
+      stateType: excursion.stateType
+        ? {
+            stateTypeId: excursion.stateType.stateTypeId,
+            code: excursion.stateType.code,
+            name: excursion.stateType.name,
+          }
+        : null,
+      images:
+        excursion.images?.map((img) => ({
+          excursionImageId: img.excursionImageId,
+          imageUrl: img.imageUrl,
+          publicId: img.publicId,
+        })) || [],
     }));
 
     const pageMetaDto = new PageMetaDto({

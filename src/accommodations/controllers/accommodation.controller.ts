@@ -1,6 +1,5 @@
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import {
-  AccommodationWithImagesDto,
   CreateRelatedDataServicesAndProductsResponseDto,
   PaginatedAccommodationSelectParamsDto,
   PaginatedListAccommodationsParamsDto,
@@ -42,6 +41,7 @@ import {
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { AccommodationInterfacePaginatedList } from '../interface/accommodation.interface';
 
 @Controller('accommodation')
 @ApiTags('Hospedajes')
@@ -129,7 +129,7 @@ export class AccommodationController {
   // @UseGuards(AuthGuard())
   async getPaginatedList(
     @Query() params: PaginatedListAccommodationsParamsDto,
-  ): Promise<ResponsePaginationDto<AccommodationWithImagesDto>> {
+  ): Promise<ResponsePaginationDto<AccommodationInterfacePaginatedList>> {
     return await this._crudAccommodationUC.paginatedList(params);
   }
 

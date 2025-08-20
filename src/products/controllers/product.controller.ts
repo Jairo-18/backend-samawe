@@ -40,6 +40,7 @@ import {
 import { ProductUC } from '../useCases/productUC.uc';
 import { AuthGuard } from '@nestjs/passport';
 import { CrudProductUC } from '../useCases/crudProductUC.uc';
+import { ProductInterfacePaginatedList } from '../interface/product.interface';
 
 @Controller('product')
 @ApiTags('Productos')
@@ -110,11 +111,11 @@ export class ProductController {
 
   @Get('/paginated-list')
   @ApiOkResponse({ type: ResponsePaginationDto<Product> })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  // @ApiBearerAuth()
+  // @UseGuards(AuthGuard())
   async getPaginatedList(
     @Query() params: PaginatedListProductsParamsDto,
-  ): Promise<ResponsePaginationDto<Product>> {
+  ): Promise<ResponsePaginationDto<ProductInterfacePaginatedList>> {
     return await this._crudProductUC.paginatedList(params);
   }
 

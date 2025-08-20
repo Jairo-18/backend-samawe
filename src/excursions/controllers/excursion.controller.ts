@@ -40,6 +40,7 @@ import {
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { ExcursionInterfacePaginatedList } from '../interface/excursion.interface';
 
 @Controller('excursion')
 @ApiTags('Pasadías')
@@ -110,11 +111,11 @@ export class ExcursionController {
 
   @Get('/paginated-list')
   @ApiOkResponse({ type: ResponsePaginationDto<Excursion> })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  // @ApiBearerAuth()
+  // @UseGuards(AuthGuard())
   async getPaginatedList(
     @Query() params: PaginatedListExcursionsParamsDto,
-  ): Promise<ResponsePaginationDto<Excursion>> {
+  ): Promise<ResponsePaginationDto<ExcursionInterfacePaginatedList>> {
     return await this._crudExcursionUC.paginatedList(params);
   }
 

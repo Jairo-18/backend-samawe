@@ -14,6 +14,7 @@ import {
   PartialAccommodationDto,
 } from '../dtos/crudAccommodation.dto';
 import { Equal, FindOptionsWhere, ILike } from 'typeorm';
+import { AccommodationInterfacePaginatedList } from '../interface/accommodation.interface';
 
 @Injectable()
 export class CrudAccommodationService {
@@ -131,30 +132,50 @@ export class CrudAccommodationService {
         skip,
         take: params.perPage,
         order: { createdAt: params.order ?? 'DESC' },
-        relations: ['categoryType', 'bedType', 'stateType'], // las imágenes se traen por eager
+        relations: ['categoryType', 'bedType', 'stateType'],
       });
 
-    const accommodations = entities.map((accommodation) => ({
-      accommodationId: accommodation.accommodationId,
-      code: accommodation.code,
-      name: accommodation.name,
-      description: accommodation.description,
-      amountPerson: accommodation.amountPerson,
-      amountRoom: accommodation.amountRoom,
-      amountBathroom: accommodation.amountBathroom,
-      jacuzzi: accommodation.jacuzzi,
-      priceBuy: accommodation.priceBuy,
-      priceSale: accommodation.priceSale,
-      categoryTypeId: accommodation.categoryType?.categoryTypeId,
-      bedTypeId: accommodation.bedType?.bedTypeId,
-      stateTypeId: accommodation.stateType?.stateTypeId,
-      images:
-        accommodation.images?.map((img) => ({
-          accommodationImageId: img.accommodationImageId,
-          imageUrl: img.imageUrl,
-          publicId: img.publicId,
-        })) || [],
-    }));
+    const accommodations: AccommodationInterfacePaginatedList[] = entities.map(
+      (accommodation) => ({
+        accommodationId: accommodation.accommodationId,
+        code: accommodation.code,
+        name: accommodation.name,
+        description: accommodation.description,
+        amountPerson: accommodation.amountPerson,
+        jacuzzi: accommodation.jacuzzi,
+        amountRoom: accommodation.amountRoom,
+        amountBathroom: accommodation.amountBathroom,
+        priceBuy: accommodation.priceBuy,
+        priceSale: accommodation.priceSale,
+        categoryType: accommodation.categoryType
+          ? {
+              categoryTypeId: accommodation.categoryType.categoryTypeId,
+              code: accommodation.categoryType.code,
+              name: accommodation.categoryType.name,
+            }
+          : null,
+        bedType: accommodation.bedType
+          ? {
+              bedTypeId: accommodation.bedType.bedTypeId,
+              code: accommodation.bedType.code,
+              name: accommodation.bedType.name,
+            }
+          : null,
+        stateType: accommodation.stateType
+          ? {
+              stateTypeId: accommodation.stateType.stateTypeId,
+              code: accommodation.stateType.code,
+              name: accommodation.stateType.name,
+            }
+          : null,
+        images:
+          accommodation.images?.map((img) => ({
+            accommodationImageId: img.accommodationImageId,
+            imageUrl: img.imageUrl,
+            publicId: img.publicId,
+          })) || [],
+      }),
+    );
 
     const pageMetaDto = new PageMetaDto({
       itemCount,

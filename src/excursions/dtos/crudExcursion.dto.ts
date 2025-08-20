@@ -85,3 +85,52 @@ export class PartialExcursionDto {
   })
   name: string;
 }
+
+/**
+ * DTO para la imagen de un hospedaje
+ */
+export class ExcursionImageDto {
+  @ApiProperty({ example: 1, description: 'ID de la imagen' })
+  excursionImageId: number;
+
+  @ApiProperty({ example: 'https://...', description: 'URL de la imagen' })
+  imageUrl: string;
+
+  @ApiProperty({
+    example: 'publicId123',
+    description: 'ID público en Cloudinary',
+  })
+  publicId: string;
+}
+
+/**
+ * DTO para un hospedaje con imágenes
+ */
+export class ExcursionWithImagesDto {
+  @ApiProperty({ example: 0 })
+  excursionId: number;
+
+  @ApiProperty({ example: 'ACM-001' })
+  code?: string;
+
+  @ApiProperty({ example: 'Pasadía Playa Bonita' })
+  name: string;
+
+  @ApiProperty({ example: 'Pasadía frente al mar con todas las comodidades' })
+  description?: string;
+
+  @ApiProperty({ example: 12000 })
+  priceBuy: number;
+
+  @ApiProperty({ example: 23000 })
+  priceSale: number;
+
+  @ApiProperty({ example: 1 })
+  categoryTypeId?: number;
+
+  @ApiProperty({ example: 1 })
+  stateTypeId?: number;
+
+  @ApiProperty({ type: [ExcursionImageDto] })
+  images: ExcursionImageDto[];
+}
