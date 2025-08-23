@@ -38,7 +38,7 @@ export class User {
 
   @Column('varchar', {
     length: 150,
-    nullable: false,
+    nullable: true,
   })
   email: string;
 

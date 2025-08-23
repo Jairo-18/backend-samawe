@@ -61,8 +61,7 @@ export class CreateUserDto {
     required: true,
   })
   @IsEmail()
-  @IsNotEmpty({ message: 'El email es requerido' })
-  email: string;
+  email?: string;
 
   @ApiProperty({
     example: '1',
