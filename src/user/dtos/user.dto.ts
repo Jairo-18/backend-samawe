@@ -58,7 +58,7 @@ export class CreateUserDto {
 
   @ApiProperty({
     example: 'test@gmail.com',
-    required: true,
+    required: false,
   })
   @IsEmail()
   email?: string;
