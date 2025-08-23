@@ -156,10 +156,117 @@ export class GenericTypeService<T extends object> {
 
     await repository.update(id, data as any);
   }
+  // Agregar este método privado a la clase GenericTypeService
+  private getReferencingEntitiesForType(
+    type: string,
+  ): { entity: string; field: string }[] {
+    // Define qué entidades referencian cada tipo basado en tu contexto real
+    const referencingEntitiesMap: Record<
+      string,
+      { entity: string; field: string }[]
+    > = {
+      roleType: [{ entity: 'User', field: 'roleTypeId' }],
+      phoneCode: [{ entity: 'User', field: 'phoneCodeId' }],
+      payType: [{ entity: 'Invoice', field: 'payTypeId' }],
+      invoiceType: [{ entity: 'Invoice', field: 'invoiceTypeId' }],
+      paidType: [{ entity: 'Invoice', field: 'paidTypeId' }],
+      additionalType: [
+        // No se usa en ninguna entidad según tu contexto
+      ],
+      bedType: [{ entity: 'Accommodation', field: 'bedTypeId' }],
+      categoryType: [
+        { entity: 'Product', field: 'categoryTypeId' },
+        { entity: 'Accommodation', field: 'categoryTypeId' },
+        { entity: 'Excursion', field: 'categoryTypeId' },
+      ],
+      identificationType: [{ entity: 'User', field: 'identificationTypeId' }],
+      stateType: [
+        { entity: 'Excursion', field: 'stateTypeId' },
+        { entity: 'Accommodation', field: 'stateTypeId' },
+      ],
+      taxeType: [
+        { entity: 'InvoiceDetail', field: 'taxeTypeId' },
+        { entity: 'Invoice', field: 'taxeTypeId' },
+      ],
+    };
 
+    return referencingEntitiesMap[type] || [];
+  }
+
+  // Método para verificar si un tipo está siendo usado
+  private async checkIfTypeIsInUse(
+    type: string,
+    id: string | number,
+  ): Promise<void> {
+    const referencingEntities = this.getReferencingEntitiesForType(type);
+
+    if (referencingEntities.length === 0) {
+      // Si no hay entidades que referencien este tipo, permitir eliminación
+      return;
+    }
+
+    const usageDetails: string[] = [];
+
+    for (const { entity, field } of referencingEntities) {
+      try {
+        // Obtener el repositorio del tipo para hacer la consulta directamente
+        const typeRepository = this.getRepositoryByType(type);
+
+        // Usar QueryBuilder para hacer una consulta más flexible
+        const queryBuilder = typeRepository.manager.createQueryBuilder();
+
+        // Construir la consulta para verificar referencias
+        const count = await queryBuilder
+          .select('COUNT(*)')
+          .from(entity, 'e')
+          .where(`e.${field} = :id`, { id })
+          .getRawOne()
+          .then((result) => parseInt(result.count) || 0);
+
+        if (count > 0) {
+          usageDetails.push(`${count} registro(s) en ${entity}`);
+        }
+      } catch (error) {
+        console.error(
+          `❌ Error verificando referencias en ${entity}:`,
+          error.message,
+        );
+
+        // Si hay error con QueryBuilder, intentar una consulta SQL directa
+        try {
+          const typeRepository = this.getRepositoryByType(type);
+          const result = await typeRepository.manager.query(
+            `SELECT COUNT(*) as count FROM "${entity}" WHERE "${field}" = $1`,
+            [id],
+          );
+
+          const count = parseInt(result[0]?.count) || 0;
+
+          if (count > 0) {
+            usageDetails.push(`${count} registro(s) en ${entity}`);
+          }
+        } catch (sqlError) {
+          console.error(
+            `❌ Error con SQL directo para ${entity}:`,
+            sqlError.message,
+          );
+        }
+      }
+    }
+
+    if (usageDetails.length > 0) {
+      throw new ConflictException(
+        `No se puede eliminar este ${type} porque está siendo usado por: ${usageDetails.join(', ')}`,
+      );
+    }
+  }
+
+  // Modificar el método deleteByType existente
   async deleteByType(type: string, id: number | string): Promise<void> {
     const repository = this.getRepositoryByType(type);
     const primaryColumn = this.getPrimaryKeyField(repository);
+
+    // Verificar que el registro existe
     const existing = await repository.findOne({
       where: { [primaryColumn]: id } as any,
     });
@@ -170,7 +277,55 @@ export class GenericTypeService<T extends object> {
       );
     }
 
+    // Verificar si está siendo usado antes de eliminar
+    await this.checkIfTypeIsInUse(type, id);
+
+    // Si pasa todas las validaciones, proceder con la eliminación
     await repository.delete({ [primaryColumn]: id } as any);
+  }
+
+  // Método adicional para verificar uso sin eliminar (útil para la UI)
+  async checkTypeUsage(
+    type: string,
+    id: number | string,
+  ): Promise<{
+    canDelete: boolean;
+    usageDetails: string[];
+  }> {
+    const referencingEntities = this.getReferencingEntitiesForType(type);
+
+    if (referencingEntities.length === 0) {
+      return { canDelete: true, usageDetails: [] };
+    }
+
+    const usageDetails: string[] = [];
+
+    for (const { entity, field } of referencingEntities) {
+      try {
+        const entityRepository =
+          this.repositoryService.repositories[entity.toLowerCase()];
+
+        if (entityRepository) {
+          const count = await entityRepository.count({
+            where: { [field]: id },
+          });
+
+          if (count > 0) {
+            usageDetails.push(`${count} registro(s) en ${entity}`);
+          }
+        }
+      } catch (error) {
+        console.warn(
+          `No se pudo verificar referencias en ${entity}:`,
+          error.message,
+        );
+      }
+    }
+
+    return {
+      canDelete: usageDetails.length === 0,
+      usageDetails,
+    };
   }
 
   async paginatedList(
