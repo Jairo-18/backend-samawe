@@ -60,6 +60,7 @@ export class CreateUserDto {
     example: 'test@gmail.com',
     required: false,
   })
+  @IsOptional()
   @IsEmail()
   email?: string;
 
