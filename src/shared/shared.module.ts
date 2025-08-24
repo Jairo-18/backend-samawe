@@ -58,6 +58,7 @@ import { GeneralInvoiceDetaillService } from './services/generalInvoiceDetaill.s
 import { Notification } from './entities/notification.entity';
 import { AccommodationImage } from './entities/accommodationImage.entity';
 import { ExcursionImage } from './entities/escursionImage.entity';
+import { readFileSync } from 'fs';
 
 @Module({})
 export class SharedModule {
@@ -70,19 +71,12 @@ export class SharedModule {
           inject: [ConfigService],
           useFactory: (configService: ConfigService) => ({
             type: 'postgres',
-            host: configService.get('db.host'),
-            port: configService.get<number>('db.port'),
-            username: configService.get('db.user'),
-            password: configService.get('db.password'),
-            database: configService.get('db.database'),
+            url: process.env.DATABASE_URL,
             entities: [__dirname + '/src/**/*.entity{.ts,.js}'],
             autoLoadEntities: true,
             ssl: {
-              rejectUnauthorized: configService.get('db.ssl'),
-            },
-            extra: {
-              max: 10,
-              keepAlive: true,
+              // Es buena idea añadir esto para Supabase
+              rejectUnauthorized: false,
             },
           }),
         }),
