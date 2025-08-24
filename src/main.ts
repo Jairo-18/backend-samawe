@@ -10,17 +10,9 @@ import * as bodyParser from 'body-parser';
 import { join } from 'path';
 import * as express from 'express';
 import { LoggingInterceptor } from './shared/interceptors/logging.interceptor';
-import serverless from 'serverless-http';
 
-let cachedServer: any;
-
-async function bootstrapServer() {
-  if (cachedServer) {
-    return cachedServer;
-  }
-
+async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
-
   app.use(bodyParser.urlencoded({ extended: true }));
   const configService = app.get(ConfigService);
   const swaggerUser = configService.get<string>('swagger.user');
@@ -32,7 +24,6 @@ async function bootstrapServer() {
       users: { [swaggerUser]: swaggerPassword },
     }),
   );
-
   const config = new DocumentBuilder()
     .setTitle('SAMAWE API')
     .setDescription('API for managing the web app from "SAMAWE"')
@@ -41,6 +32,7 @@ async function bootstrapServer() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
+
   SwaggerModule.setup('docs', app, document);
 
   app.useGlobalPipes(
@@ -55,7 +47,6 @@ async function bootstrapServer() {
     new LoggingInterceptor(),
     new ClassSerializerInterceptor(app.get(Reflector)),
   );
-
   const allowedHeaders = configService.get('app.cors.allowedHeaders');
   const allowedMethods = configService.get('app.cors.allowedMethods');
 
@@ -65,7 +56,6 @@ async function bootstrapServer() {
     methods: allowedMethods,
     credentials: true,
   });
-
   app.use(
     helmet({
       contentSecurityPolicy: false,
@@ -75,25 +65,10 @@ async function bootstrapServer() {
     '/docs',
     express.static(join(__dirname, '../node_modules/swagger-ui-dist')),
   );
-
-  await app.init();
-
-  const expressApp = app.getHttpAdapter().getInstance();
-  cachedServer = serverless(expressApp);
-
-  return cachedServer;
+  const port = configService.get<number>('app.port') || 3000;
+  await app.listen(port);
+  console.log(
+    `🚀 App corriendo en el puerto ${port} [${configService.get('app.env')}]`,
+  );
 }
-
-// 🔹 Esto es lo que Vercel va a usar
-export default async function handler(req: any, res: any) {
-  const server = await bootstrapServer();
-  return server(req, res);
-}
-
-// 🔹 Solo si corres en local, arrancas en puerto normal
-if (process.env.NODE_ENV !== 'production') {
-  bootstrapServer().then(async () => {
-    const port = process.env.PORT || 3000;
-    console.log(`🚀 App corriendo en http://localhost:${port}`);
-  });
-}
+bootstrap();
