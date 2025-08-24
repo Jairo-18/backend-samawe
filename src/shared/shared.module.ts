@@ -78,6 +78,9 @@ export class SharedModule {
               // Es buena idea añadir esto para Supabase
               rejectUnauthorized: false,
             },
+            extra: {
+              max: 3,
+            },
           }),
         }),
         PassportModule,

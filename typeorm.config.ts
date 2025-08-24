@@ -13,4 +13,7 @@ export default new DataSource({
     // Es buena idea añadir esto para Supabase
     rejectUnauthorized: false,
   },
+  extra: {
+    max: 3,
+  },
 });
