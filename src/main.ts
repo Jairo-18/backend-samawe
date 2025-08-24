@@ -8,27 +8,19 @@ import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import * as bodyParser from 'body-parser';
 import { join } from 'path';
-import { Express } from 'express';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const express = require('express');
+import * as express from 'express';
 import { LoggingInterceptor } from './shared/interceptors/logging.interceptor';
-import { ExpressAdapter } from '@nestjs/platform-express';
+import { INestApplication } from '@nestjs/common';
 
-// Variable para almacenar la instancia de la app en Vercel
-let cachedApp: Express;
+// Variable para cachear la app en Vercel
+let cachedApp: INestApplication;
 
-async function createApp(): Promise<Express> {
-  // Si ya existe una instancia cachada, la devolvemos (importante para Vercel)
+async function createNestApp(): Promise<INestApplication> {
   if (cachedApp) {
     return cachedApp;
   }
 
-  const expressServer = express();
-  const adapter = new ExpressAdapter(expressServer);
-
-  const app = await NestFactory.create(AppModule, adapter, {
-    bufferLogs: false,
-  });
+  const app = await NestFactory.create(AppModule, { bufferLogs: false });
 
   app.use(bodyParser.urlencoded({ extended: true }));
   const configService = app.get(ConfigService);
@@ -88,10 +80,9 @@ async function createApp(): Promise<Express> {
   );
 
   await app.init();
+  cachedApp = app;
 
-  // Cachear la app para Vercel
-  cachedApp = expressServer;
-  return expressServer;
+  return app;
 }
 
 // Función bootstrap para desarrollo local
@@ -166,8 +157,11 @@ if (process.env.VERCEL !== '1') {
   bootstrap();
 }
 
-// Export por defecto para Vercel
+// Export por defecto para Vercel - usando serverless-http
 export default async (req: any, res: any) => {
-  const server = await createApp();
-  return server(req, res);
+  const app = await createNestApp();
+  const httpAdapter = app.getHttpAdapter();
+  const instance = httpAdapter.getInstance();
+
+  return instance(req, res);
 };
