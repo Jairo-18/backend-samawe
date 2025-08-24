@@ -68,18 +68,21 @@ export class SharedModule {
         EventEmitterModule.forRoot(),
         TypeOrmModule.forRootAsync({
           inject: [ConfigService],
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           useFactory: (configService: ConfigService) => ({
             type: 'postgres',
-            url: process.env.DATABASE_URL,
+            host: configService.get('db.host'),
+            port: configService.get<number>('db.port'),
+            username: configService.get('db.user'),
+            password: configService.get('db.password'),
+            database: configService.get('db.database'),
             entities: [__dirname + '/src/**/*.entity{.ts,.js}'],
             autoLoadEntities: true,
             ssl: {
-              // Es buena idea añadir esto para Supabase
-              rejectUnauthorized: false,
+              rejectUnauthorized: configService.get('db.ssl'),
             },
             extra: {
-              max: 3,
+              max: 10,
+              keepAlive: true,
             },
           }),
         }),
