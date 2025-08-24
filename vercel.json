@@ -11,5 +11,6 @@
       "src": "/(.*)",
       "dest": "src/main.ts"
     }
-  ]
+  ],
+  "buildCommand": "pnpm install --no-frozen-lockfile && pnpm run build"
 }
