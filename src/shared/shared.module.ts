@@ -58,7 +58,6 @@ import { GeneralInvoiceDetaillService } from './services/generalInvoiceDetaill.s
 import { Notification } from './entities/notification.entity';
 import { AccommodationImage } from './entities/accommodationImage.entity';
 import { ExcursionImage } from './entities/escursionImage.entity';
-import { readFileSync } from 'fs';
 
 @Module({})
 export class SharedModule {
@@ -69,6 +68,7 @@ export class SharedModule {
         EventEmitterModule.forRoot(),
         TypeOrmModule.forRootAsync({
           inject: [ConfigService],
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           useFactory: (configService: ConfigService) => ({
             type: 'postgres',
             url: process.env.DATABASE_URL,

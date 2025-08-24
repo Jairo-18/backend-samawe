@@ -2,21 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "src/main.ts",
+      "src": "dist/main.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/docs/(.*)",
-      "headers": {
-        "cache-control": "s-maxage=1, stale-while-revalidate"
-      },
-      "dest": "/src/main.ts"
+      "dest": "/dist/main.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/src/main.ts"
+      "dest": "/dist/main.js"
     }
   ]
 }

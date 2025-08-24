@@ -1,0 +1,58 @@
+import { NestFactory, Reflector } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { ConfigService } from '@nestjs/config';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
+import * as bodyParser from 'body-parser';
+import { LoggingInterceptor } from './shared/interceptors/logging.interceptor';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, { bufferLogs: false });
+  const configService = app.get(ConfigService);
+
+  app.use(bodyParser.urlencoded({ extended: true }));
+
+  const config = new DocumentBuilder()
+    .setTitle('SAMAWE API')
+    .setDescription('API for managing the web app from "SAMAWE"')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('docs', app, document);
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
+
+  app.useGlobalInterceptors(
+    new LoggingInterceptor(),
+    new ClassSerializerInterceptor(app.get(Reflector)),
+  );
+
+  app.enableCors({
+    origin: true,
+    allowedHeaders: configService.get('app.cors.allowedHeaders'),
+    methods: configService.get('app.cors.allowedMethods'),
+    credentials: true,
+  });
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+    }),
+  );
+
+  const port = configService.get<number>('app.port') || 3000;
+  await app.listen(port);
+  console.log(
+    `🚀 App corriendo en el puerto ${port} [${configService.get('app.env')}]`,
+  );
+}
+bootstrap();
