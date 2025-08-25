@@ -68,23 +68,36 @@ export class SharedModule {
         EventEmitterModule.forRoot(),
         TypeOrmModule.forRootAsync({
           inject: [ConfigService],
-          useFactory: (configService: ConfigService) => ({
-            type: 'postgres',
-            host: configService.get('db.host'),
-            port: configService.get<number>('db.port'),
-            username: configService.get('db.user'),
-            password: configService.get('db.password'),
-            database: configService.get('db.database'),
-            entities: [__dirname + '/src/**/*.entity{.ts,.js}'],
-            autoLoadEntities: true,
-            ssl: {
-              rejectUnauthorized: configService.get('db.ssl'),
-            },
-            extra: {
-              max: 10,
-              keepAlive: true,
-            },
-          }),
+          useFactory: (configService: ConfigService) => {
+            // Properly convert SSL boolean value
+            const sslEnabled =
+              configService.get('db.ssl') === 'true' ||
+              configService.get('db.ssl') === true;
+
+            const config: any = {
+              type: 'postgres',
+              host: configService.get('db.host'),
+              port: configService.get<number>('db.port'),
+              username: configService.get('db.user'),
+              password: configService.get('db.password'),
+              database: configService.get('db.database'),
+              entities: [__dirname + '/src/**/*.entity{.ts,.js}'],
+              autoLoadEntities: true,
+              extra: {
+                max: 10,
+                keepAlive: true,
+              },
+            };
+
+            // Only add SSL configuration if SSL is enabled
+            if (sslEnabled) {
+              config.ssl = {
+                rejectUnauthorized: false, // For development, you might want to set this to false
+              };
+            }
+
+            return config;
+          },
         }),
         PassportModule,
         TypeOrmModule.forFeature([

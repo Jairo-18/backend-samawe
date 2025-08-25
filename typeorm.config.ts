@@ -3,7 +3,10 @@ import { DataSource } from 'typeorm';
 
 config();
 
-export default new DataSource({
+// Properly handle SSL configuration
+const sslEnabled = process.env.DB_SSL === 'true';
+
+const dataSourceConfig: any = {
   type: 'postgres',
   host: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT),
@@ -13,7 +16,13 @@ export default new DataSource({
   entities: [`${__dirname}/src/**/*.entity.{ts,js}`],
   migrations: [`${__dirname}/src/migrations/*.{ts,js}`],
   synchronize: false,
-  ssl: {
-    rejectUnauthorized: process.env.DB_SSL === 'true',
-  },
-});
+};
+
+// Only add SSL configuration if enabled
+if (sslEnabled) {
+  dataSourceConfig.ssl = {
+    rejectUnauthorized: false, // For development environments
+  };
+}
+
+export default new DataSource(dataSourceConfig);
