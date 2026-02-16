@@ -84,7 +84,10 @@ export class SharedModule {
         TypeOrmModule.forRootAsync({
           inject: [ConfigService],
           useFactory: (configService: ConfigService) => {
-            const sslEnabled = configService.get('DB_SSL') === 'true';
+            const dbHost = configService.get('DB_HOST');
+            const isLocal = dbHost === 'localhost' || dbHost === '127.0.0.1';
+            const sslEnabled =
+              configService.get('DB_SSL') === 'true' && !isLocal;
 
             const config: any = {
               type: 'postgres',
@@ -107,8 +110,12 @@ export class SharedModule {
             };
 
             if (sslEnabled) {
-              config.ssl = {
-                rejectUnauthorized: false,
+              config.ssl = true;
+              config.extra = {
+                ...config.extra,
+                ssl: {
+                  rejectUnauthorized: false,
+                },
               };
             }
 

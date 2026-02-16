@@ -9,7 +9,9 @@ const envFile =
 
 config({ path: envFile });
 
-const sslEnabled = process.env.DB_SSL === 'true';
+const isLocal =
+  process.env.DB_HOST === 'localhost' || process.env.DB_HOST === '127.0.0.1';
+const sslEnabled = process.env.DB_SSL === 'true' && !isLocal;
 
 const backendDir = __dirname;
 
@@ -28,7 +30,13 @@ const dataSourceConfig: any = {
 };
 
 if (sslEnabled) {
-  dataSourceConfig.ssl = { rejectUnauthorized: false };
+  dataSourceConfig.ssl = true;
+  dataSourceConfig.extra = {
+    ...dataSourceConfig.extra,
+    ssl: {
+      rejectUnauthorized: false,
+    },
+  };
   console.log('🔒 SSL habilitado');
 } else {
   console.log('🔓 SSL deshabilitado (local)');
