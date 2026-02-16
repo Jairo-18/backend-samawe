@@ -20,7 +20,7 @@ COPY . .
 RUN pnpm run build
 
 # Expose the application port
-EXPOSE 3001
+EXPOSE 3000
 
 # Start the application in production mode
 CMD ["sh", "-c", "pnpm run migration:run:prod && pnpm run start:prod"]
