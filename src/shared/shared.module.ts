@@ -62,6 +62,8 @@ import { Ingredient } from './entities/ingredient.entity';
 import { Recipe } from './entities/recipe.entity';
 import { IngredientRepository } from './repositories/ingredient.repository';
 import { RecipeRepository } from './repositories/recipe.repository';
+import { UnitOfMeasureRepository } from './repositories/unitOfMeasure.repository';
+import { UnitOfMeasure } from './entities/unitOfMeasure.entity';
 
 @Module({})
 export class SharedModule {
@@ -152,6 +154,7 @@ export class SharedModule {
           AccommodationImage,
           ExcursionImage,
           DiscountType,
+          UnitOfMeasure,
         ]),
 
         JwtModule.registerAsync({
@@ -207,6 +210,7 @@ export class SharedModule {
         PhoneCodeRepository,
         ProductRepository,
         RecipeRepository,
+        UnitOfMeasureRepository,
         RoleTypeRepository,
         StateTypeRepository,
         TaxeTypeRepository,
@@ -252,6 +256,7 @@ export class SharedModule {
         MailTemplateService,
         PasswordService,
         GeneralInvoiceDetaillService,
+        UnitOfMeasureRepository,
       ],
     };
   }

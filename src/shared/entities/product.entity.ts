@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { CategoryType } from './categoryType.entity';
 import { ProductImage } from './productImage.entity';
+import { UnitOfMeasure } from './unitOfMeasure.entity';
 
 @Entity({ name: 'Product' })
 export class Product {
@@ -47,6 +48,13 @@ export class Product {
   @ManyToOne(() => CategoryType, (categoryType) => categoryType.product)
   @JoinColumn({ name: 'categoryTypeId' })
   categoryType: CategoryType;
+
+  @ManyToOne(() => UnitOfMeasure, (unitOfMeasure) => unitOfMeasure.products)
+  @JoinColumn({ name: 'unitOfMeasureId' })
+  unitOfMeasure: UnitOfMeasure;
+
+  @Column({ nullable: true })
+  unitOfMeasureId: number;
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt?: Date;
