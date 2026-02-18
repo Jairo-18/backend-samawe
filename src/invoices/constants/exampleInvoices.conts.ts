@@ -347,3 +347,28 @@ export const CREATE_RELATED_DATA_INVOICE_EXAMPLE = {
     { discountTypeId: '2', code: 10000, name: 10000, percent: 0 },
   ],
 };
+
+export const CREATE_INVOICE_DETAILS_EXAMPLE = [
+  {
+    productId: 1,
+    accommodationId: 0,
+    excursionId: 0,
+    amount: 2,
+    priceBuy: 800,
+    priceWithoutTax: 1200,
+    taxeTypeId: 1,
+    startDate: '2025-06-15T14:00:00Z',
+    endDate: '2025-06-20T10:00:00Z',
+  },
+  {
+    productId: 0,
+    accommodationId: 5,
+    excursionId: 0,
+    amount: 1,
+    priceBuy: 4000,
+    priceWithoutTax: 5000,
+    taxeTypeId: 2,
+    startDate: '2025-07-01T12:00:00Z',
+    endDate: '2025-07-05T12:00:00Z',
+  },
+];

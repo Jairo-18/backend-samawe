@@ -130,3 +130,49 @@ export class CreateRelatedDataInvoiceResponseDto implements BaseResponseDto {
   })
   data: CreateRelatedDataInvoiceDto;
 }
+
+export class TogglePaymentBulkDto {
+  @ApiProperty({
+    description: 'Lista de IDs de detalles a actualizar',
+    example: [1, 2, 3],
+    type: [Number],
+  })
+  @IsArray()
+  @IsNumber({}, { each: true })
+  detailIds: number[];
+
+  @ApiProperty({
+    description: 'Estado de pago a aplicar (true=pagado, false=pendiente)',
+    example: true,
+  })
+  @IsNotEmpty()
+  isPaid: boolean;
+}
+
+export class TogglePaymentResponseDto {
+  @ApiProperty({ example: 1 })
+  invoiceDetailId: number;
+
+  @ApiProperty({ example: true })
+  isPaid: boolean;
+
+  @ApiProperty({ example: 15000 })
+  invoicePaidTotal: number;
+}
+
+export class TogglePaymentBulkResponseDto {
+  @ApiProperty({ example: 101 })
+  invoiceId: number;
+
+  @ApiProperty({ example: 5 })
+  updatedCount: number;
+
+  @ApiProperty({ example: 50000 })
+  invoicePaidTotal: number;
+
+  @ApiProperty({
+    type: [TogglePaymentResponseDto],
+    description: 'Lista de items actualizados con su nuevo estado',
+  })
+  updatedDetails: { invoiceDetailId: number; isPaid: boolean }[];
+}

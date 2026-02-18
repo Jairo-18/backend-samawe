@@ -64,6 +64,9 @@ export class InvoiceDetaill {
   @Column({ type: 'timestamp', nullable: true })
   endDate?: Date;
 
+  @Column({ type: 'boolean', default: true })
+  isPaid: boolean;
+
   // ========== CAMPOS PARA RESTAURANTE ==========
 
   // Estado individual del plato (PENDING, COOKING, READY, SERVED, CANCELLED)

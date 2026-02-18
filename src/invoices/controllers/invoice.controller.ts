@@ -7,7 +7,11 @@ import { Invoice } from './../../shared/entities/invoice.entity';
 import {
   CreateInvoiceDetailDto,
   CreateRelatedDataInvoiceResponseDto,
+  TogglePaymentBulkDto,
+  TogglePaymentBulkResponseDto,
+  TogglePaymentResponseDto,
 } from './../dtos/invoiceDetaill.dto';
+import { CREATE_INVOICE_DETAILS_EXAMPLE } from '../constants/exampleInvoices.conts';
 import {
   GetInvoiceWithDetailsResponseDto,
   GetInvoiceWithDetailsDto,
@@ -33,6 +37,7 @@ import {
   UseGuards,
   Query,
   Request,
+  ParseArrayPipe,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -131,16 +136,27 @@ export class InvoiceController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
   @ApiOkResponse({ type: CreatedRecordResponseDto })
-  @ApiBody({ type: CreateInvoiceDetailDto })
-  async createSingleDetail(
+  @ApiBody({
+    type: [CreateInvoiceDetailDto],
+    examples: {
+      multipleItems: {
+        summary: 'Lista completa de items (Ejemplo)',
+        description:
+          'Ejemplo de array con múltiples items incluyendo todos los campos posibles (Producto, Hospedaje, Excursión)',
+        value: CREATE_INVOICE_DETAILS_EXAMPLE,
+      },
+    },
+  })
+  async createDetails(
     @Param('invoiceId') invoiceId: number,
-    @Body() dto: CreateInvoiceDetailDto,
+    @Body(new ParseArrayPipe({ items: CreateInvoiceDetailDto }))
+    dtos: CreateInvoiceDetailDto[],
   ): Promise<CreatedRecordResponseDto> {
-    await this._invoiceUC.addDetail(invoiceId, dto);
+    await this._invoiceUC.addDetails(invoiceId, dtos);
 
     return {
-      title: 'Item agregado',
-      message: 'Item agregado exitosamente',
+      title: 'Items agregados',
+      message: 'Items agregados exitosamente',
       statusCode: HttpStatus.CREATED,
       data: null,
     };
@@ -177,6 +193,68 @@ export class InvoiceController {
       title: 'Item eliminado',
       message: 'Item eliminado correctamente',
       statusCode: HttpStatus.OK,
+    };
+  }
+
+  @Patch('invoice/:invoiceId/detail/:detailId/toggle-payment')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({
+    description:
+      'Actualiza el estado de pago del detalle y el total pagado de la factura',
+    type: TogglePaymentResponseDto,
+  })
+  async toggleDetailPayment(
+    @Param('invoiceId') invoiceId: number,
+    @Param('detailId') detailId: number,
+  ): Promise<{
+    title: string;
+    message: string;
+    statusCode: number;
+    data: TogglePaymentResponseDto;
+  }> {
+    const result = await this._invoiceUC.toggleDetailPayment(
+      invoiceId,
+      detailId,
+    );
+    return {
+      title: 'Estado de pago actualizado',
+      message: result.isPaid
+        ? 'Item marcado como pagado'
+        : 'Item marcado como pendiente',
+      statusCode: HttpStatus.OK,
+      data: result,
+    };
+  }
+
+  @Patch('invoice/:invoiceId/details/toggle-payment-bulk')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOkResponse({
+    description:
+      'Actualiza el estado de pago de múltiples detalles y el total pagado de la factura',
+    type: TogglePaymentBulkResponseDto,
+  })
+  @ApiBody({ type: TogglePaymentBulkDto })
+  async toggleDetailPaymentBulk(
+    @Param('invoiceId') invoiceId: number,
+    @Body() body: TogglePaymentBulkDto,
+  ): Promise<{
+    title: string;
+    message: string;
+    statusCode: number;
+    data: TogglePaymentBulkResponseDto;
+  }> {
+    const result = await this._invoiceUC.toggleDetailPaymentBulk(
+      invoiceId,
+      body.detailIds,
+      body.isPaid,
+    );
+    return {
+      title: 'Estados de pago actualizados',
+      message: 'Items actualizados exitosamente',
+      statusCode: HttpStatus.OK,
+      data: result,
     };
   }
 }

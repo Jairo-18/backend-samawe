@@ -8,7 +8,11 @@ import {
   GetInvoiceWithDetailsDto,
   UpdateInvoiceDto,
 } from '../dtos/invoice.dto';
-import { CreateInvoiceDetailDto } from '../dtos/invoiceDetaill.dto';
+import {
+  CreateInvoiceDetailDto,
+  TogglePaymentBulkResponseDto,
+  TogglePaymentResponseDto,
+} from '../dtos/invoiceDetaill.dto';
 
 @Injectable()
 export class InvoiceUC {
@@ -34,9 +38,8 @@ export class InvoiceUC {
     return this._invoiceService.delete(invoiceId);
   }
 
-  // Aquí delegamos todo al servicio de detalles
-  async addDetail(invoiceId: number, dto: CreateInvoiceDetailDto) {
-    return this._invoiceDetailService.create(invoiceId, dto);
+  async addDetails(invoiceId: number, dtos: CreateInvoiceDetailDto[]) {
+    return this._invoiceDetailService.createMany(invoiceId, dtos);
   }
 
   async deleteDetail(invoiceDetailId: number) {
@@ -49,5 +52,27 @@ export class InvoiceUC {
 
   async paginatedList(params: PaginatedListExcursionsParamsDto) {
     return await this._invoicedPaginatedService.paginatedList(params);
+  }
+
+  async toggleDetailPayment(
+    invoiceId: number,
+    detailId: number,
+  ): Promise<TogglePaymentResponseDto> {
+    return await this._invoiceDetailService.togglePaymentStatus(
+      invoiceId,
+      detailId,
+    );
+  }
+
+  async toggleDetailPaymentBulk(
+    invoiceId: number,
+    detailIds: number[],
+    isPaid: boolean,
+  ): Promise<TogglePaymentBulkResponseDto> {
+    return await this._invoiceDetailService.togglePaymentStatusBulk(
+      invoiceId,
+      detailIds,
+      isPaid,
+    );
   }
 }

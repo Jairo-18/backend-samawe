@@ -111,6 +111,15 @@ export class Invoice {
   })
   total: number;
 
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: false,
+    default: 0,
+  })
+  paidTotal: number;
+
   @Column({ type: 'date' })
   startDate: Date;
 

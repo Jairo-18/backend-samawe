@@ -17,6 +17,8 @@ import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDet
 import {
   CreateInvoiceDetailDto,
   CreateRelatedDataInvoiceDto,
+  TogglePaymentBulkResponseDto,
+  TogglePaymentResponseDto,
 } from '../dtos/invoiceDetaill.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GeneralInvoiceDetaillService } from 'src/shared/services/generalInvoiceDetaill.service';
@@ -368,6 +370,18 @@ export class InvoiceDetailService {
     }
   }
 
+  async createMany(
+    invoiceId: number,
+    dtos: CreateInvoiceDetailDto[],
+  ): Promise<any[]> {
+    const results = [];
+    for (const dto of dtos) {
+      const result = await this.create(invoiceId, dto);
+      results.push(result);
+    }
+    return results;
+  }
+
   /**
    * Eliminar detalle:
    * - Si invoiceType === 'CO' no revertir stock ni cambiar estados de accommodation.
@@ -522,5 +536,129 @@ export class InvoiceDetailService {
         }
       }
     }
+  }
+
+  async togglePaymentStatus(
+    invoiceId: number,
+    detailId: number,
+  ): Promise<TogglePaymentResponseDto> {
+    return await this._invoiceDetaillRepository.manager.transaction(
+      async (manager) => {
+        const detail = await manager.findOne(
+          this._invoiceDetaillRepository.target,
+          {
+            where: { invoiceDetailId: detailId, invoice: { invoiceId } },
+            relations: ['invoice'],
+          },
+        );
+
+        if (!detail) {
+          throw new NotFoundException('Detalle de factura no encontrado');
+        }
+
+        const previousIsPaid = detail.isPaid;
+        detail.isPaid = !previousIsPaid;
+
+        const subtotal = Number(detail.subtotal);
+        const currentPaidTotal = Number(detail.invoice.paidTotal);
+
+        if (detail.isPaid) {
+          detail.invoice.paidTotal = currentPaidTotal + subtotal;
+        } else {
+          // Si estaba pagado y se desmarca, restamos
+          detail.invoice.paidTotal = currentPaidTotal - subtotal;
+        }
+
+        // Asegurar que no sea negativo (por sanidad)
+        if (detail.invoice.paidTotal < 0) detail.invoice.paidTotal = 0;
+
+        await manager.save(detail); // Guarda detalle actualizado
+        await manager.save(detail.invoice); // Guarda invoice con nuevo paidTotal
+
+        return {
+          invoiceDetailId: detail.invoiceDetailId,
+          isPaid: detail.isPaid,
+          invoicePaidTotal: Number(detail.invoice.paidTotal),
+        };
+      },
+    );
+  }
+  async togglePaymentStatusBulk(
+    invoiceId: number,
+    detailIds: number[],
+    targetIsPaid: boolean,
+  ): Promise<TogglePaymentBulkResponseDto> {
+    return await this._invoiceDetaillRepository.manager.transaction(
+      async (manager) => {
+        const details = await manager.find(
+          this._invoiceDetaillRepository.target,
+          {
+            where: {
+              invoiceDetailId: In(detailIds),
+              invoice: { invoiceId },
+            },
+            relations: ['invoice'],
+          },
+        );
+
+        if (details.length !== detailIds.length) {
+          throw new NotFoundException(
+            'Algunos detalles no fueron encontrados o no pertenecen a esta factura',
+          );
+        }
+
+        const updatedDetails = [];
+        let invoiceToUpdate = null;
+
+        for (const detail of details) {
+          // If already in the target state, skip
+          if (detail.isPaid === targetIsPaid) {
+            updatedDetails.push({
+              invoiceDetailId: detail.invoiceDetailId,
+              isPaid: detail.isPaid,
+            });
+            continue;
+          }
+
+          detail.isPaid = targetIsPaid;
+
+          const subtotal = Number(detail.subtotal);
+          const currentPaidTotal = Number(detail.invoice.paidTotal);
+
+          if (targetIsPaid) {
+            detail.invoice.paidTotal = currentPaidTotal + subtotal;
+          } else {
+            detail.invoice.paidTotal = currentPaidTotal - subtotal;
+          }
+
+          if (detail.invoice.paidTotal < 0) detail.invoice.paidTotal = 0;
+
+          await manager.save(detail);
+          invoiceToUpdate = detail.invoice;
+
+          updatedDetails.push({
+            invoiceDetailId: detail.invoiceDetailId,
+            isPaid: detail.isPaid,
+          });
+        }
+
+        // Save invoice once after all updates
+        if (invoiceToUpdate) {
+          await manager.save(invoiceToUpdate);
+        } else if (details.length > 0) {
+          // Fallback if no changes but we need to return something valid
+          invoiceToUpdate = details[0].invoice;
+        }
+
+        return {
+          invoiceId,
+          updatedCount: updatedDetails.length,
+          invoicePaidTotal: invoiceToUpdate
+            ? Number(invoiceToUpdate.paidTotal)
+            : 0,
+          updatedDetails,
+        };
+      },
+    );
   }
 }

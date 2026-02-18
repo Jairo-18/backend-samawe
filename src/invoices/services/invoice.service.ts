@@ -379,6 +379,7 @@ export class InvoiceService {
         },
         startDate: detail.startDate,
         endDate: detail.endDate,
+        isPaid: detail.isPaid,
       })),
     };
   }
