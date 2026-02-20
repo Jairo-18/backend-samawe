@@ -10,8 +10,7 @@ import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
 import { config } from './config';
 import { SharedModule } from './shared/shared.module';
-import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
+
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { AccommodationModule } from './accommodations/accommodation.module';
@@ -29,9 +28,7 @@ import { RestaurantModule } from './restaurant/restaurant.module';
       load: [config],
     }),
     ScheduleModule.forRoot(),
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'public'),
-    }),
+
     SharedModule.forRoot(),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     AccommodationModule,

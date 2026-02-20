@@ -9,7 +9,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('System')
-@Controller('app')
+@Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
@@ -36,7 +36,7 @@ export class AppController {
     return this.appService.getServerInfo();
   }
 
-  @Get('related-data')
+  @Get('app/related-data')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
   @ApiOperation({
