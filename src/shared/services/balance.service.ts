@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+﻿import { Injectable, NotFoundException } from '@nestjs/common';
 import { Between, IsNull } from 'typeorm';
 import { ProductRepository } from './../repositories/product.repository';
 import { BalanceRepository } from './../repositories/balance.repository';
@@ -129,7 +129,6 @@ export class BalanceService {
       balance.totalInvoiceBuy = totalInvoiceBuy;
       balance.balanceInvoice = totalInvoiceSale - totalInvoiceBuy;
 
-      // Al final de recalculateBalanceForPeriod, dentro del transaction
       const today = this.getTodayDate();
       const isCurrentPeriod =
         this.getPeriodDateFromDate(type, today).getTime() ===

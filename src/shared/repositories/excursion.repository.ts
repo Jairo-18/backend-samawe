@@ -1,4 +1,4 @@
-import { Excursion } from './../entities/excursion.entity';
+﻿import { Excursion } from './../entities/excursion.entity';
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 

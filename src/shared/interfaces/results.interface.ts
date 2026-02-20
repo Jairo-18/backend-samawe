@@ -1,4 +1,4 @@
-export interface UpdateManyResults {
+﻿export interface UpdateManyResults {
   success: number;
   failed: number;
 }

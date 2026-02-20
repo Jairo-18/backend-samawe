@@ -1,9 +1,15 @@
-import { Controller, Get } from '@nestjs/common';
+﻿import { Controller, Get, HttpStatus, UseGuards } from '@nestjs/common';
 import { AppService } from './app.service';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('System')
-@Controller()
+@Controller('app')
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
@@ -28,5 +34,20 @@ export class AppController {
   })
   getServerInfo() {
     return this.appService.getServerInfo();
+  }
+
+  @Get('related-data')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @ApiOperation({
+    summary: 'Obtiene todos los catálogos/tipos en una sola llamada',
+  })
+  @ApiResponse({ status: 200, description: 'Catálogo unificado de tipos' })
+  async getRelatedData() {
+    const data = await this.appService.getRelatedData();
+    return {
+      statusCode: HttpStatus.OK,
+      data,
+    };
   }
 }

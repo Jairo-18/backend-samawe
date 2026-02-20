@@ -1,4 +1,4 @@
-import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
+﻿import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { ExcursionRepository } from './../../shared/repositories/excursion.repository';
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
@@ -92,7 +92,6 @@ export class StatisticsService {
    * @returns Totales de productos, hospedajes y excursiones vendidos hoy
    */
   async getDailySalesStatistics() {
-    // Obtener fecha de hoy (solo fecha, sin hora)
     const today = new Date();
     const startOfDay = new Date(
       today.getFullYear(),
@@ -113,23 +112,15 @@ export class StatisticsService {
       .leftJoin('detail.accommodation', 'accommodation')
       .leftJoin('detail.excursion', 'excursion')
       .select([
-        // Total de productos vendidos
         'COALESCE(SUM(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code = \'FV\' THEN detail.subtotal ELSE 0 END), 0) AS "totalProductsSold"',
-        // Total de hospedajes vendidos
         'COALESCE(SUM(CASE WHEN detail.accommodationId IS NOT NULL AND invoiceType.code = \'FV\' THEN detail.subtotal ELSE 0 END), 0) AS "totalAccommodationsSold"',
-        // Total de excursiones vendidas (pasadías)
         'COALESCE(SUM(CASE WHEN detail.excursionId IS NOT NULL AND invoiceType.code = \'FV\' THEN detail.subtotal ELSE 0 END), 0) AS "totalExcursionsSold"',
-        // Total general de ventas
         'COALESCE(SUM(CASE WHEN invoiceType.code = \'FV\' THEN detail.subtotal ELSE 0 END), 0) AS "totalSales"',
-        // Total de productos comprados
         'COALESCE(SUM(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code = \'FC\' THEN detail.subtotal ELSE 0 END), 0) AS "totalProductsPurchased"',
-        // Total general de compras
         'COALESCE(SUM(CASE WHEN invoiceType.code = \'FC\' THEN detail.subtotal ELSE 0 END), 0) AS "totalPurchases"',
-        // Conteo de items vendidos
         'COUNT(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code = \'FV\' THEN 1 END) AS "countProducts"',
         'COUNT(CASE WHEN detail.accommodationId IS NOT NULL AND invoiceType.code = \'FV\' THEN 1 END) AS "countAccommodations"',
         'COUNT(CASE WHEN detail.excursionId IS NOT NULL AND invoiceType.code = \'FV\' THEN 1 END) AS "countExcursions"',
-        // Conteo de items comprados
         'COUNT(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code = \'FC\' THEN 1 END) AS "countProductsPurchased"',
       ])
       .where('invoice.createdAt >= :startOfDay', { startOfDay })
@@ -163,23 +154,15 @@ export class StatisticsService {
       .leftJoin('detail.accommodation', 'accommodation')
       .leftJoin('detail.excursion', 'excursion')
       .select([
-        // Total de productos vendidos
         'COALESCE(SUM(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code = \'FV\' THEN detail.subtotal ELSE 0 END), 0) AS "totalProductsSold"',
-        // Total de hospedajes vendidos
         'COALESCE(SUM(CASE WHEN detail.accommodationId IS NOT NULL AND invoiceType.code = \'FV\' THEN detail.subtotal ELSE 0 END), 0) AS "totalAccommodationsSold"',
-        // Total de excursiones vendidas (pasadías)
         'COALESCE(SUM(CASE WHEN detail.excursionId IS NOT NULL AND invoiceType.code = \'FV\' THEN detail.subtotal ELSE 0 END), 0) AS "totalExcursionsSold"',
-        // Total general de ventas
         'COALESCE(SUM(CASE WHEN invoiceType.code = \'FV\' THEN detail.subtotal ELSE 0 END), 0) AS "totalSales"',
-        // Total de productos comprados
         'COALESCE(SUM(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code = \'FC\' THEN detail.subtotal ELSE 0 END), 0) AS "totalProductsPurchased"',
-        // Total general de compras
         'COALESCE(SUM(CASE WHEN invoiceType.code = \'FC\' THEN detail.subtotal ELSE 0 END), 0) AS "totalPurchases"',
-        // Conteo de items vendidos
         'COUNT(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code = \'FV\' THEN 1 END) AS "countProducts"',
         'COUNT(CASE WHEN detail.accommodationId IS NOT NULL AND invoiceType.code = \'FV\' THEN 1 END) AS "countAccommodations"',
         'COUNT(CASE WHEN detail.excursionId IS NOT NULL AND invoiceType.code = \'FV\' THEN 1 END) AS "countExcursions"',
-        // Conteo de items comprados
         'COUNT(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code = \'FC\' THEN 1 END) AS "countProductsPurchased"',
       ])
       .where('invoice.createdAt >= :startOfDay', { startOfDay })

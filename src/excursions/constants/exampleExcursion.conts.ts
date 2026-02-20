@@ -1,4 +1,4 @@
-export const GET_ALL_EXCURSIONS_EXAMPLE = {
+﻿export const GET_ALL_EXCURSIONS_EXAMPLE = {
   excursions: [
     {
       excursionId: 1,

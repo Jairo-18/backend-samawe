@@ -1,4 +1,4 @@
-import {
+﻿import {
   InvalidAccessDataResponseDto,
   LoginDto,
   RecoveryPasswordBodyDto,
@@ -62,9 +62,9 @@ export class AuthController {
       data: {
         tokens: data.tokens,
         user: {
-          userId: data.user.userId, // Asegúrate de que data.user.id sea el campo correcto
+          userId: data.user.userId,
           roleType: {
-            roleTypeId: data.user.role.roleId, // Asegúrate de usar los nombres correctos de los campos
+            roleTypeId: data.user.role.roleId,
             name: data.user.role.name,
           },
         },

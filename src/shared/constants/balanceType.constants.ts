@@ -1,4 +1,4 @@
-export enum BalanceType {
+﻿export enum BalanceType {
   DAILY = 'daily',
   WEEKLY = 'weekly',
   MONTHLY = 'monthly',

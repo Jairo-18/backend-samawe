@@ -1,4 +1,4 @@
-import { Accommodation } from './accommodation.entity';
+﻿import { Accommodation } from './accommodation.entity';
 import { Excursion } from './excursion.entity';
 import {
   Column,

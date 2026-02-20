@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+﻿import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class TableUniteOfMeasure1771446642812 implements MigrationInterface {
     name = 'TableUniteOfMeasure1771446642812'

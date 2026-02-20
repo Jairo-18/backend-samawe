@@ -1,4 +1,4 @@
-import {
+﻿import {
   PaginatedAccommodationSelectParamsDto,
   PaginatedListAccommodationsParamsDto,
 } from './../dtos/crudAccommodation.dto';
@@ -8,10 +8,6 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class CrudAccommodationUC {
   constructor(private _crudAccommodationService: CrudAccommodationService) {}
-
-  async getRelatedDataToCreate() {
-    return await this._crudAccommodationService.getRelatedDataToCreate();
-  }
 
   async paginatedList(params: PaginatedListAccommodationsParamsDto) {
     return await this._crudAccommodationService.paginatedList(params);

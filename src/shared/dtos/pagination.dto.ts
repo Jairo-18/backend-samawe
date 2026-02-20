@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+﻿import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsArray, IsOptional } from 'class-validator';
 import { OrderConst } from '../constants/order.constants';
 import { PageMetaDto } from './pageMeta.dto';

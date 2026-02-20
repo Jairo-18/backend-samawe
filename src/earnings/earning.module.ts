@@ -1,4 +1,4 @@
-import { ReportController } from './controllers/report.controller';
+﻿import { ReportController } from './controllers/report.controller';
 import { ReportService } from './services/report.service';
 import { InventoryService } from './services/inventory.service';
 import { StatisticsService } from './services/statistics.service';

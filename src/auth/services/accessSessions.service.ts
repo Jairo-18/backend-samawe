@@ -1,4 +1,4 @@
-import { NOT_FOUND_MESSAGE } from './../../shared/constants/messages.constant';
+﻿import { NOT_FOUND_MESSAGE } from './../../shared/constants/messages.constant';
 import { AccessSessions } from './../../shared/entities/accessSessions.entity';
 import { AccessSessionsRepository } from './../../shared/repositories/accessSessions.repository';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
@@ -16,7 +16,7 @@ export class AccessSessionsService {
   async generateSession(body: AccessSessionsModel): Promise<string> {
     const session = this._accessSessionsRepository.create({
       ...body,
-      user: { userId: body.userId }, // esto es lo más importante
+      user: { userId: body.userId },
     });
 
     const saved = await this._accessSessionsRepository.save(session);
@@ -28,8 +28,8 @@ export class AccessSessionsService {
   ): Promise<AccessSessions> {
     return await this._accessSessionsRepository.findOne({
       where: {
-        id: params.id, // Si buscas por id de la sesión
-        user: params.userId ? { userId: params.userId } : undefined, // Si pasas un userId, filtra por este
+        id: params.id,
+        user: params.userId ? { userId: params.userId } : undefined,
       },
     });
   }

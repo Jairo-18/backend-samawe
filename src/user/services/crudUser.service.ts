@@ -1,14 +1,11 @@
-import { User } from './../../shared/entities/user.entity';
+﻿import { User } from './../../shared/entities/user.entity';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { UserRepository } from './../../shared/repositories/user.repository';
 import { PhoneCode } from './../../shared/entities/phoneCode.entity';
 import { RepositoryService } from '../../shared/services/repositoriry.service';
-import { RoleType } from '../../shared/entities/roleType.entity';
-import { IdentificationType } from '../../shared/entities/identificationType.entity';
 import { Injectable } from '@nestjs/common';
 import {
-  CreateUserRelatedDataDto,
   PaginatedCodePhoneUser,
   PaginatedListUsersParamsDto,
   PaginatedUserSelectParamsDto,
@@ -21,28 +18,6 @@ export class CrudUserService {
     private readonly _repositoriesService: RepositoryService,
     private readonly _userRepository: UserRepository,
   ) {}
-
-  async getRelatedDataToCreate(
-    isRegister: boolean,
-  ): Promise<CreateUserRelatedDataDto> {
-    const identificationType =
-      await this._repositoriesService.getEntities<IdentificationType>(
-        this._repositoriesService.repositories.identificationType,
-      );
-
-    const phoneCode = await this._repositoriesService.getEntities<PhoneCode>(
-      this._repositoriesService.repositories.phoneCode,
-    );
-
-    if (!isRegister) {
-      const roleType = await this._repositoriesService.getEntities<RoleType>(
-        this._repositoriesService.repositories.roleType,
-      );
-      return { identificationType, roleType, phoneCode };
-    }
-
-    return { identificationType, phoneCode };
-  }
 
   async paginatedList(params: PaginatedListUsersParamsDto) {
     const skip = (params.page - 1) * params.perPage;
@@ -76,7 +51,6 @@ export class CrudUserService {
       baseConditions.roleType = { roleTypeId: params.roleType };
     }
 
-    //cuando viene por id o uuid se hace asi
     if (params.identificationType) {
       baseConditions.identificationType = {
         identificationTypeId: params.identificationType,
@@ -93,7 +67,6 @@ export class CrudUserService {
       };
     }
 
-    // Búsqueda global
     if (params.search) {
       const searchConditions: FindOptionsWhere<User>[] = [
         { firstName: ILike(`%${params.search}%`) },
@@ -103,7 +76,6 @@ export class CrudUserService {
         { phone: ILike(`%${params.search}%`) },
       ];
 
-      // Combinar condiciones base con cada condición de búsqueda
       searchConditions.forEach((condition) => {
         where.push({ ...baseConditions, ...condition });
       });

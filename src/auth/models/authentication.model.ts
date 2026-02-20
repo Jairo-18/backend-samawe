@@ -1,4 +1,4 @@
-export interface TokenPayloadModel {
+﻿export interface TokenPayloadModel {
   sub?: string;
   email?: string;
   id?: string;

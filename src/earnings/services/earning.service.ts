@@ -1,4 +1,4 @@
-import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
+﻿import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   BalanceProductSummaryDto,
@@ -117,7 +117,7 @@ export class EarningService {
     const now = new Date();
 
     const getRange = (type: 'daily' | 'weekly' | 'monthly' | 'yearly') => {
-      const colombiaOffset = -5 * 60; // UTC-5 en minutos
+      const colombiaOffset = -5 * 60;
       const localTime = now.getTime();
       const localOffset = now.getTimezoneOffset() * 60000;
       const utc = localTime + localOffset;

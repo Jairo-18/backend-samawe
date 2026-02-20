@@ -1,4 +1,4 @@
-import { DiscountType } from './../../shared/entities/discountType.entity';
+﻿import { DiscountType } from './../../shared/entities/discountType.entity';
 import { AdditionalType } from './../../shared/entities/additionalType.entity';
 import { PaidType } from './../../shared/entities/paidType.entity';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
@@ -6,6 +6,7 @@ import { PayType } from './../../shared/entities/payType.entity';
 import { TaxeType } from './../../shared/entities/taxeType.entity';
 import { InvoiceType } from './../../shared/entities/invoiceType.entity';
 import { CategoryType } from './../../shared/entities/categoryType.entity';
+import { UnitOfMeasure } from './../../shared/entities/unitOfMeasure.entity';
 import { HttpStatus } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
@@ -115,6 +116,7 @@ export interface CreateRelatedDataInvoiceDto {
   identificationType: IdentificationType[];
   additionalType: AdditionalType[];
   discountType: DiscountType[];
+  unitOfMeasure: UnitOfMeasure[];
 }
 
 export class CreateRelatedDataInvoiceResponseDto implements BaseResponseDto {

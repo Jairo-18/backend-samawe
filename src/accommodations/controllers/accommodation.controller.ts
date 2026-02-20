@@ -1,6 +1,5 @@
-import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
+﻿import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import {
-  CreateRelatedDataServicesAndProductsResponseDto,
   PaginatedAccommodationSelectParamsDto,
   PaginatedListAccommodationsParamsDto,
   PartialAccommodationDto,
@@ -82,18 +81,6 @@ export class AccommodationController {
     };
   }
 
-  @Get('/create/related-data')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: CreateRelatedDataServicesAndProductsResponseDto })
-  async getRelatedData(): Promise<CreateRelatedDataServicesAndProductsResponseDto> {
-    const data = await this._crudAccommodationUC.getRelatedDataToCreate();
-    return {
-      statusCode: HttpStatus.OK,
-      data,
-    };
-  }
-
   @Get()
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
@@ -125,8 +112,6 @@ export class AccommodationController {
 
   @Get('/paginated-list')
   @ApiOkResponse({ type: ResponsePaginationDto<Accommodation> })
-  // @ApiBearerAuth()
-  // @UseGuards(AuthGuard())
   async getPaginatedList(
     @Query() params: PaginatedListAccommodationsParamsDto,
   ): Promise<ResponsePaginationDto<AccommodationInterfacePaginatedList>> {

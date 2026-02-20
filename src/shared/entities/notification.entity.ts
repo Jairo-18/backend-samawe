@@ -1,4 +1,4 @@
-import {
+﻿import {
   Column,
   CreateDateColumn,
   Entity,
@@ -27,7 +27,7 @@ export class Notification {
   read: boolean;
 
   @ManyToOne(() => User, { nullable: true })
-  user: User; // puede ser null si la notificación es general
+  user: User;
 
   @Column({ type: 'jsonb', nullable: true })
   metadata?: Record<string, any>;

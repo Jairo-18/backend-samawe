@@ -1,4 +1,4 @@
-import { ProductRepository } from './../../shared/repositories/product.repository';
+﻿import { ProductRepository } from './../../shared/repositories/product.repository';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { Product } from './../../shared/entities/product.entity';
@@ -21,7 +21,6 @@ export class CrudProductService {
 
     const baseConditions: FindOptionsWhere<Product> = {};
 
-    // Filtros individuales
     if (params.name) {
       baseConditions.name = ILike(`%${params.name}%`);
     }
@@ -56,7 +55,6 @@ export class CrudProductService {
       };
     }
 
-    // Búsqueda global
     if (params.search) {
       const search = params.search.trim();
       const searchConditions: FindOptionsWhere<Product>[] = [
@@ -74,7 +72,6 @@ export class CrudProductService {
         );
       }
 
-      // Combina cada condición con los filtros base
       searchConditions.forEach((condition) => {
         where.push({ ...baseConditions, ...condition });
       });
@@ -87,7 +84,7 @@ export class CrudProductService {
       skip,
       take: params.perPage,
       order: { createdAt: params.order ?? 'DESC' },
-      relations: ['categoryType'],
+      relations: ['categoryType', 'unitOfMeasure'],
     });
 
     const products: ProductInterfacePaginatedList[] = entities.map(
@@ -105,6 +102,13 @@ export class CrudProductService {
               categoryTypeId: product.categoryType.categoryTypeId,
               code: product.categoryType.code,
               name: product.categoryType.name,
+            }
+          : null,
+        unitOfMeasure: product.unitOfMeasure
+          ? {
+              unitOfMeasureId: product.unitOfMeasure.unitOfMeasureId,
+              code: product.unitOfMeasure.code,
+              name: product.unitOfMeasure.name,
             }
           : null,
         images:
@@ -142,7 +146,7 @@ export class CrudProductService {
       skip,
       take: params.perPage,
       order: { name: params.order ?? 'ASC' },
-      select: ['name'], // solo nombre
+      select: ['productId', 'name'],
     });
 
     const items: PartialProductDto[] = entities.map((e) => ({

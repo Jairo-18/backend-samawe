@@ -1,4 +1,4 @@
-import { GET_USER_EXAMPLE } from './../constants/examples.conts';
+﻿import { GET_USER_EXAMPLE } from './../constants/examples.conts';
 import { User } from './../../shared/entities/user.entity';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { NOT_EMPTY_MESSAGE_ID } from './../../shared/constants/validator-messages.const';
@@ -58,7 +58,6 @@ export class CreateUserDto {
 
   @ApiPropertyOptional({ example: 'test@gmail.com' })
   @IsOptional()
-  // @IsEmail()
   email?: string;
 
   @ApiProperty({
@@ -139,7 +138,7 @@ export class GetUserResponseDto implements BaseResponseDto {
     type: Object,
     example: GET_USER_EXAMPLE,
   })
-  data: Partial<User>;
+  data: any;
 }
 
 export class UpdateUserDto {

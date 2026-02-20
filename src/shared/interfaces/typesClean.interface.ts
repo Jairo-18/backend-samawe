@@ -1,4 +1,4 @@
-export interface StateTypeClean {
+﻿export interface StateTypeClean {
   stateTypeId: number;
   name: string;
   code: string;

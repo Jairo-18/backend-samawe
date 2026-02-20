@@ -1,4 +1,4 @@
-import {
+﻿import {
   PaginatedExcursionSelectParamsDto,
   PaginatedListExcursionsParamsDto,
   PartialExcursionDto,
@@ -110,8 +110,6 @@ export class ExcursionController {
 
   @Get('/paginated-list')
   @ApiOkResponse({ type: ResponsePaginationDto<Excursion> })
-  // @ApiBearerAuth()
-  // @UseGuards(AuthGuard())
   async getPaginatedList(
     @Query() params: PaginatedListExcursionsParamsDto,
   ): Promise<ResponsePaginationDto<ExcursionInterfacePaginatedList>> {

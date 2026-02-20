@@ -1,4 +1,4 @@
-import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
+﻿import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { InventoryService } from './../services/inventory.service';
 import {
   InventoryLowParamsDto,
@@ -26,9 +26,6 @@ export class EarningController {
     private readonly _inventoryService: InventoryService,
   ) {}
 
-  // Productos Activos e Inactivos
-  // Estado y cantidad de hospedajes y pasadias
-  // Total diario, cantidad de producto, hospedaje, pasadia y su total de cada
   @Get('general')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
@@ -37,7 +34,6 @@ export class EarningController {
     return this._statisticsService.getGeneralStatistics();
   }
 
-  // Unidades de productos x su precio de venta y compra y su balance
   @Get('product-summary')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
@@ -46,7 +42,6 @@ export class EarningController {
     return this._balanceSummaryService.getProductSummary();
   }
 
-  // Balance de facturas por periodos, dia, semana, mes, año
   @Get('invoice-summary')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
@@ -55,7 +50,6 @@ export class EarningController {
     return this._balanceSummaryService.getAllInvoiceSummaries();
   }
 
-  // Unidades totales
   @Get('total-stock')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
@@ -72,7 +66,6 @@ export class EarningController {
     return this._balanceSummaryService.getInvoiceChartList();
   }
 
-  // Mostrar lista paginada de productos con menos de 10 unidades
   @Get('paginated-list-inventory-low')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())

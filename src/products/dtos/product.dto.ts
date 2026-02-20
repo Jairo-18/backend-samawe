@@ -1,4 +1,4 @@
-import { BaseResponseDto } from './../../shared/dtos/response.dto';
+﻿import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { Product } from './../../shared/entities/product.entity';
 import {
   GET_ALL_PRODUCTS_EXAMPLE,
@@ -64,7 +64,7 @@ export class CreateProductDto {
     required: false,
   })
   @IsNumber()
-  @Min(0) // ahora acepta 0 o números positivos
+  @Min(0)
   @IsOptional()
   priceBuy?: number;
 
@@ -74,7 +74,7 @@ export class CreateProductDto {
     required: false,
   })
   @IsNumber()
-  @Min(0) // acepta 0 o números positivos
+  @Min(0)
   @IsOptional()
   priceSale?: number;
 
@@ -95,6 +95,15 @@ export class CreateProductDto {
   @IsNumber()
   @IsNotEmpty({ message: 'La categoría es requerida' })
   categoryTypeId: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID de la unidad de medida del producto',
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  unitOfMeasureId?: number;
 }
 
 export class UpdateProductDto {
@@ -125,7 +134,7 @@ export class UpdateProductDto {
 
   @ApiProperty({ example: 10, description: 'Cantidad disponible' })
   @IsOptional()
-  @Min(0) // ahora acepta 0 o números positivos
+  @Min(0)
   @IsNumber()
   amount?: number;
 
@@ -135,7 +144,7 @@ export class UpdateProductDto {
     required: false,
   })
   @IsNumber()
-  @Min(0) // ahora acepta 0 o números positivos
+  @Min(0)
   @IsOptional()
   priceBuy?: number;
 
@@ -145,7 +154,7 @@ export class UpdateProductDto {
     required: false,
   })
   @IsNumber()
-  @Min(0) // acepta 0 o números positivos
+  @Min(0)
   @IsOptional()
   priceSale?: number;
 
@@ -167,6 +176,15 @@ export class UpdateProductDto {
   @IsOptional()
   @IsNotEmpty()
   categoryTypeId?: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID de la unidad de medida del producto',
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  unitOfMeasureId?: number;
 }
 
 export interface GetAllProductsRespose {
@@ -196,5 +214,5 @@ export class GetProductDto implements BaseResponseDto {
     type: Object,
     example: GET_PRODUCT_EXAMPLE,
   })
-  data: Product;
+  data: any;
 }

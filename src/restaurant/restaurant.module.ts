@@ -1,4 +1,4 @@
-import { RestaurantOrderService } from './services/restaurant-order.service';
+﻿import { RestaurantOrderService } from './services/restaurant-order.service';
 import { RestaurantOrderController } from './controllers/restaurant-order.controller';
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
@@ -12,7 +12,7 @@ import { StateTypeRepository } from './../shared/repositories/stateType.reposito
   imports: [
     SharedModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    RecipeModule, // Importamos para usar RecipeService
+    RecipeModule,
   ],
   controllers: [RestaurantOrderController],
   providers: [

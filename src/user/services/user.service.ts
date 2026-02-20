@@ -1,4 +1,4 @@
-import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
+﻿import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
 import { INVALID_ACCESS_DATA_MESSAGE } from './../../auth/constants/messages.constants';
 import {
   NOT_FOUND_MESSAGE,
@@ -26,6 +26,10 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { PasswordService } from './password.service';
 import { Not } from 'typeorm';
+import {
+  mapUserDetail,
+  UserDetailDto,
+} from './../../shared/mappers/entity-mappers';
 
 @Injectable()
 export class UserService {
@@ -39,7 +43,6 @@ export class UserService {
   ) {}
 
   async create(user: CreateUserDto): Promise<{ rowId: string }> {
-    // Validación por email
     if (user.email) {
       const existingUserByEmail = await this._userRepository.findOne({
         where: { email: user.email },
@@ -50,7 +53,6 @@ export class UserService {
       }
     }
 
-    // Validación por tipo + número de identificación
     const existingUserByIdentification = await this._userRepository.findOne({
       where: {
         identificationType: { identificationTypeId: user.identificationType },
@@ -65,7 +67,6 @@ export class UserService {
       );
     }
 
-    // Validación por código de teléfono + número
     const existingPhoneUser = await this._userRepository.findOne({
       where: {
         phoneCode: { phoneCodeId: user.phoneCode },
@@ -122,11 +123,9 @@ export class UserService {
     if (!user.email || user.email.trim() === '') {
       user.email = null;
     } else {
-      // Normalizamos a minúsculas si tiene valor
       user.email = user.email.toLowerCase();
     }
 
-    // Validación por email solo si hay valor
     if (user.email) {
       const existingUserByEmail = await this._userRepository.findOne({
         where: { email: user.email },
@@ -137,7 +136,6 @@ export class UserService {
       }
     }
 
-    // Validación por tipo + número de identificación
     const existingUserByIdentification = await this._userRepository.findOne({
       where: {
         identificationType: { identificationTypeId: user.identificationType },
@@ -152,7 +150,6 @@ export class UserService {
       );
     }
 
-    // Validación por código de teléfono + número
     const existingPhoneUser = await this._userRepository.findOne({
       where: {
         phoneCode: { phoneCodeId: user.phoneCode },
@@ -295,8 +292,8 @@ export class UserService {
     return await this._userRepository.find();
   }
 
-  async findOne(userId: string): Promise<Omit<User, 'password'>> {
-    const { password, ...user } = await this._userRepository.findOne({
+  async findOne(userId: string): Promise<UserDetailDto> {
+    const user = await this._userRepository.findOne({
       where: { userId },
       relations: ['roleType', 'identificationType', 'phoneCode'],
     });
@@ -305,7 +302,7 @@ export class UserService {
       throw new HttpException('El usuario no existe', HttpStatus.NOT_FOUND);
     }
 
-    return user;
+    return mapUserDetail(user);
   }
 
   async findByParams(params: Record<string, any>): Promise<User> {

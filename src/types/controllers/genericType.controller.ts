@@ -1,4 +1,4 @@
-import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
+﻿import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import {
   CreatedRecordResponseDto,
   DeleteReCordResponseDto,
@@ -86,7 +86,6 @@ export class GenericTypeController {
     };
   }
 
-  // GET all additional types
   @Get('additionalType/all')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
@@ -100,7 +99,6 @@ export class GenericTypeController {
     };
   }
 
-  // GET all discount types
   @Get('discountType/all')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())

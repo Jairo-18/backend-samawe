@@ -1,5 +1,4 @@
-// constants/payment-types.constant.ts
-export const PAYMENT_TYPES = [
+﻿export const PAYMENT_TYPES = [
   'EFECTIVO',
   'TRANSFERENCIA',
   'EFECTIVO Y TRANSFERENCIA',

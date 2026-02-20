@@ -1,4 +1,4 @@
-export const GET_ALL_TYPES_EXAMPLE = {
+﻿export const GET_ALL_TYPES_EXAMPLE = {
   statusCode: 200,
   data: {
     bedType: [],

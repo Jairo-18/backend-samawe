@@ -1,4 +1,4 @@
-import {
+﻿import {
   GET_EXCURSION_EXAMPLE,
   GET_ALL_EXCURSIONS_EXAMPLE,
 } from './../constants/exampleExcursion.conts';
@@ -48,7 +48,7 @@ export class CreateExcursionDto {
     required: false,
   })
   @IsNumber()
-  @Min(0) // ahora acepta 0 o números positivos
+  @Min(0)
   @IsOptional()
   priceBuy?: number;
 
@@ -58,7 +58,7 @@ export class CreateExcursionDto {
     required: false,
   })
   @IsNumber()
-  @Min(0) // acepta 0 o números positivos
+  @Min(0)
   @IsOptional()
   priceSale?: number;
   @ApiProperty({
@@ -112,7 +112,7 @@ export class UpdateExcursionDto {
     required: false,
   })
   @IsNumber()
-  @Min(0) // ahora acepta 0 o números positivos
+  @Min(0)
   @IsOptional()
   priceBuy?: number;
 
@@ -122,7 +122,7 @@ export class UpdateExcursionDto {
     required: false,
   })
   @IsNumber()
-  @Min(0) // acepta 0 o números positivos
+  @Min(0)
   @IsOptional()
   priceSale?: number;
 
@@ -155,7 +155,7 @@ export class GetExcursionDto implements BaseResponseDto {
     type: Object,
     example: GET_EXCURSION_EXAMPLE,
   })
-  data: Excursion;
+  data: any;
 }
 
 export interface GetAllExcursionsResponse {

@@ -1,4 +1,4 @@
-import { RecipeRepository } from './../../shared/repositories/recipe.repository';
+﻿import { RecipeRepository } from './../../shared/repositories/recipe.repository';
 import { IngredientRepository } from './../../shared/repositories/ingredient.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { Recipe } from './../../shared/entities/recipe.entity';
@@ -32,31 +32,27 @@ export class RecipeService {
   async create(createRecipeDto: CreateRecipeDto): Promise<Recipe[]> {
     const { productId, ingredients } = createRecipeDto;
 
-    // Verificar que el producto existe
     const product = await this._productRepository.findOne({
       where: { productId },
     });
 
     if (!product) {
-      throw new NotFoundException(
-        `Producto con ID ${productId} no encontrado`,
-      );
+      throw new NotFoundException(`Producto con ID ${productId} no encontrado`);
     }
 
-    // Verificar que todos los ingredientes existen
     const ingredientIds = ingredients.map((i) => i.ingredientId);
     const foundIngredients = await this._ingredientRepository.find({
       where: { ingredientId: In(ingredientIds) },
     });
 
     if (foundIngredients.length !== ingredientIds.length) {
-      throw new BadRequestException('Uno o más ingredientes no fueron encontrados');
+      throw new BadRequestException(
+        'Uno o más ingredientes no fueron encontrados',
+      );
     }
 
-    // Eliminar recetas antiguas del producto si existen
     await this._recipeRepository.delete({ product: { productId } });
 
-    // Crear las nuevas recetas
     const recipes: Recipe[] = [];
     for (const ingredientDto of ingredients) {
       const ingredient = foundIngredients.find(
@@ -88,7 +84,10 @@ export class RecipeService {
     productId: number,
     updateRecipeDto: UpdateRecipeDto,
   ): Promise<Recipe[]> {
-    return await this.create({ productId, ingredients: updateRecipeDto.ingredients });
+    return await this.create({
+      productId,
+      ingredients: updateRecipeDto.ingredients,
+    });
   }
 
   /**
@@ -127,9 +126,7 @@ export class RecipeService {
     });
 
     if (!product) {
-      throw new NotFoundException(
-        `Producto con ID ${productId} no encontrado`,
-      );
+      throw new NotFoundException(`Producto con ID ${productId} no encontrado`);
     }
 
     const recipes = await this._recipeRepository.find({
@@ -146,7 +143,8 @@ export class RecipeService {
     let totalRecipeCost = 0;
 
     const ingredients = recipes.map((recipe) => {
-      const totalCost = Number(recipe.quantity) * Number(recipe.ingredient.cost);
+      const totalCost =
+        Number(recipe.quantity) * Number(recipe.ingredient.cost);
       totalRecipeCost += totalCost;
 
       return {
@@ -236,7 +234,6 @@ export class RecipeService {
     productId: number,
     portions: number = 1,
   ): Promise<void> {
-    // Primero verificamos disponibilidad
     const availability = await this.checkAvailability({ productId, portions });
 
     if (!availability.canPrepare) {
@@ -252,7 +249,6 @@ export class RecipeService {
       );
     }
 
-    // Si hay disponibilidad, reducimos el stock
     const recipes = await this._recipeRepository.find({
       where: { product: { productId } },
       relations: ['ingredient'],

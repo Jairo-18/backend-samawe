@@ -1,4 +1,4 @@
-export interface AccessSessionsModel {
+﻿export interface AccessSessionsModel {
   userId: string;
   accessToken: string;
   id: string;

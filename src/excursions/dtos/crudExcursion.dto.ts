@@ -1,4 +1,4 @@
-import { ParamsPaginationDto } from './../../shared/dtos/pagination.dto';
+﻿import { ParamsPaginationDto } from './../../shared/dtos/pagination.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsString } from 'class-validator';
 

@@ -1,4 +1,4 @@
-export const GET_INVENTORY_LOW = {
+﻿export const GET_INVENTORY_LOW = {
   productsLow: [
     {
       productId: 123,
@@ -34,7 +34,6 @@ export const PRODUCT_STATUS = {
   INACTIVE: 'Inactivo',
 };
 
-// Luego puedes usarlas en tu servicio:
 export const exampleUsage = {
   state: STATE_TYPES.MAINTENANCE,
   status: PRODUCT_STATUS.ACTIVE,

@@ -1,4 +1,4 @@
-import { DiscountTypeRepository } from './../repositories/discount.repository';
+﻿import { DiscountTypeRepository } from './../repositories/discount.repository';
 import { AdditionalTypeRepository } from './../repositories/additionalType.repository';
 import { PayTypeRepository } from './../repositories/payType.repository';
 import { PaidTypeRepository } from './../repositories/paidType.repository';
@@ -12,6 +12,7 @@ import { Injectable } from '@nestjs/common';
 import { IdentificationTypeRepository } from '../repositories/identificationType.repository';
 import { Repository } from 'typeorm';
 import { InvoiceTypeRepository } from '../repositories/invoiceType.repository';
+import { UnitOfMeasureRepository } from '../repositories/unitOfMeasure.repository';
 
 @Injectable()
 export class RepositoryService {
@@ -28,6 +29,7 @@ export class RepositoryService {
     taxeType: TaxeTypeRepository;
     additionalType: AdditionalTypeRepository;
     discountType: DiscountTypeRepository;
+    unitOfMeasure: UnitOfMeasureRepository;
   };
 
   constructor(
@@ -43,6 +45,7 @@ export class RepositoryService {
     private readonly _taxeTypeRepository: TaxeTypeRepository,
     private readonly _additionalTypeRepository: AdditionalTypeRepository,
     private readonly _discountTypeRepository: DiscountTypeRepository,
+    private readonly _unitOfMeasureRepository: UnitOfMeasureRepository,
   ) {
     this.repositories = {
       bedType: _bedTypeRepository,
@@ -57,6 +60,7 @@ export class RepositoryService {
       taxeType: _taxeTypeRepository,
       additionalType: _additionalTypeRepository,
       discountType: _discountTypeRepository,
+      unitOfMeasure: _unitOfMeasureRepository,
     };
   }
 

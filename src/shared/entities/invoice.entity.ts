@@ -1,4 +1,4 @@
-import { User } from './user.entity';
+﻿import { User } from './user.entity';
 import { PayType } from './payType.entity';
 import {
   Column,
@@ -49,19 +49,12 @@ export class Invoice {
   @JoinColumn({ name: 'payTypeId' })
   payType?: PayType;
 
-  // ========== CAMPOS PARA RESTAURANTE ==========
-
-  // Estado general de la orden del restaurante
-  // Valores: PENDING, IN_PROGRESS, COMPLETED, PAID, CANCELLED
   @ManyToOne(() => StateType, { nullable: true })
   @JoinColumn({ name: 'stateTypeId' })
   stateType?: StateType;
 
-  // Número de mesa del restaurante
   @Column('varchar', { length: 50, nullable: true })
   tableNumber?: string;
-
-  // ========== FIN CAMPOS RESTAURANTE ==========
 
   @Column({ type: 'boolean', default: false })
   invoiceElectronic: boolean;

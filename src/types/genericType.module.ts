@@ -1,4 +1,4 @@
-import { RepositoryService } from './../shared/services/repositoriry.service';
+﻿import { RepositoryService } from './../shared/services/repositoriry.service';
 import { GenericTypeService } from './services/genericType.service';
 import { GenericTypeUC } from './useCases/genericType.uc';
 import { GenericTypeController } from './controllers/genericType.controller';

@@ -1,4 +1,4 @@
-import { InvoiceModule } from './../invoices/invoice.module';
+﻿import { InvoiceModule } from './../invoices/invoice.module';
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { SharedModule } from '../shared/shared.module';

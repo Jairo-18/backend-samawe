@@ -1,4 +1,4 @@
-export class PaymentTypeReportDto {
+﻿export class PaymentTypeReportDto {
   paymentType: string;
   dailyCount: number;
   weeklyCount: number;
@@ -46,8 +46,6 @@ export class CategoryReportDto {
   monthlyTotal: number;
   yearlyTotal: number;
 }
-
-// Agregar estas clases a tu archivo report.dto.ts
 
 import { ApiProperty } from '@nestjs/swagger';
 

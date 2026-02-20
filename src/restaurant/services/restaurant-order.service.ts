@@ -1,4 +1,4 @@
-import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
+﻿import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
 import { StateTypeRepository } from './../../shared/repositories/stateType.repository';
 import { RecipeService } from './../../recipes/services/recipe.service';
@@ -29,7 +29,6 @@ export class RestaurantOrderService {
     invoiceDetailId: number,
     newStateCode: string,
   ): Promise<InvoiceDetaill> {
-    // 1. Obtener el plato (InvoiceDetail)
     const dish = await this._invoiceDetailRepository.findOne({
       where: { invoiceDetailId },
       relations: ['product', 'stateType', 'invoice'],
@@ -45,7 +44,6 @@ export class RestaurantOrderService {
       throw new BadRequestException('Este item no es un plato del restaurante');
     }
 
-    // 2. Obtener el nuevo estado
     const newState = await this._stateTypeRepository.findOne({
       where: { code: newStateCode },
     });
@@ -58,20 +56,17 @@ export class RestaurantOrderService {
 
     const oldStateCode = dish.stateType?.code || 'NINGUNO';
 
-    // 3. 🔥 LÓGICA CRÍTICA: Reducir stock cuando se empieza a cocinar
     if (newStateCode === 'COOKING' && oldStateCode !== 'COOKING') {
       console.log(
         `🍳 Iniciando preparación de ${dish.product.name} - Reduciendo ingredientes...`,
       );
 
       try {
-        // Aquí es donde se reduce el stock automáticamente!
         await this._recipeService.consumeIngredients(
           dish.product.productId,
-          Number(dish.amount) || 1, // Cantidad de porciones
+          Number(dish.amount) || 1,
         );
 
-        // Registrar hora en que se empezó a cocinar
         dish.orderTime = dish.orderTime || new Date();
       } catch (error) {
         throw new BadRequestException(
@@ -80,7 +75,6 @@ export class RestaurantOrderService {
       }
     }
 
-    // 4. Registrar tiempos según el estado
     if (newStateCode === 'READY' && oldStateCode !== 'READY') {
       dish.readyTime = new Date();
       console.log(`✅ Plato listo: ${dish.product.name}`);
@@ -91,7 +85,6 @@ export class RestaurantOrderService {
       console.log(`🍽️ Plato servido: ${dish.product.name}`);
     }
 
-    // 5. Actualizar estado
     dish.stateType = newState;
 
     const updatedDish = await this._invoiceDetailRepository.save(dish);
@@ -118,7 +111,6 @@ export class RestaurantOrderService {
         updatedDishes.push(updated);
       } catch (error) {
         console.error(`Error actualizando plato ${id}:`, error.message);
-        // Continuar con los demás aunque uno falle
       }
     }
 
@@ -237,9 +229,6 @@ export class RestaurantOrderService {
     });
   }
 
-  /**
-   * Cancelar un plato (NO restaura ingredientes ya consumidos)
-   */
   async cancelDish(invoiceDetailId: number): Promise<InvoiceDetaill> {
     const dish = await this._invoiceDetailRepository.findOne({
       where: { invoiceDetailId },
@@ -252,7 +241,6 @@ export class RestaurantOrderService {
       );
     }
 
-    // Si ya se empezó a cocinar, advertir que no se restaurará stock
     if (
       dish.stateType?.code === 'COOKING' ||
       dish.stateType?.code === 'READY'

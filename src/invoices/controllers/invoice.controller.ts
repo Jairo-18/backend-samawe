@@ -1,4 +1,4 @@
-import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
+﻿import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import {
   PaginatedInvoiceResponseDto,
   PaginatedListInvoicesParamsDto,
@@ -6,7 +6,6 @@ import {
 import { Invoice } from './../../shared/entities/invoice.entity';
 import {
   CreateInvoiceDetailDto,
-  CreateRelatedDataInvoiceResponseDto,
   TogglePaymentBulkDto,
   TogglePaymentBulkResponseDto,
   TogglePaymentResponseDto,
@@ -86,18 +85,6 @@ export class InvoiceController {
       data: {
         rowId: rowId.invoiceId.toString(),
       },
-    };
-  }
-
-  @Get('/create/related-data')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: CreateRelatedDataInvoiceResponseDto })
-  async getRelatedData(): Promise<CreateRelatedDataInvoiceResponseDto> {
-    const data = await this._invoiceUC.getRelatedDataToCreate();
-    return {
-      statusCode: HttpStatus.OK,
-      data,
     };
   }
 

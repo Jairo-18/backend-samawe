@@ -1,4 +1,4 @@
-import { Invoice } from './invoice.entity';
+﻿import { Invoice } from './invoice.entity';
 import {
   Column,
   CreateDateColumn,

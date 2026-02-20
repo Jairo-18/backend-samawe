@@ -1,12 +1,9 @@
-// 👇 FIX para que pkg no rompa con NestJS/TypeORM en Node 22+
-import * as nodeCrypto from 'node:crypto';
+﻿import * as nodeCrypto from 'node:crypto';
 
-// Solo define o complementa si hace falta
 if (!globalThis.crypto) {
   // @ts-ignore
   globalThis.crypto = nodeCrypto;
 } else {
-  // Agregamos métodos faltantes que esperan algunos paquetes
   if (!(globalThis.crypto as any).randomUUID) {
     (globalThis.crypto as any).randomUUID = nodeCrypto.randomUUID;
   }
@@ -34,10 +31,7 @@ import * as express from 'express';
 import { LoggingInterceptor } from './shared/interceptors/logging.interceptor';
 import { AppDataSource } from 'typeorm.config';
 
-// 👇 Importa tu DataSource central
-
 async function bootstrap() {
-  // 👉 Si se arranca con --migrations, corre migraciones y termina
   if (process.argv.includes('--migrations')) {
     try {
       await AppDataSource.initialize();
@@ -52,7 +46,6 @@ async function bootstrap() {
     }
   }
 
-  // 👉 Arranque normal de NestJS
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
   app.use(bodyParser.urlencoded({ extended: true }));
   const configService = app.get(ConfigService);
@@ -111,7 +104,6 @@ async function bootstrap() {
   );
 
   const port = configService.get<number>('app.port') || 3000;
-  // Escuchar en 0.0.0.0 para permitir conexiones desde la red local (tablets, etc.)
   await app.listen(port, '0.0.0.0');
   console.log(
     `🚀 App corriendo en el puerto ${port} en todas las interfaces de red [${configService.get('app.env')}]`,

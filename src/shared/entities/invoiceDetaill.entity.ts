@@ -1,4 +1,4 @@
-import { Invoice } from './invoice.entity';
+﻿import { Invoice } from './invoice.entity';
 import {
   Column,
   CreateDateColumn,
@@ -67,26 +67,18 @@ export class InvoiceDetaill {
   @Column({ type: 'boolean', default: true })
   isPaid: boolean;
 
-  // ========== CAMPOS PARA RESTAURANTE ==========
-
-  // Estado individual del plato (PENDING, COOKING, READY, SERVED, CANCELLED)
   @ManyToOne(() => StateType, { nullable: true })
   @JoinColumn({ name: 'stateTypeId' })
   stateType?: StateType;
 
-  // Hora en que se tomó la orden del plato
   @Column({ type: 'timestamp', nullable: true })
   orderTime?: Date;
 
-  // Hora en que el plato estuvo listo
   @Column({ type: 'timestamp', nullable: true })
   readyTime?: Date;
 
-  // Hora en que se sirvió el plato al cliente
   @Column({ type: 'timestamp', nullable: true })
   servedTime?: Date;
-
-  // ========== FIN CAMPOS RESTAURANTE ==========
 
   @CreateDateColumn()
   createdAt: Date;

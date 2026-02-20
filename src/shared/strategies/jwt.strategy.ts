@@ -1,11 +1,9 @@
-import { TokenPayloadModel } from './../../auth/models/authentication.model';
+﻿import { TokenPayloadModel } from './../../auth/models/authentication.model';
 import { AuthService } from '../../auth/services/auth.service';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-
 import { Strategy, ExtractJwt } from 'passport-jwt';
-import { User } from '../entities/user.entity';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -20,10 +18,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(
-    req,
-    payload: TokenPayloadModel,
-  ): Promise<Omit<User, 'password'>> {
+  async validate(req, payload: TokenPayloadModel): Promise<any> {
     const token = ExtractJwt.fromAuthHeaderAsBearerToken()(req);
 
     const user = await this.authService.validateSession({
@@ -35,7 +30,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('No autorizado');
     }
 
-    // Aquí devolvés el User completo, y así funciona @GetUser()
     return user;
   }
 }

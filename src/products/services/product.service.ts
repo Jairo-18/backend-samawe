@@ -1,8 +1,13 @@
-import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
+﻿import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { Product } from './../../shared/entities/product.entity';
 import { CreateProductDto, UpdateProductDto } from './../dtos/product.dto';
+import { UnitOfMeasureRepository } from './../../shared/repositories/unitOfMeasure.repository';
+import {
+  mapProductDetail,
+  ProductDetailDto,
+} from './../../shared/mappers/entity-mappers';
 import {
   BadRequestException,
   HttpException,
@@ -17,6 +22,7 @@ export class ProductService {
     private readonly _productRepository: ProductRepository,
     private readonly _categoryTypeRepository: CategoryTypeRepository,
     private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
+    private readonly _unitOfMeasureRepository: UnitOfMeasureRepository,
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
@@ -29,9 +35,9 @@ export class ProductService {
     }
 
     try {
-      const { categoryTypeId, ...productData } = createProductDto;
+      const { categoryTypeId, unitOfMeasureId, ...productData } =
+        createProductDto;
 
-      // Carga las entidades relacionadas
       const categoryType = await this._categoryTypeRepository.findOne({
         where: { categoryTypeId: categoryTypeId },
       });
@@ -40,9 +46,20 @@ export class ProductService {
         throw new BadRequestException('Tipo de categoría no encontrado');
       }
 
+      let unitOfMeasure = null;
+      if (unitOfMeasureId) {
+        unitOfMeasure = await this._unitOfMeasureRepository.findOne({
+          where: { unitOfMeasureId },
+        });
+        if (!unitOfMeasure) {
+          throw new BadRequestException('Unidad de medida no encontrada');
+        }
+      }
+
       const newProduct = this._productRepository.create({
         ...productData,
         categoryType,
+        ...(unitOfMeasure && { unitOfMeasure }),
       });
 
       return await this._productRepository.save(newProduct);
@@ -61,7 +78,6 @@ export class ProductService {
       throw new BadRequestException('El ID del producto debe ser un número');
     }
 
-    // Primero obtenemos el producto que queremos actualizar
     const product = await this._productRepository.findOne({
       where: { productId: id },
     });
@@ -70,14 +86,11 @@ export class ProductService {
       throw new NotFoundException(`Producto con ID ${id} no encontrado`);
     }
 
-    // Solo verificamos el código si se está intentando actualizar
     if (updateProductDto.code) {
-      // Buscamos si existe algún producto con ese código
       const codeExist = await this._productRepository.findOne({
         where: { code: updateProductDto.code },
       });
 
-      // Lanzamos error solo si encontramos un producto diferente con ese código
       if (codeExist && codeExist.productId !== id) {
         throw new HttpException(
           'El código ya está en uso por otro producto',
@@ -96,6 +109,21 @@ export class ProductService {
       product.categoryType = category;
     }
 
+    if (updateProductDto.unitOfMeasureId !== undefined) {
+      if (updateProductDto.unitOfMeasureId === null) {
+        product.unitOfMeasure = null;
+        product.unitOfMeasureId = null;
+      } else {
+        const unitOfMeasure = await this._unitOfMeasureRepository.findOne({
+          where: { unitOfMeasureId: updateProductDto.unitOfMeasureId },
+        });
+        if (!unitOfMeasure) {
+          throw new NotFoundException('Unidad de medida no encontrada');
+        }
+        product.unitOfMeasure = unitOfMeasure;
+      }
+    }
+
     Object.assign(product, updateProductDto);
 
     return await this._productRepository.save(product);
@@ -105,11 +133,12 @@ export class ProductService {
     return await this._productRepository
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.categoryType', 'categoryType')
+      .leftJoinAndSelect('product.unitOfMeasure', 'unitOfMeasure')
       .orderBy('categoryType.name', 'ASC')
       .getMany();
   }
 
-  async findOne(productId: string): Promise<Product> {
+  async findOne(productId: string): Promise<ProductDetailDto> {
     const parsedId = parseInt(productId, 10);
 
     if (isNaN(parsedId)) {
@@ -121,14 +150,14 @@ export class ProductService {
 
     const product = await this._productRepository.findOne({
       where: { productId: parsedId },
-      relations: ['categoryType'],
+      relations: ['categoryType', 'unitOfMeasure'],
     });
 
     if (!product) {
       throw new HttpException('El producto no existe', HttpStatus.NOT_FOUND);
     }
 
-    return product;
+    return mapProductDetail(product);
   }
 
   async delete(productId: number): Promise<void> {
@@ -136,7 +165,7 @@ export class ProductService {
 
     const invoiceDetailCount = await this._invoiceDetaillRepository.count({
       where: {
-        product: { productId }, // sigue siendo number
+        product: { productId },
       },
     });
 

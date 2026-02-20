@@ -1,4 +1,4 @@
-import {
+﻿import {
   PaginatedListProductsParamsDto,
   PaginatedProductSelectParamsDto,
   PartialProductDto,
@@ -111,8 +111,6 @@ export class ProductController {
 
   @Get('/paginated-list')
   @ApiOkResponse({ type: ResponsePaginationDto<Product> })
-  // @ApiBearerAuth()
-  // @UseGuards(AuthGuard())
   async getPaginatedList(
     @Query() params: PaginatedListProductsParamsDto,
   ): Promise<ResponsePaginationDto<ProductInterfacePaginatedList>> {

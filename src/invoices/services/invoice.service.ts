@@ -1,4 +1,4 @@
-import { User } from './../../shared/entities/user.entity';
+﻿import { User } from './../../shared/entities/user.entity';
 import { StateType } from './../../shared/entities/stateType.entity';
 import { ExcursionRepository } from './../../shared/repositories/excursion.repository';
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
@@ -185,7 +185,6 @@ export class InvoiceService {
     createInvoiceDto: CreateInvoiceDto,
     employeeId: string,
   ): Promise<Invoice> {
-    // Obtenemos el tipo de factura
     const invoiceType = await this._invoiceTypeRepository.findOne({
       where: { invoiceTypeId: createInvoiceDto.invoiceTypeId },
     });
@@ -194,7 +193,6 @@ export class InvoiceService {
       throw new BadRequestException('Tipo de factura no encontrado');
     }
 
-    // Obtenemos el usuario
     const user = await this._userRepository.findOne({
       where: { userId: createInvoiceDto.userId },
     });
@@ -301,7 +299,6 @@ export class InvoiceService {
       throw new NotFoundException('Factura no encontrada');
     }
 
-    // 🔹 Calcular suma de impuestos
     const { totalTaxes } = await this._invoiceDetaillRepository
       .createQueryBuilder('d')
       .select(
@@ -411,7 +408,6 @@ export class InvoiceService {
         throw new NotFoundException('Factura no encontrada');
       }
 
-      // Actualiza los campos solo si están definidos en el DTO
       if (payTypeId !== undefined) {
         const payType = await queryRunner.manager.findOne(PayType, {
           where: { payTypeId },
@@ -436,7 +432,6 @@ export class InvoiceService {
         invoice.invoiceElectronic = invoiceElectronic;
       }
 
-      // ⭐ ¡Añade esta línea para actualizar observations! ⭐
       if (observations !== undefined) {
         invoice.observations = observations;
       }
@@ -492,7 +487,6 @@ export class InvoiceService {
       });
 
       for (const detail of invoice.invoiceDetails) {
-        // ✅ Revertir stock si es producto
         if (detail.product) {
           hasProducts = true;
           const product = await queryRunner.manager.findOneOrFail(Product, {
@@ -517,7 +511,6 @@ export class InvoiceService {
           await queryRunner.manager.save(product);
         }
 
-        // ✅ Liberar habitación si existe
         if (detail.accommodation && disponibleState) {
           detail.accommodation.stateType = disponibleState;
           await queryRunner.manager.save(detail.accommodation);

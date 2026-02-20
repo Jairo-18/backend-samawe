@@ -1,4 +1,4 @@
-export const GET_ALL_PRODUCTS_EXAMPLE = {
+﻿export const GET_ALL_PRODUCTS_EXAMPLE = {
   users: [
     {
       id: '1',
@@ -60,4 +60,5 @@ export const GET_PRODUCT_EXAMPLE = {
   categoryType: '2 / Mecato',
   createdAt: '2025-03-11T08:09:04.363Z',
   updatedAt: '2025-03-11T08:09:04.363Z',
+  unitOfMeasure: '1 / Kilo',
 };

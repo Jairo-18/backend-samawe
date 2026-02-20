@@ -1,4 +1,4 @@
-import { PaginatedCodePhoneUser } from './../dtos/crudUser.dto';
+﻿import { PaginatedCodePhoneUser } from './../dtos/crudUser.dto';
 import {
   PaginatedListUsersParamsDto,
   PaginatedUserSelectParamsDto,
@@ -9,10 +9,6 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class CrudUserUC {
   constructor(private _crudUserService: CrudUserService) {}
-
-  async getRelatedDataToCreate(isRegister: boolean) {
-    return await this._crudUserService.getRelatedDataToCreate(isRegister);
-  }
 
   async paginatedList(params: PaginatedListUsersParamsDto) {
     return await this._crudUserService.paginatedList(params);

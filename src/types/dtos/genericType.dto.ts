@@ -1,4 +1,4 @@
-import { BaseResponseDto } from '../../shared/dtos/response.dto';
+﻿import { BaseResponseDto } from '../../shared/dtos/response.dto';
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { HttpStatus } from '@nestjs/common';
@@ -99,66 +99,3 @@ export class ParamsPaginationGenericDto extends ParamsPaginationDto {
   @IsString()
   name?: string;
 }
-
-// export class MultipleTypesPaginationDto {
-//   @ApiProperty({
-//     description: 'Array de tipos a consultar',
-//     example: ['roleType', 'phoneCode', 'payType'],
-//     required: false,
-//   })
-//   @IsOptional()
-//   @IsArray()
-//   @Transform(({ value }) => {
-//     if (typeof value === 'string') {
-//       return value.split(',').map((type) => type.trim());
-//     }
-//     return value;
-//   })
-//   types?: string[];
-
-//   @ApiProperty({
-//     description: 'Parámetros de paginación comunes',
-//     type: ParamsPaginationGenericDto,
-//   })
-//   @ValidateNested()
-//   @Type(() => ParamsPaginationGenericDto)
-//   pagination: ParamsPaginationGenericDto;
-// }
-
-// export interface MultiplePaginatedResponse {
-//   [typeName: string]: ResponsePaginationDto<any>;
-// }
-
-// export class MultiplePaginatedResponseDto implements BaseResponseDto {
-//   @ApiProperty({ example: HttpStatus.OK })
-//   statusCode: number;
-
-//   @ApiProperty({
-//     description: 'Objeto con las respuestas paginadas por tipo',
-//     example: {
-//       roleType: {
-//         data: [
-//           /* array de items */
-//         ],
-//         meta: {
-//           /* metadata de paginación */
-//         },
-//       },
-//       phoneCode: {
-//         data: [
-//           /* array de items */
-//         ],
-//         meta: {
-//           /* metadata de paginación */
-//         },
-//       },
-//     },
-//   })
-//   data: MultiplePaginatedResponse;
-
-//   @ApiProperty({
-//     description: 'Mensaje descriptivo',
-//     example: 'Consulta exitosa de múltiples tipos',
-//   })
-//   message: string;
-// }

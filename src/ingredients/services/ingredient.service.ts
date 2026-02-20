@@ -1,4 +1,4 @@
-import { IngredientRepository } from './../../shared/repositories/ingredient.repository';
+﻿import { IngredientRepository } from './../../shared/repositories/ingredient.repository';
 import { Ingredient } from './../../shared/entities/ingredient.entity';
 import {
   CreateIngredientDto,
@@ -97,29 +97,24 @@ export class IngredientService {
     const queryBuilder =
       this._ingredientRepository.createQueryBuilder('ingredient');
 
-    // Filtrar por nombre
     if (name) {
       queryBuilder.andWhere('ingredient.name ILIKE :name', {
         name: `%${name}%`,
       });
     }
 
-    // Filtrar por unidad
     if (unit) {
       queryBuilder.andWhere('ingredient.unit = :unit', { unit });
     }
 
-    // Filtrar por estado activo
     if (isActive !== undefined) {
       queryBuilder.andWhere('ingredient.isActive = :isActive', { isActive });
     }
 
-    // Filtrar por stock bajo (amount < minStock)
     if (lowStock === true) {
       queryBuilder.andWhere('ingredient.amount < ingredient.minStock');
     }
 
-    // Paginación
     queryBuilder.skip(skip).take(perPage).orderBy('ingredient.name', 'ASC');
 
     const [data, total] = await queryBuilder.getManyAndCount();
@@ -228,7 +223,6 @@ export class IngredientService {
   async delete(ingredientId: number): Promise<void> {
     const ingredient = await this.findOne(ingredientId);
 
-    // Verificar si el ingrediente está siendo usado en recetas
     if (ingredient.recipes && ingredient.recipes.length > 0) {
       throw new BadRequestException(
         'No se puede eliminar el ingrediente porque está siendo usado en recetas',

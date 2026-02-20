@@ -1,4 +1,4 @@
-import { StateTypeRepository } from './../../shared/repositories/stateType.repository';
+﻿import { StateTypeRepository } from './../../shared/repositories/stateType.repository';
 import { RepositoryService } from './../../shared/services/repositoriry.service';
 import { ExcursionRepository } from './../../shared/repositories/excursion.repository';
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
@@ -16,7 +16,6 @@ import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDet
 
 import {
   CreateInvoiceDetailDto,
-  CreateRelatedDataInvoiceDto,
   TogglePaymentBulkResponseDto,
   TogglePaymentResponseDto,
 } from '../dtos/invoiceDetaill.dto';
@@ -38,53 +37,6 @@ export class InvoiceDetailService {
     private readonly _eventEmitter: EventEmitter2,
     private readonly _generalInvoiceDetaillService: GeneralInvoiceDetaillService,
   ) {}
-
-  async getRelatedDataToCreate(): Promise<CreateRelatedDataInvoiceDto> {
-    const categoryType =
-      await this._repositoriesService.repositories.categoryType.find({
-        select: ['categoryTypeId', 'name', 'code'],
-      });
-    const invoiceType =
-      await this._repositoriesService.repositories.invoiceType.find({
-        select: ['invoiceTypeId', 'name', 'code'],
-      });
-    const taxeType = await this._repositoriesService.repositories.taxeType.find(
-      {
-        select: ['taxeTypeId', 'name', 'percentage'],
-      },
-    );
-    const payType = await this._repositoriesService.repositories.payType.find({
-      select: ['payTypeId', 'name', 'code'],
-    });
-    const paidType = await this._repositoriesService.repositories.paidType.find(
-      {
-        select: ['paidTypeId', 'name', 'code'],
-      },
-    );
-    const identificationType =
-      await this._repositoriesService.repositories.identificationType.find({
-        select: ['identificationTypeId', 'name', 'code'],
-      });
-    const discountType =
-      await this._repositoriesService.repositories.discountType.find({
-        select: ['discountTypeId', 'name', 'code', 'percent'],
-      });
-    const additionalType =
-      await this._repositoriesService.repositories.additionalType.find({
-        select: ['additionalTypeId', 'code', 'value'],
-      });
-
-    return {
-      categoryType,
-      invoiceType,
-      taxeType,
-      payType,
-      paidType,
-      identificationType,
-      discountType,
-      additionalType,
-    };
-  }
 
   async create(
     invoiceId: number,
@@ -167,7 +119,6 @@ export class InvoiceDetailService {
         throw new BadRequestException('El precio sin impuesto no es válido');
       }
 
-      // Calcular el precio con impuesto
       priceWithTax = Number((priceWithoutTax * (1 + taxRate)).toFixed(2));
       taxe = Number((priceWithTax - priceWithoutTax).toFixed(2));
       subtotal = Number((amount * priceWithTax).toFixed(2));
@@ -187,14 +138,13 @@ export class InvoiceDetailService {
 
       if (product) detail.product = product;
 
-      // --- IMPORTANT: removed 'reservations' relation (no existe en la entidad)
       const [accommodation, excursion] = await Promise.all([
         createInvoiceDetailDto.accommodationId
           ? this._accommodationRepository.findOne({
               where: {
                 accommodationId: createInvoiceDetailDto.accommodationId,
               },
-              relations: ['stateType'], // solo stateType, no reservations
+              relations: ['stateType'],
             })
           : Promise.resolve(null),
         createInvoiceDetailDto.excursionId
@@ -225,7 +175,6 @@ export class InvoiceDetailService {
           );
         }
 
-        // Verificar reservas existentes (si hay solapamiento y están reservadas -> error)
         if (
           createInvoiceDetailDto.startDate &&
           createInvoiceDetailDto.endDate
@@ -262,7 +211,6 @@ export class InvoiceDetailService {
           }
         }
 
-        // Mantengo la validación de disponibilidad
         if (stateName !== 'Disponible' && stateName !== 'DISPONIBLE') {
           throw new BadRequestException(
             `El hospedaje no está disponible (estado actual: ${stateName})`,
@@ -271,9 +219,7 @@ export class InvoiceDetailService {
 
         detail.accommodation = accommodation;
 
-        // ✅ Cambiar a OCUPADO solo si NO es cotización (isQuote === false)
         if (!isQuote && createInvoiceDetailDto.startDate) {
-          // umbral cambiado a 2 días
           const diffDays = Math.ceil(
             (new Date(createInvoiceDetailDto.startDate).getTime() -
               new Date().getTime()) /
@@ -299,21 +245,14 @@ export class InvoiceDetailService {
 
       const savedDetail = await this._invoiceDetaillRepository.save(detail);
 
-      // ===========================
-      // STOCK: modificar solo si no es cotización
-      // ===========================
       if (isProduct) {
         const currentAmount = Number(product.amount) || 0;
 
         if (isSale && !isQuote) {
-          // Venta (no cotización): restar stock (incluso si queda negativo)
           product.amount = currentAmount - amount;
         } else if (isBuy) {
-          // Compra: sumar
           product.amount = currentAmount + amount;
         } else if (isQuote) {
-          // Cotización -> NO tocar stock
-
           this._eventEmitter.emit('invoice.detail.cotizacion', {
             invoice,
             product,
@@ -322,7 +261,6 @@ export class InvoiceDetailService {
       }
 
       const savePromises = [
-        // guardamos product solo si vino product y NO es cotización
         isProduct && !isQuote
           ? this._productRepository.save(product)
           : Promise.resolve(),
@@ -336,7 +274,6 @@ export class InvoiceDetailService {
         isProduct,
       });
 
-      // Preparar información adicional para el frontend
       let stockInfo = null;
       if (isProduct && product) {
         const previousStock =
@@ -412,7 +349,6 @@ export class InvoiceDetailService {
 
     const ops: Promise<any>[] = [];
 
-    // ✅ REVERTIR STOCK SOLO SI NO ES COTIZACIÓN
     if (product && !isQuote) {
       const currentAmount = Number(product.amount ?? 0);
       const amt = Number(detailAmount ?? 0);
@@ -424,10 +360,8 @@ export class InvoiceDetailService {
       }
 
       if (isSale) {
-        // Si fue venta, al eliminar reponemos
         product.amount = currentAmount + amt;
       } else if (isBuy) {
-        // Si fue compra, al eliminar restamos (verificamos no negativo)
         const newAmount = currentAmount - amt;
         if (newAmount < 0) {
           throw new BadRequestException(
@@ -440,7 +374,6 @@ export class InvoiceDetailService {
       ops.push(this._productRepository.save(product));
     }
 
-    // 🆕 LIBERAR ACCOMMODATION SOLO SI NO ES COTIZACIÓN
     if (accommodation && !isQuote) {
       const disponibleState = await this._stateTypeRepository.findOne({
         where: {
@@ -454,7 +387,6 @@ export class InvoiceDetailService {
       }
     }
 
-    // ELIMINAR DETALLE Y ACTUALIZAR TOTAL
     await this._invoiceDetaillRepository.remove(detail);
 
     await this._generalInvoiceDetaillService.updateInvoiceTotal(
@@ -477,7 +409,6 @@ export class InvoiceDetailService {
   async handleScheduledReservation() {
     const now = new Date();
 
-    // Buscar reservas que están en curso
     const activeReservations = await this._invoiceDetaillRepository
       .createQueryBuilder('detail')
       .leftJoinAndSelect('detail.invoice', 'invoice')
@@ -511,7 +442,6 @@ export class InvoiceDetailService {
       }
     }
 
-    // Buscar reservas que ya pasaron su fecha de fin
     const expiredReservations = await this._invoiceDetaillRepository
       .createQueryBuilder('detail')
       .leftJoinAndSelect('detail.accommodation', 'accommodation')
@@ -565,15 +495,13 @@ export class InvoiceDetailService {
         if (detail.isPaid) {
           detail.invoice.paidTotal = currentPaidTotal + subtotal;
         } else {
-          // Si estaba pagado y se desmarca, restamos
           detail.invoice.paidTotal = currentPaidTotal - subtotal;
         }
 
-        // Asegurar que no sea negativo (por sanidad)
         if (detail.invoice.paidTotal < 0) detail.invoice.paidTotal = 0;
 
-        await manager.save(detail); // Guarda detalle actualizado
-        await manager.save(detail.invoice); // Guarda invoice con nuevo paidTotal
+        await manager.save(detail);
+        await manager.save(detail.invoice);
 
         return {
           invoiceDetailId: detail.invoiceDetailId,
@@ -611,7 +539,6 @@ export class InvoiceDetailService {
         let invoiceToUpdate = null;
 
         for (const detail of details) {
-          // If already in the target state, skip
           if (detail.isPaid === targetIsPaid) {
             updatedDetails.push({
               invoiceDetailId: detail.invoiceDetailId,
@@ -642,11 +569,9 @@ export class InvoiceDetailService {
           });
         }
 
-        // Save invoice once after all updates
         if (invoiceToUpdate) {
           await manager.save(invoiceToUpdate);
         } else if (details.length > 0) {
-          // Fallback if no changes but we need to return something valid
           invoiceToUpdate = details[0].invoice;
         }
 

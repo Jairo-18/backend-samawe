@@ -1,4 +1,4 @@
-import { HttpStatus } from '@nestjs/common';
+﻿import { HttpStatus } from '@nestjs/common';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
@@ -93,7 +93,6 @@ export class InvalidAccessDataResponseDto implements BaseResponseDto {
   })
   statusCode: number;
 
-  //data: AuthTokenResponseDto;
 }
 
 export class AuthTokenResponseDto {

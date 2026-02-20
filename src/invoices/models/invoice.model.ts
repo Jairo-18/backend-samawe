@@ -1,4 +1,4 @@
-export interface SimplifiedInvoiceResponse {
+﻿export interface SimplifiedInvoiceResponse {
   invoiceId: number;
   code: string;
   invoiceElectronic: boolean;

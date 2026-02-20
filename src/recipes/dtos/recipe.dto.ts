@@ -1,4 +1,4 @@
-import { BaseResponseDto } from './../../shared/dtos/response.dto';
+﻿import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { Recipe } from './../../shared/entities/recipe.entity';
 import { HttpStatus } from '@nestjs/common';
 import { ApiProperty } from '@nestjs/swagger';
@@ -28,8 +28,9 @@ export class RecipeIngredientDto {
   ingredientId: number;
 
   @ApiProperty({
-    example: 0.250,
-    description: 'Cantidad de ingrediente por porción (en la unidad del ingrediente)',
+    example: 0.25,
+    description:
+      'Cantidad de ingrediente por porción (en la unidad del ingrediente)',
     required: true,
   })
   @IsNumber()
@@ -93,7 +94,7 @@ export class UpdateRecipeDto {
  */
 export class UpdateRecipeIngredientDto {
   @ApiProperty({
-    example: 0.300,
+    example: 0.3,
     description: 'Nueva cantidad del ingrediente',
   })
   @IsNumber()
@@ -122,10 +123,10 @@ export interface RecipeWithDetailsResponse {
     unit: string;
     quantity: number;
     cost: number;
-    totalCost: number; // quantity * cost
+    totalCost: number;
     notes?: string;
   }>;
-  totalRecipeCost: number; // suma de todos los totalCost
+  totalRecipeCost: number;
 }
 
 export class GetRecipeDto implements BaseResponseDto {
@@ -182,17 +183,17 @@ export class CheckIngredientsAvailabilityDto {
 export interface IngredientAvailability {
   ingredientId: number;
   ingredientName: string;
-  required: number; // Cantidad necesaria
-  available: number; // Stock disponible
+  required: number;
+  available: number;
   unit: string;
-  isAvailable: boolean; // true si available >= required
+  isAvailable: boolean;
 }
 
 export interface CheckAvailabilityResponse {
   productId: number;
   productName: string;
   portions: number;
-  canPrepare: boolean; // true si todos los ingredientes están disponibles
+  canPrepare: boolean;
   ingredients: IngredientAvailability[];
-  missingIngredients: IngredientAvailability[]; // Solo los que NO están disponibles
+  missingIngredients: IngredientAvailability[];
 }

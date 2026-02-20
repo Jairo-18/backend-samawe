@@ -1,4 +1,4 @@
-import { ScheduleModule } from '@nestjs/schedule';
+﻿import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationRepository } from './repositories/notification.repository';
 import { PasswordService } from './../user/services/password.service';
 import { InvoiceEventsListener } from './services/invoiceEventsListener.service';

@@ -1,4 +1,4 @@
-import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
+﻿import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { StateTypeRepository } from './../../shared/repositories/stateType.repository';
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
 import {
@@ -7,6 +7,10 @@ import {
 } from './../dtos/excursion.dto';
 import { Excursion } from './../../shared/entities/excursion.entity';
 import { ExcursionRepository } from './../../shared/repositories/excursion.repository';
+import {
+  mapExcursionDetail,
+  ExcursionDetailDto,
+} from './../../shared/mappers/entity-mappers';
 import {
   BadRequestException,
   ConflictException,
@@ -38,7 +42,6 @@ export class ExcursionService {
       const { categoryTypeId, stateTypeId, ...excursionData } =
         createExcursionDto;
 
-      // Cargar relaciones
       const categoryType = await this._categoryTypeRepository.findOne({
         where: { categoryTypeId },
       });
@@ -90,7 +93,6 @@ export class ExcursionService {
       const codeExist = await this._excursionRepository.findOne({
         where: { code: updateExcursionDto.code },
       });
-      // Verifica si el código existe y pertenece a un registro diferente
       if (codeExist && codeExist.code !== excursion.code) {
         throw new ConflictException(
           'El código ya está en uso por otra pasadía',
@@ -98,7 +100,6 @@ export class ExcursionService {
       }
     }
 
-    // Actualizar relaciones si se enviaron
     if (updateExcursionDto.stateTypeId) {
       const state = await this._stateTypeRepository.findOne({
         where: { stateTypeId: updateExcursionDto.stateTypeId },
@@ -125,13 +126,12 @@ export class ExcursionService {
       delete updateExcursionDto.categoryTypeId;
     }
 
-    // Aplicar otras actualizaciones
     Object.assign(excursion, updateExcursionDto);
 
     return await this._excursionRepository.save(excursion);
   }
 
-  async findOne(excursionId: string): Promise<Excursion> {
+  async findOne(excursionId: string): Promise<ExcursionDetailDto> {
     const id = Number(excursionId);
 
     if (!Number.isInteger(id)) {
@@ -150,7 +150,7 @@ export class ExcursionService {
       throw new HttpException('La pasadía no existe', HttpStatus.NOT_FOUND);
     }
 
-    return excursion;
+    return mapExcursionDetail(excursion);
   }
 
   async findAll(): Promise<Excursion[]> {

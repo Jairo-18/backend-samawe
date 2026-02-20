@@ -1,4 +1,4 @@
-import { Product } from './../entities/product.entity';
+﻿import { Product } from './../entities/product.entity';
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 

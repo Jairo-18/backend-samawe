@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import { GenericTypeService } from './../services/genericType.service';
 import { RepositoryService } from './../../shared/services/repositoriry.service';
 import { ResponsePaginationDto } from 'src/shared/dtos/pagination.dto';

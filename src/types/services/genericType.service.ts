@@ -1,4 +1,4 @@
-import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
+﻿import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { OrderConst } from './../../shared/constants/order.constants';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { RepositoryService } from './../../shared/services/repositoriry.service';
@@ -60,12 +60,6 @@ export class GenericTypeService<T extends object> {
     };
     return orderFieldsByEntity[type] || [];
   }
-
-  // private processTypesParam(typesParam?: string): string[] {
-  //   return (
-  //     typesParam?.split(',').map((t) => t.trim()) || this.getAvailableTypes()
-  //   );
-  // }
 
   async createWithValidation(type: string, data: DeepPartial<T>): Promise<T> {
     const repository = this.getRepositoryByType(type);
@@ -145,7 +139,6 @@ export class GenericTypeService<T extends object> {
         where: { code: (data as any).code },
       });
 
-      // Solo lanzar error si existe otro registro con ese código Y no es el mismo que estamos actualizando
       if (existing && existing.id && existing.id.toString() !== id.toString()) {
         throw new ConflictException(
           `El código "${(data as any).code}" ya está en uso.`,
@@ -155,11 +148,10 @@ export class GenericTypeService<T extends object> {
 
     await repository.update(id, data as any);
   }
-  // Agregar este método privado a la clase GenericTypeService
+
   private getReferencingEntitiesForType(
     type: string,
   ): { entity: string; field: string }[] {
-    // Define qué entidades referencian cada tipo basado en tu contexto real
     const referencingEntitiesMap: Record<
       string,
       { entity: string; field: string }[]
@@ -189,7 +181,6 @@ export class GenericTypeService<T extends object> {
     return referencingEntitiesMap[type] || [];
   }
 
-  // Método para verificar si un tipo está siendo usado
   private async checkIfTypeIsInUse(
     type: string,
     id: string | number,
@@ -197,7 +188,6 @@ export class GenericTypeService<T extends object> {
     const referencingEntities = this.getReferencingEntitiesForType(type);
 
     if (referencingEntities.length === 0) {
-      // Si no hay entidades que referencien este tipo, permitir eliminación
       return;
     }
 
@@ -205,13 +195,10 @@ export class GenericTypeService<T extends object> {
 
     for (const { entity, field } of referencingEntities) {
       try {
-        // Obtener el repositorio del tipo para hacer la consulta directamente
         const typeRepository = this.getRepositoryByType(type);
 
-        // Usar QueryBuilder para hacer una consulta más flexible
         const queryBuilder = typeRepository.manager.createQueryBuilder();
 
-        // Construir la consulta para verificar referencias
         const count = await queryBuilder
           .select('COUNT(*)')
           .from(entity, 'e')
@@ -228,7 +215,6 @@ export class GenericTypeService<T extends object> {
           error.message,
         );
 
-        // Si hay error con QueryBuilder, intentar una consulta SQL directa
         try {
           const typeRepository = this.getRepositoryByType(type);
           const result = await typeRepository.manager.query(
@@ -257,12 +243,10 @@ export class GenericTypeService<T extends object> {
     }
   }
 
-  // Modificar el método deleteByType existente
   async deleteByType(type: string, id: number | string): Promise<void> {
     const repository = this.getRepositoryByType(type);
     const primaryColumn = this.getPrimaryKeyField(repository);
 
-    // Verificar que el registro existe
     const existing = await repository.findOne({
       where: { [primaryColumn]: id } as any,
     });
@@ -273,14 +257,11 @@ export class GenericTypeService<T extends object> {
       );
     }
 
-    // Verificar si está siendo usado antes de eliminar
     await this.checkIfTypeIsInUse(type, id);
 
-    // Si pasa todas las validaciones, proceder con la eliminación
     await repository.delete({ [primaryColumn]: id } as any);
   }
 
-  // Método adicional para verificar uso sin eliminar (útil para la UI)
   async checkTypeUsage(
     type: string,
     id: number | string,

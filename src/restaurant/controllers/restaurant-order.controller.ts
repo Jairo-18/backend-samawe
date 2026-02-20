@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Controller,
   Get,
@@ -19,7 +19,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { RestaurantOrderService } from '../services/restaurant-order.service';
 
 class UpdateDishStateDto {
-  newStateCode: string; // PENDING, COOKING, READY, SERVED, CANCELLED
+  newStateCode: string;
 }
 
 class UpdateMultipleDishesStateDto {
@@ -28,7 +28,7 @@ class UpdateMultipleDishesStateDto {
 }
 
 class UpdateOrderStateDto {
-  newStateCode: string; // Estado general de la orden
+  newStateCode: string;
 }
 
 @Controller('restaurant/orders')

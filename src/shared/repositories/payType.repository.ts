@@ -1,4 +1,4 @@
-import { PayType } from './../entities/payType.entity';
+﻿import { PayType } from './../entities/payType.entity';
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 

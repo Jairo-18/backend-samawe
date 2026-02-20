@@ -1,4 +1,4 @@
-import { InvoiceDetailService } from './../../invoices/services/invoiceDetail.service';
+﻿import { InvoiceDetailService } from './../../invoices/services/invoiceDetail.service';
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 

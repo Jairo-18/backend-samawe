@@ -1,4 +1,4 @@
-import { MailsService } from './../../shared/services/mails.service';
+﻿import { MailsService } from './../../shared/services/mails.service';
 import { MailTemplateService } from './../../shared/services/mail-template.service';
 import { NOT_FOUND_RESPONSE } from './../../shared/constants/response.constant';
 import { RecoveryPasswordBodyDto, RefreshTokenBodyDto } from '../dtos/auth.dto';
@@ -30,17 +30,14 @@ export class AuthService {
   ) {}
 
   async signIn(credentials: Partial<UserAuthModel>) {
-    // Buscar el usuario por el email
     const user = await this._userService.findByParams({
       email: credentials.email,
     });
 
-    // Si el usuario no existe, lanzamos una excepción
     if (!user) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    // Comparamos las contraseñas
     const passwordMatch = await bcrypt.compare(
       credentials.password,
       user.password,
@@ -50,24 +47,20 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    // Crear el payload con el email del usuario
     const payload = { email: user.email, sub: user.userId, id: user.userId };
 
-    // Generamos los tokens de acceso y refresco
     const tokens = this.generateTokens(payload);
 
     if (!user.roleType) {
       throw new UnauthorizedException('El usuario no tiene un rol asignado');
     }
 
-    // Creamos la sesión de acceso
     const accessSessionId = await this._accessSessionsService.generateSession({
       userId: user.userId, // ← aquí estaba el error
       accessToken: tokens.accessToken,
       id: uuidv4(),
     });
 
-    // Retornamos los datos completos
     return {
       tokens: { ...tokens },
       user: {
@@ -83,9 +76,8 @@ export class AuthService {
     };
   }
 
-  // Función para validar la sesión (usada en el refresh token)
   async validateSession({ userId, token }: { userId: string; token: string }) {
-    const user = await this._userService.findOne(userId); // Buscamos el usuario por ID
+    const user = await this._userService.findOne(userId);
     let payload;
 
     try {
@@ -105,7 +97,6 @@ export class AuthService {
     return user;
   }
 
-  // Función para generar los tokens (acceso y refresco)
   generateTokens(payload: TokenPayloadModel): {
     accessToken: string;
     refreshToken: string;
@@ -123,7 +114,6 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  // Función para refrescar el token
   async refreshToken(body: RefreshTokenBodyDto) {
     let payload;
 
@@ -156,8 +146,8 @@ export class AuthService {
       user: {
         userId: user.userId,
         role: {
-          roleId: user.roleType.roleTypeId, // Suponiendo que `Role` tiene una propiedad `id`
-          name: user.roleType.name, // Y `Role` tiene una propiedad `name`
+          roleId: user.roleType.roleTypeId,
+          name: user.roleType.name,
         },
       },
     };

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import { Invoice } from '../entities/invoice.entity';
 import { BalanceService } from './balance.service';
 import { OnEvent } from '@nestjs/event-emitter';
@@ -22,7 +22,7 @@ export class InvoiceEventsListener {
       }
     } catch (err) {
       console.error('Error updating balance after invoice deletion:', err);
-      throw err; // Re-lanzar para que el event emitter maneje el error
+      throw err;
     }
   }
 
@@ -49,7 +49,6 @@ export class InvoiceEventsListener {
     const invoiceId = payload.invoice.invoiceId;
 
     try {
-      // Procesar el evento con mutex para evitar procesamiento duplicado
       const processingPromise =
         this.processingMutex.get(invoiceId) ||
         this.processInvoiceDetail(payload);
@@ -71,25 +70,21 @@ export class InvoiceEventsListener {
     invoice: Invoice;
     isProduct: boolean;
   }) {
-    // Actualizar balance específico del invoice
     await this._balanceService.updateBalanceByInvoiceId(
       payload.invoice.invoiceId,
     );
 
-    // Si es un producto, actualizar balance global de productos
     if (payload.isProduct) {
       await this.updateProductsBalance();
     }
   }
 
   private async updateProductsBalance(): Promise<void> {
-    // Si ya hay una actualización en progreso, esperar a que termine
     if (this.productsUpdatePromise) {
       await this.productsUpdatePromise;
       return;
     }
 
-    // Crear nueva promesa de actualización
     this.productsUpdatePromise = this._balanceService
       .updateBalanceWithCurrentProducts()
       .catch((err) => {

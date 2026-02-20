@@ -1,4 +1,4 @@
-export const GET_ALL_ACCOMMODATIONS_EXAMPLE = {
+﻿export const GET_ALL_ACCOMMODATIONS_EXAMPLE = {
   accommodations: [
     {
       accommodationId: 1,

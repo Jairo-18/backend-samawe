@@ -1,4 +1,4 @@
-import { Response } from 'express';
+﻿import { Response } from 'express';
 import { Controller, Get, Res, UseGuards, Param } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import {
@@ -172,7 +172,6 @@ export class ReportController {
 
     const fileName = `Reporte_de_Pagos_${fecha}.xlsx`;
 
-    // 📤 Envío del archivo
     const buffer = await workbook.xlsx.writeBuffer();
     res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
     res.setHeader(

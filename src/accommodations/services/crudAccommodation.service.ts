@@ -1,14 +1,10 @@
-import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
+﻿import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { Accommodation } from './../../shared/entities/accommodation.entity';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
-import { BedType } from './../../shared/entities/bedType.entity';
-import { StateType } from './../../shared/entities/stateType.entity';
-import { CategoryType } from './../../shared/entities/categoryType.entity';
 import { RepositoryService } from '../../shared/services/repositoriry.service';
 import { Injectable } from '@nestjs/common';
 import {
-  CreateRelatedDataServicesAndProductsDto,
   PaginatedAccommodationSelectParamsDto,
   PaginatedListAccommodationsParamsDto,
   PartialAccommodationDto,
@@ -22,23 +18,6 @@ export class CrudAccommodationService {
     private readonly _repositoriesService: RepositoryService,
     private readonly _accommodationRepository: AccommodationRepository,
   ) {}
-
-  async getRelatedDataToCreate(): Promise<CreateRelatedDataServicesAndProductsDto> {
-    const categoryType =
-      await this._repositoriesService.getEntities<CategoryType>(
-        this._repositoriesService.repositories.categoryType,
-      );
-
-    const stateType = await this._repositoriesService.getEntities<StateType>(
-      this._repositoriesService.repositories.stateType,
-    );
-
-    const bedType = await this._repositoriesService.getEntities<BedType>(
-      this._repositoriesService.repositories.bedType,
-    );
-
-    return { categoryType, stateType, bedType };
-  }
 
   async paginatedList(params: PaginatedListAccommodationsParamsDto) {
     const skip = (params.page - 1) * params.perPage;
@@ -99,7 +78,6 @@ export class CrudAccommodationService {
         stateTypeId: params.stateType,
       };
     }
-    // Búsqueda global
     if (params.search) {
       const search = params.search.trim();
       const searchConditions: FindOptionsWhere<Accommodation>[] = [
@@ -204,7 +182,7 @@ export class CrudAccommodationService {
         skip,
         take: params.perPage,
         order: { name: params.order ?? 'ASC' },
-        select: ['name'], // solo nombre
+        select: ['name'],
       });
 
     const items: PartialAccommodationDto[] = entities.map((e) => ({

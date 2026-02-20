@@ -1,4 +1,4 @@
-export const config = async () => {
+﻿export const config = async () => {
   const rawOrigin = process.env.APP_CORS_ORIGIN || '';
   const rawAllowedHeaders = process.env.APP_CORS_ALLOWED_HEADERS || '';
   const rawAllowedMethods = process.env.APP_CORS_ALLOWED_METHODS || '';

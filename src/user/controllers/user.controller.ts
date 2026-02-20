@@ -1,4 +1,4 @@
-import { PaginatedCodePhoneUser } from './../dtos/crudUser.dto';
+﻿import { PaginatedCodePhoneUser } from './../dtos/crudUser.dto';
 import { PhoneCode } from './../../shared/entities/phoneCode.entity';
 import { UPDATED_MESSAGE } from './../../shared/constants/messages.constant';
 import {
@@ -8,7 +8,6 @@ import {
 import { CrudUserUC } from './../useCases/crudUserUC';
 import { User } from 'src/shared/entities/user.entity';
 import {
-  CreateUserRelatedDataReponseDto,
   PaginatedListUsersParamsDto,
   PaginatedUserSelectParamsDto,
   PartialUserDto,
@@ -61,10 +60,6 @@ export class UserController {
     private readonly _crudUserUC: CrudUserUC,
   ) {}
 
-  // ============================================
-  // RUTAS ESPECÍFICAS (SIN PARÁMETROS DINÁMICOS)
-  // ============================================
-
   @Get('paginated-partial')
   @ApiOkResponse({ type: ResponsePaginationDto<PartialUserDto> })
   @ApiBearerAuth()
@@ -83,28 +78,6 @@ export class UserController {
     @Query() params: PaginatedCodePhoneUser,
   ): Promise<ResponsePaginationDto<PhoneCode>> {
     return await this._crudUserUC.paginatedPhoneCodeSelect(params);
-  }
-
-  @Get('create/related-data')
-  @ApiOkResponse({ type: CreateUserRelatedDataReponseDto })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  async getRelatedDataForCreate(): Promise<CreateUserRelatedDataReponseDto> {
-    const data = await this._crudUserUC.getRelatedDataToCreate(false);
-    return {
-      statusCode: HttpStatus.OK,
-      data,
-    };
-  }
-
-  @Get('register/related-data')
-  @ApiOkResponse({ type: CreateUserRelatedDataReponseDto })
-  async getRelatedData(): Promise<CreateUserRelatedDataReponseDto> {
-    const data = await this._crudUserUC.getRelatedDataToCreate(true);
-    return {
-      statusCode: HttpStatus.OK,
-      data,
-    };
   }
 
   @Get('paginated-list')
@@ -185,10 +158,6 @@ export class UserController {
       statusCode: HttpStatus.OK,
     };
   }
-
-  // ============================================
-  // RUTAS CON PARÁMETROS DINÁMICOS (AL FINAL)
-  // ============================================
 
   @Get(':id')
   @ApiBearerAuth()

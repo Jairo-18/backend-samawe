@@ -1,6 +1,4 @@
-// interfaces/report.interface.ts
-
-export interface PaymentTypeReport {
+﻿export interface PaymentTypeReport {
   paymentType: string;
   dailyCount: number;
   weeklyCount: number;
@@ -31,7 +29,7 @@ export interface CategoryDetailItem {
   amount: number;
   itemType: 'PRODUCT' | 'ACCOMMODATION' | 'EXCURSION' | 'UNKNOWN';
   itemName: string;
-  period?: string; // Para identificar el período cuando se usa en el reporte completo
+  period?: string;
 }
 
 export interface CategoryDetailReport {

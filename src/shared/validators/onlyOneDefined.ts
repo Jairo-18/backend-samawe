@@ -1,4 +1,4 @@
-import {
+﻿import {
   registerDecorator,
   ValidationOptions,
   ValidationArguments,
@@ -12,7 +12,7 @@ export function OnlyOneDefined(
     registerDecorator({
       name: 'OnlyOneDefined',
       target: object.constructor,
-      propertyName: '', // no aplica a una propiedad específica
+      propertyName: '',
       options: validationOptions,
       validator: {
         validate(_: any, args: ValidationArguments) {

@@ -1,4 +1,4 @@
-export const CREATED_MESSAGE = 'Información almacenada correctamente';
+﻿export const CREATED_MESSAGE = 'Información almacenada correctamente';
 export const UPDATED_MESSAGE = 'Información actualizada correctamente';
 export const DELETED_MESSAGE = 'Registro eliminado con éxito';
 export const DUPLICATED_MESSAGE = 'Registro duplicado';

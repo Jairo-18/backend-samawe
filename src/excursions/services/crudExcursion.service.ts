@@ -1,4 +1,4 @@
-import { Excursion } from './../../shared/entities/excursion.entity';
+﻿import { Excursion } from './../../shared/entities/excursion.entity';
 import {
   PaginatedExcursionSelectParamsDto,
   PaginatedListExcursionsParamsDto,
@@ -54,7 +54,6 @@ export class CrudExcursionService {
       };
     }
 
-    // Búsqueda global
     if (params.search) {
       const search = params.search.trim();
       const searchConditions: FindOptionsWhere<Excursion>[] = [
@@ -141,7 +140,7 @@ export class CrudExcursionService {
       skip,
       take: params.perPage,
       order: { name: params.order ?? 'ASC' },
-      select: ['name'], // solo nombre
+      select: ['name'],
     });
 
     const items: PartialExcursionDto[] = entities.map((e) => ({

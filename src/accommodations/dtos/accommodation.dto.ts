@@ -1,4 +1,4 @@
-import {
+﻿import {
   GET_ALL_ACCOMMODATIONS_EXAMPLE,
   GET_ACCOMMODATION_EXAMPLE,
 } from './../constants/exampleAccommodation.conts';
@@ -69,7 +69,7 @@ export class CreateAccommodationDto {
     required: false,
   })
   @IsNumber()
-  @Min(0) // ahora acepta 0 o números positivos
+  @Min(0)
   @IsOptional()
   priceBuy?: number;
 
@@ -79,7 +79,7 @@ export class CreateAccommodationDto {
     required: false,
   })
   @IsNumber()
-  @Min(0) // acepta 0 o números positivos
+  @Min(0)
   @IsOptional()
   priceSale?: number;
 
@@ -155,7 +155,7 @@ export class UpdateAccommodationDto {
     required: false,
   })
   @IsNumber()
-  @Min(0) // ahora acepta 0 o números positivos
+  @Min(0)
   @IsOptional()
   priceBuy?: number;
 
@@ -165,7 +165,7 @@ export class UpdateAccommodationDto {
     required: false,
   })
   @IsNumber()
-  @Min(0) // acepta 0 o números positivos
+  @Min(0)
   @IsOptional()
   priceSale?: number;
 
@@ -204,7 +204,7 @@ export class GetAcommodationDto implements BaseResponseDto {
     type: Object,
     example: GET_ACCOMMODATION_EXAMPLE,
   })
-  data: Accommodation;
+  data: any;
 }
 
 export interface GetAllAccommodationsResponse {

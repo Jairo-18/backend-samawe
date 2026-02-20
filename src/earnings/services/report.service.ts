@@ -1,4 +1,4 @@
-import { PayTypeRepository } from './../../shared/repositories/payType.repository';
+﻿import { PayTypeRepository } from './../../shared/repositories/payType.repository';
 import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
 import { Injectable } from '@nestjs/common';
 import {
@@ -146,7 +146,6 @@ export class ReportService {
           if (categoryName === 'HOSPEDAJE') {
             qb.andWhere('accommodation.accommodationId IS NOT NULL');
           } else if (['PASADIA', 'SERVICIOS'].includes(categoryName)) {
-            // Excursiones con categoría específica
             qb.andWhere('excursion.excursionId IS NOT NULL');
             qb.andWhere('excursionCategoryType.name = :categoryName', {
               categoryName,
@@ -154,7 +153,6 @@ export class ReportService {
           } else if (
             ['BAR', 'RESTAURANTE', 'OTROS', 'MECATO'].includes(categoryName)
           ) {
-            // Productos con categoría específica
             qb.andWhere('product.productId IS NOT NULL');
             qb.andWhere('categoryType.name = :categoryName', { categoryName });
           }
@@ -229,7 +227,6 @@ export class ReportService {
           if (categoryName === 'HOSPEDAJE') {
             qb.andWhere('accommodation.accommodationId IS NOT NULL');
           } else if (['PASADIA', 'SERVICIOS'].includes(categoryName)) {
-            // Excursiones con categoría específica
             qb.andWhere('excursion.excursionId IS NOT NULL');
             qb.andWhere('excursionCategoryType.name = :categoryName', {
               categoryName,
@@ -237,7 +234,6 @@ export class ReportService {
           } else if (
             ['BAR', 'RESTAURANTE', 'OTROS', 'MECATO'].includes(categoryName)
           ) {
-            // Productos con categoría específica
             qb.andWhere('product.productId IS NOT NULL');
             qb.andWhere('categoryType.name = :categoryName', { categoryName });
           }
@@ -361,7 +357,6 @@ export class ReportService {
     if (categoryName === 'HOSPEDAJE') {
       qb.andWhere('accommodation.accommodationId IS NOT NULL');
     } else if (['PASADIA', 'SERVICIOS'].includes(categoryName)) {
-      // Excursiones con categoría específica
       qb.andWhere('excursion.excursionId IS NOT NULL');
       qb.andWhere('excursionCategoryType.name = :categoryName', {
         categoryName,
@@ -369,7 +364,6 @@ export class ReportService {
     } else if (
       ['BAR', 'RESTAURANTE', 'OTROS', 'MECATO'].includes(categoryName)
     ) {
-      // Productos con categoría específica
       qb.andWhere('product.productId IS NOT NULL');
       qb.andWhere('categoryType.name = :categoryName', { categoryName });
     }

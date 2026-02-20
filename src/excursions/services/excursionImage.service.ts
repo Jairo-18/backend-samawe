@@ -1,4 +1,4 @@
-import { ExcursionImage } from './../../shared/entities/escursionImage.entity';
+﻿import { ExcursionImage } from './../../shared/entities/escursionImage.entity';
 import { ExcursionImageRepository } from './../../shared/repositories/excursionImage.repository';
 import { ExcursionRepository } from './../../shared/repositories/excursion.repository';
 import { Injectable, NotFoundException } from '@nestjs/common';
@@ -92,7 +92,6 @@ export class ExcursionImageService {
       );
     }
 
-    // actualizar la imagen
     image.imageUrl = newImageUrl;
     image.publicId = newPublicId;
 

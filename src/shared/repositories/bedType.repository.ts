@@ -1,4 +1,4 @@
-import { BedType } from './../entities/bedType.entity';
+﻿import { BedType } from './../entities/bedType.entity';
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 

@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+﻿import { Injectable, Inject } from '@nestjs/common';
 import {
   v2 as cloudinary,
   UploadApiResponse,
@@ -18,7 +18,6 @@ export class CloudinaryService {
     file: Express.Multer.File,
     folder: string,
   ): Promise<UploadApiResponse> {
-    // Verificar que el archivo existe
     if (!file || !file.buffer) {
       throw new Error('Archivo no válido o vacío');
     }

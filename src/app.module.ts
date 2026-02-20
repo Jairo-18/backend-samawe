@@ -1,9 +1,10 @@
-import { CronJobModule } from './cronJobs/cronJob.module';
+﻿import { CronJobModule } from './cronJobs/cronJob.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { GenericTypeModule } from './types/genericType.module';
 import { ExcursionModule } from './excursions/excursion.module';
 import { ProductModule } from './products/product.module';
 import { Module } from '@nestjs/common';
+import { PassportModule } from '@nestjs/passport';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
@@ -32,6 +33,7 @@ import { RestaurantModule } from './restaurant/restaurant.module';
       rootPath: join(__dirname, '..', 'public'),
     }),
     SharedModule.forRoot(),
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     AccommodationModule,
     AuthModule,
     CloudinaryModule,

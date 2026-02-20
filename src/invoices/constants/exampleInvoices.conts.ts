@@ -1,4 +1,4 @@
-export const PAGINATED_INVOICE_EXAMPLE = {
+﻿export const PAGINATED_INVOICE_EXAMPLE = {
   data: [
     {
       invoiceId: 100,

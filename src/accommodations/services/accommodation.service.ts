@@ -1,4 +1,4 @@
-import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
+﻿import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { StateTypeRepository } from './../../shared/repositories/stateType.repository';
 import { BedTypeRepository } from './../../shared/repositories/bedType.repository';
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
@@ -8,6 +8,10 @@ import {
   UpdateAccommodationDto,
 } from './../dtos/accommodation.dto';
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
+import {
+  mapAccommodationDetail,
+  AccommodationDetailDto,
+} from './../../shared/mappers/entity-mappers';
 import {
   BadRequestException,
   ConflictException,
@@ -42,7 +46,6 @@ export class AccommodationService {
       const { categoryTypeId, bedTypeId, stateTypeId, ...accommodationData } =
         createAccommodationDto;
 
-      // Cargar relaciones
       const categoryType = await this._categoryTypeRepository.findOne({
         where: { categoryTypeId },
       });
@@ -99,7 +102,6 @@ export class AccommodationService {
       throw new NotFoundException(`Hospedaje con ID ${id} no encontrado`);
     }
 
-    // Validar si el código nuevo ya está en uso por otro hospedaje
     if (updateAccommodationDto.code) {
       const codeExist = await this._accommodationRepository.findOne({
         where: { code: updateAccommodationDto.code },
@@ -111,7 +113,6 @@ export class AccommodationService {
       }
     }
 
-    // Validar y actualizar categoría si se envía
     if (updateAccommodationDto.categoryTypeId) {
       const category = await this._categoryTypeRepository.findOne({
         where: { categoryTypeId: updateAccommodationDto.categoryTypeId },
@@ -153,7 +154,7 @@ export class AccommodationService {
     return await this._accommodationRepository.save(accommodation);
   }
 
-  async findOne(accommodationId: string): Promise<Accommodation> {
+  async findOne(accommodationId: string): Promise<AccommodationDetailDto> {
     const id = Number(accommodationId);
 
     if (!Number.isInteger(id)) {
@@ -172,7 +173,7 @@ export class AccommodationService {
       throw new HttpException('El hospedaje no existe', HttpStatus.NOT_FOUND);
     }
 
-    return accommodation;
+    return mapAccommodationDetail(accommodation);
   }
 
   async findAll(): Promise<Accommodation[]> {
