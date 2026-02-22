@@ -81,7 +81,7 @@ export class CrudExcursionService {
       where,
       skip,
       take: params.perPage,
-      order: { createdAt: params.order ?? 'DESC' },
+      order: { name: 'ASC' },
       relations: ['categoryType', 'stateType'],
     });
 

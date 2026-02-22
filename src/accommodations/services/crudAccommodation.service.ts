@@ -109,7 +109,7 @@ export class CrudAccommodationService {
         where,
         skip,
         take: params.perPage,
-        order: { createdAt: params.order ?? 'DESC' },
+        order: { name: 'ASC' },
         relations: ['categoryType', 'bedType', 'stateType'],
       });
 

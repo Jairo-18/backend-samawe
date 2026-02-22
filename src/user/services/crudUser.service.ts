@@ -87,7 +87,7 @@ export class CrudUserService {
       where,
       skip,
       take: params.perPage,
-      order: { createdAt: params.order ?? 'DESC' },
+      order: { firstName: 'ASC', lastName: 'ASC' },
       relations: ['roleType', 'identificationType', 'phoneCode'],
     });
 
