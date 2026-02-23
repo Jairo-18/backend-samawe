@@ -1,3 +1,4 @@
+# Force clean rebuild for image fixes
 # Base image
 FROM node:18-alpine AS production
 
