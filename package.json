@@ -61,10 +61,10 @@
     "pg": "^8.13.3",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
+    "sharp": "^0.33.5",
     "swagger-ui-dist": "^5.20.1",
     "typeorm": "^0.3.21",
-    "uuid": "^11.1.0",
-    "sharp": "^0.33.5"
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
@@ -115,6 +115,9 @@
       "@nestjs/core",
       "@scarf/scarf",
       "bcrypt"
+    ],
+    "onlyBuiltDependencies": [
+      "sharp"
     ]
   },
   "pkg": {
