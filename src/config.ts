@@ -16,6 +16,7 @@
       name: process.env.APP_NAME || 'SamaweApp',
       port: parseInt(process.env.APP_PORT as string, 10) || 3000,
       env: process.env.APP_ENV || 'development',
+      baseUrl: process.env.APP_BASE_URL || '',
       cors: {
         origin,
         allowedHeaders: allowedHeaders.length ? allowedHeaders : ['*'],

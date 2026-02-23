@@ -31,7 +31,7 @@ import { CategoryType } from './entities/categoryType.entity';
 import { Product } from './entities/product.entity';
 import { DynamicModule, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { User } from './entities/user.entity';
 import { UserRepository } from './repositories/user.repository';
 import { PassportModule } from '@nestjs/passport';
@@ -64,6 +64,9 @@ import { IngredientRepository } from './repositories/ingredient.repository';
 import { RecipeRepository } from './repositories/recipe.repository';
 import { UnitOfMeasureRepository } from './repositories/unitOfMeasure.repository';
 import { UnitOfMeasure } from './entities/unitOfMeasure.entity';
+import { ProductImageRepository } from './repositories/productImage.repository';
+import { AccommodationImageRepository } from './repositories/accommodationImage.repository';
+import { ExcursionImageRepository } from './repositories/excursionImage.repository';
 
 @Module({})
 export class SharedModule {
@@ -72,17 +75,7 @@ export class SharedModule {
       module: SharedModule,
       imports: [
         ScheduleModule.forRoot(),
-        ConfigModule.forRoot({
-          isGlobal: true,
-          envFilePath:
-            process.env.NODE_ENV === 'production'
-              ? '.env.production'
-              : '.env.development',
-          cache: true,
-        }),
-
         EventEmitterModule.forRoot(),
-
         TypeOrmModule.forRootAsync({
           inject: [ConfigService],
           useFactory: (configService: ConfigService) => {
@@ -215,6 +208,9 @@ export class SharedModule {
         StateTypeRepository,
         TaxeTypeRepository,
         UserRepository,
+        ProductImageRepository,
+        AccommodationImageRepository,
+        ExcursionImageRepository,
         BalanceService,
         RepositoryService,
         InvoiceEventsListener,
@@ -225,7 +221,6 @@ export class SharedModule {
       ],
       exports: [
         TypeOrmModule,
-        ConfigModule,
         AccessSessionsRepository,
         AccommodationRepository,
         AdditionalTypeRepository,
@@ -249,6 +244,9 @@ export class SharedModule {
         StateTypeRepository,
         TaxeTypeRepository,
         UserRepository,
+        ProductImageRepository,
+        AccommodationImageRepository,
+        ExcursionImageRepository,
         BalanceService,
         RepositoryService,
         InvoiceEventsListener,

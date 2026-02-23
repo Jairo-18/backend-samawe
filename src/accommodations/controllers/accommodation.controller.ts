@@ -31,7 +31,12 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { LocalStorageService } from './../../local-storage/services/local-storage.service';
+import { AccommodationImageService } from '../services/accommodationImage.service';
 import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBearerAuth,
@@ -48,6 +53,8 @@ export class AccommodationController {
   constructor(
     private readonly _accommodationUC: AccommodationUC,
     private readonly _crudAccommodationUC: CrudAccommodationUC,
+    private readonly _accommodationImageService: AccommodationImageService,
+    private readonly _localStorageService: LocalStorageService,
   ) {}
 
   @Get('/paginated-partial')
@@ -145,6 +152,63 @@ export class AccommodationController {
     return {
       statusCode: HttpStatus.OK,
       message: 'Hospedaje eliminado exitosamente',
+    };
+  }
+
+  @Post(':id/images')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadImage(
+    @Param('id') accommodationId: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const uploadResult = await this._localStorageService.saveImage(
+      file,
+      'accommodations',
+    );
+    const addedImage =
+      await this._accommodationImageService.addAccommodationImage(
+        accommodationId,
+        uploadResult.imageUrl,
+        uploadResult.publicId,
+      );
+
+    return {
+      message: 'Imagen subida correctamente',
+      data: addedImage,
+    };
+  }
+
+  @Get(':id/images')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async getImages(@Param('id') accommodationId: number) {
+    const images =
+      await this._accommodationImageService.getAccommodationImages(
+        accommodationId,
+      );
+    return {
+      data: images,
+    };
+  }
+
+  @Delete(':id/images/*publicId')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async deleteImage(
+    @Param('id') accommodationId: number,
+    @Param('publicId') publicId: string,
+  ) {
+    const decodedPublicId = decodeURIComponent(publicId);
+    await this._localStorageService.deleteImage(decodedPublicId);
+    await this._accommodationImageService.removeAccommodationImage(
+      accommodationId,
+      decodedPublicId,
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Imagen eliminada exitosamente',
     };
   }
 }

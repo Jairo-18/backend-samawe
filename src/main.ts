@@ -95,6 +95,8 @@ async function bootstrap() {
   app.use(
     helmet({
       contentSecurityPolicy: false,
+      crossOriginResourcePolicy: false,
+      crossOriginEmbedderPolicy: false,
     }),
   );
 
@@ -102,6 +104,16 @@ async function bootstrap() {
     '/docs',
     express.static(join(__dirname, '../node_modules/swagger-ui-dist')),
   );
+
+  // Servir archivos estáticos del directorio uploads
+  // En Dokploy (sea dev o prod), el volumen se monta en /app/uploads.
+  // En local Windows, usamos join(process.cwd(), 'uploads')
+  const uploadsPath =
+    process.platform === 'win32'
+      ? join(process.cwd(), 'uploads')
+      : '/app/uploads';
+
+  app.use('/uploads', express.static(uploadsPath));
 
   const port = configService.get<number>('app.port') || 3000;
   await app.listen(port, '0.0.0.0');

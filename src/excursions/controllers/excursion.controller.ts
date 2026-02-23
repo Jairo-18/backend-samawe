@@ -32,7 +32,12 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { LocalStorageService } from './../../local-storage/services/local-storage.service';
+import { ExcursionImageService } from '../services/excursionImage.service';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
@@ -48,6 +53,8 @@ export class ExcursionController {
   constructor(
     private readonly _excursionUC: ExcursionUC,
     private readonly _crudExcursionUC: CrudExcursionUC,
+    private readonly _excursionImageService: ExcursionImageService,
+    private readonly _localStorageService: LocalStorageService,
   ) {}
 
   @Get('/paginated-partial')
@@ -141,6 +148,60 @@ export class ExcursionController {
     return {
       statusCode: HttpStatus.OK,
       message: 'Pasadía eliminada exitosamente',
+    };
+  }
+
+  @Post(':id/images')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadImage(
+    @Param('id') excursionId: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const uploadResult = await this._localStorageService.saveImage(
+      file,
+      'excursions',
+    );
+    const addedImage = await this._excursionImageService.addExcursionImage(
+      excursionId,
+      uploadResult.imageUrl,
+      uploadResult.publicId,
+    );
+
+    return {
+      message: 'Imagen subida correctamente',
+      data: addedImage,
+    };
+  }
+
+  @Get(':id/images')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async getImages(@Param('id') excursionId: number) {
+    const images =
+      await this._excursionImageService.getExcursionImages(excursionId);
+    return {
+      data: images,
+    };
+  }
+
+  @Delete(':id/images/*publicId')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async deleteImage(
+    @Param('id') excursionId: number,
+    @Param('publicId') publicId: string,
+  ) {
+    const decodedPublicId = decodeURIComponent(publicId);
+    await this._localStorageService.deleteImage(decodedPublicId);
+    await this._excursionImageService.removeExcursionImage(
+      excursionId,
+      decodedPublicId,
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Imagen eliminada exitosamente',
     };
   }
 }

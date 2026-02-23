@@ -29,7 +29,12 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { LocalStorageService } from './../../local-storage/services/local-storage.service';
+import { ProductImageService } from '../services/productImage.service';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
@@ -48,6 +53,8 @@ export class ProductController {
   constructor(
     private readonly _productUC: ProductUC,
     private readonly _crudProductUC: CrudProductUC,
+    private readonly _productImageService: ProductImageService,
+    private readonly _localStorageService: LocalStorageService,
   ) {}
 
   @Get('/paginated-partial')
@@ -142,6 +149,59 @@ export class ProductController {
     return {
       statusCode: HttpStatus.OK,
       message: 'Producto eliminado exitosamente',
+    };
+  }
+
+  @Post(':id/images')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadImage(
+    @Param('id') productId: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const uploadResult = await this._localStorageService.saveImage(
+      file,
+      'products',
+    );
+    const addedImage = await this._productImageService.addProductImage(
+      productId,
+      uploadResult.imageUrl, // usar imageUrl
+      uploadResult.publicId,
+    );
+
+    return {
+      message: 'Imagen subida correctamente',
+      data: addedImage,
+    };
+  }
+
+  @Get(':id/images')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async getImages(@Param('id') productId: number) {
+    const images = await this._productImageService.getProductImages(productId);
+    return {
+      data: images,
+    };
+  }
+
+  @Delete(':id/images/*publicId')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async deleteImage(
+    @Param('id') productId: number,
+    @Param('publicId') publicId: string,
+  ) {
+    const decodedPublicId = decodeURIComponent(publicId);
+    await this._localStorageService.deleteImage(decodedPublicId);
+    await this._productImageService.removeProductImage(
+      productId,
+      decodedPublicId,
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Imagen eliminada exitosamente',
     };
   }
 }

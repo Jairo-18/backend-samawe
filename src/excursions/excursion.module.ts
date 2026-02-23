@@ -1,4 +1,4 @@
-﻿import { CloudinaryModule } from './../cloudinary/cloudinary.module';
+﻿import { ExcursionImageService } from './services/excursionImage.service';
 import { CrudExcursionUC } from './useCases/crudExcursionUC.uc';
 import { ExcursionUC } from './useCases/excursionUC.uc';
 import { CrudExcursionService } from './services/crudExcursion.service';
@@ -7,12 +7,13 @@ import { ExcursionController } from './controllers/excursion.controller';
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { SharedModule } from '../shared/shared.module';
+import { LocalStorageModule } from '../local-storage/local-storage.module';
 
 @Module({
   imports: [
     SharedModule.forRoot(),
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    CloudinaryModule,
+    LocalStorageModule,
   ],
   controllers: [ExcursionController],
   providers: [
@@ -20,6 +21,7 @@ import { SharedModule } from '../shared/shared.module';
     CrudExcursionService,
     ExcursionUC,
     CrudExcursionUC,
+    ExcursionImageService,
   ],
 })
 export class ExcursionModule {}
