@@ -12,6 +12,7 @@ RUN npm install -g pnpm
 COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies
+RUN pnpm approve-builds sharp
 RUN pnpm install --frozen-lockfile
 
 # Copy source code
