@@ -63,7 +63,8 @@
     "rxjs": "^7.8.1",
     "swagger-ui-dist": "^5.20.1",
     "typeorm": "^0.3.21",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
