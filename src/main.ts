@@ -26,8 +26,6 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import * as bodyParser from 'body-parser';
-import { join } from 'path';
-import * as express from 'express';
 import { LoggingInterceptor } from './shared/interceptors/logging.interceptor';
 import { AppDataSource } from 'typeorm.config';
 
@@ -100,20 +98,7 @@ async function bootstrap() {
     }),
   );
 
-  app.use(
-    '/docs',
-    express.static(join(__dirname, '../node_modules/swagger-ui-dist')),
-  );
-
-  // Servir archivos estáticos del directorio uploads
-  // En Dokploy (sea dev o prod), el volumen se monta en /app/uploads.
-  // En local Windows, usamos join(process.cwd(), 'uploads')
-  const uploadsPath =
-    process.platform === 'win32'
-      ? join(process.cwd(), 'uploads')
-      : '/app/uploads';
-
-  app.use('/uploads', express.static(uploadsPath));
+  // El serving de /uploads ahora lo maneja ServeStaticModule en AppModule.ts
 
   const port = configService.get<number>('app.port') || 3000;
   await app.listen(port, '0.0.0.0');

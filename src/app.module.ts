@@ -38,10 +38,6 @@ import { join } from 'path';
           : '/app/uploads',
       serveRoot: '/uploads',
     }),
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '../node_modules/swagger-ui-dist'),
-      serveRoot: '/docs',
-    }),
     ScheduleModule.forRoot(),
 
     SharedModule.forRoot(),
