@@ -1,20 +1,25 @@
 ﻿import { Response } from 'express';
 import { Controller, Get, Res, UseGuards, Param } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import {
-  ApiBearerAuth,
-  ApiOkResponse,
-  ApiTags,
-  ApiParam,
-} from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { ReportService } from './../services/report.service';
 import { CategoryReportDto, PaymentTypeReportDto } from './../dtos/report.dto';
 import { CategoryDetailReport } from '../interfaces/report.interface';
+import {
+  GetAllPaymentTypesReportDocs,
+  GetSalesByCategoryReportDocs,
+  GetSalesByCategoryWithDetailsDocs,
+  GetCategoryDetailsForPeriodDocs,
+  ExportPaymentTypesExcelDocs,
+  ExportSalesByCategoryExcelDocs,
+  ExportSalesByCategoryWithDetailsExcelDocs,
+} from '../decorators/report.decorators';
 
 import * as ExcelJS from 'exceljs';
 
 @Controller('reports')
 @ApiTags('Reportes de Facturas')
+@UseGuards(AuthGuard())
 export class ReportController {
   constructor(private readonly _reportService: ReportService) {}
 
@@ -70,54 +75,25 @@ export class ReportController {
   }
 
   @Get('payment-types')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({
-    type: [PaymentTypeReportDto],
-    description: 'Reporte de todos los tipos de pago',
-  })
+  @GetAllPaymentTypesReportDocs()
   async getAllPaymentTypesReport(): Promise<PaymentTypeReportDto[]> {
     return this._reportService.generateAllPaymentTypesReport();
   }
 
   @Get('sales-by-category')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({
-    type: [CategoryReportDto],
-    description:
-      'Reporte de ventas por categoría (productos, hospedajes, pasadías)',
-  })
+  @GetSalesByCategoryReportDocs()
   async getSalesByCategoryReport(): Promise<CategoryReportDto[]> {
     return this._reportService.generateSalesByCategoryReport();
   }
 
   @Get('sales-by-category/with-details')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({
-    description: 'Reporte de ventas por categoría con detalles de cada ítem',
-  })
+  @GetSalesByCategoryWithDetailsDocs()
   async getSalesByCategoryWithDetails(): Promise<CategoryDetailReport[]> {
     return this._reportService.generateSalesByCategoryWithDetails();
   }
 
   @Get('sales-by-category/:category/details/:period')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiParam({
-    name: 'category',
-    description: 'Nombre de la categoría (BAR, RESTAURANTE, etc.)',
-  })
-  @ApiParam({
-    name: 'period',
-    enum: ['daily', 'weekly', 'monthly', 'yearly'],
-    description: 'Período del reporte',
-  })
-  @ApiOkResponse({
-    description:
-      'Detalles específicos de una categoría en un período determinado',
-  })
+  @GetCategoryDetailsForPeriodDocs()
   async getCategoryDetailsForPeriod(
     @Param('category') category: string,
     @Param('period') period: 'daily' | 'weekly' | 'monthly' | 'yearly',
@@ -126,8 +102,7 @@ export class ReportController {
   }
 
   @Get('payment-types/excel')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @ExportPaymentTypesExcelDocs()
   async exportPaymentTypesExcel(@Res() res: Response) {
     const reports = await this._reportService.generateAllPaymentTypesReport();
     const workbook = new ExcelJS.Workbook();
@@ -182,8 +157,7 @@ export class ReportController {
   }
 
   @Get('sales-by-category/excel')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @ExportSalesByCategoryExcelDocs()
   async exportSalesByCategoryExcel(@Res() res: Response) {
     const reports = await this._reportService.generateSalesByCategoryReport();
 
@@ -229,8 +203,7 @@ export class ReportController {
   }
 
   @Get('sales-by-category/with-details/excel')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @ExportSalesByCategoryWithDetailsExcelDocs()
   async exportSalesByCategoryWithDetailsExcel(@Res() res: Response) {
     const reports =
       await this._reportService.generateSalesByCategoryWithDetails();

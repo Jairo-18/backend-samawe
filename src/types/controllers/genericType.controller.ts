@@ -2,8 +2,6 @@
 import {
   CreatedRecordResponseDto,
   DeleteReCordResponseDto,
-  DuplicatedResponseDto,
-  NotFoundResponseDto,
   UpdateRecordResponseDto,
 } from './../../shared/dtos/response.dto';
 import { GenericTypeUC } from '../useCases/genericType.uc';
@@ -21,13 +19,16 @@ import {
   Patch,
   Query,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import {
-  ApiBearerAuth,
-  ApiConflictResponse,
-  ApiNotFoundResponse,
-  ApiOkResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+  PaginatedListByTypeDocs,
+  CreateTypeDocs,
+  GetAllAdditionalTypesDocs,
+  GetAllDiscountTypesDocs,
+  FindOneByTypeAndIdDocs,
+  UpdateTypeDocs,
+  DeleteTypeDocs,
+} from '../decorators/genericType.decorators';
 import {
   CreateTypeDto,
   GetTypeByIdResponseDto,
@@ -38,6 +39,7 @@ import { AuthGuard } from '@nestjs/passport';
 
 @Controller('type')
 @ApiTags('Tipos')
+@UseGuards(AuthGuard())
 export class GenericTypeController {
   constructor(
     private readonly repoService: RepositoryService,
@@ -52,9 +54,7 @@ export class GenericTypeController {
   }
 
   @Get('paginated/:type')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: ResponsePaginationDto })
+  @PaginatedListByTypeDocs()
   async paginatedListByType(
     @Param('type') type: string,
     @Query() params: ParamsPaginationGenericDto,
@@ -64,10 +64,7 @@ export class GenericTypeController {
   }
 
   @Post('create/:type')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: CreatedRecordResponseDto })
-  @ApiConflictResponse({ type: DuplicatedResponseDto })
+  @CreateTypeDocs()
   async create(
     @Param('type') type: string,
     @Body() createTypeDto: CreateTypeDto,
@@ -87,9 +84,7 @@ export class GenericTypeController {
   }
 
   @Get('additionalType/all')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ description: 'Lista completa de AdditionalType' })
+  @GetAllAdditionalTypesDocs()
   async getAllAdditionalTypes() {
     const result = await this.genericTypeUC.getAll('additionalType');
     return {
@@ -100,9 +95,7 @@ export class GenericTypeController {
   }
 
   @Get('discountType/all')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ description: 'Lista completa de DiscountType' })
+  @GetAllDiscountTypesDocs()
   async getAllDiscountTypes() {
     const result = await this.genericTypeUC.getAll('discountType');
     return {
@@ -113,9 +106,7 @@ export class GenericTypeController {
   }
 
   @Get(':type/:id')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: GetTypeByIdResponseDto })
+  @FindOneByTypeAndIdDocs()
   async findOneByTypeAndId(
     @Param('type') type: string,
     @Param('id') id: string,
@@ -131,10 +122,7 @@ export class GenericTypeController {
   }
 
   @Patch(':type/:id')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: UpdateRecordResponseDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @UpdateTypeDocs()
   async update(
     @Param('type') type: string,
     @Param('id') id: string,
@@ -151,10 +139,7 @@ export class GenericTypeController {
   }
 
   @Delete(':type/:id')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: DeleteReCordResponseDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @DeleteTypeDocs()
   async delete(
     @Param('type') type: string,
     @Param('id') id: string,

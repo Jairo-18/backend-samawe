@@ -1,12 +1,12 @@
 ﻿import { Controller, Get, HttpStatus, UseGuards } from '@nestjs/common';
 import { AppService } from './app.service';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import {
+  HealthDocs,
+  GetServerInfoDocs,
+  GetRelatedDataDocs,
+} from './app.decorators';
 
 @ApiTags('System')
 @Controller()
@@ -19,30 +19,20 @@ export class AppController {
   }
 
   @Get('health')
-  @ApiOperation({ summary: 'Health check endpoint' })
-  @ApiResponse({ status: 200, description: 'Server is healthy' })
+  @HealthDocs()
   health() {
     return { status: 'ok', timestamp: new Date().toISOString() };
   }
 
   @Get('server-info')
-  @ApiOperation({ summary: 'Get server network information' })
-  @ApiResponse({
-    status: 200,
-    description:
-      'Returns server IP addresses and port for client configuration',
-  })
+  @GetServerInfoDocs()
   getServerInfo() {
     return this.appService.getServerInfo();
   }
 
   @Get('app/related-data')
-  @ApiBearerAuth()
   @UseGuards(AuthGuard())
-  @ApiOperation({
-    summary: 'Obtiene todos los catálogos/tipos en una sola llamada',
-  })
-  @ApiResponse({ status: 200, description: 'Catálogo unificado de tipos' })
+  @GetRelatedDataDocs()
   async getRelatedData() {
     const data = await this.appService.getRelatedData();
     return {

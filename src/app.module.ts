@@ -15,7 +15,6 @@ import { AccommodationModule } from './accommodations/accommodation.module';
 import { InvoiceModule } from './invoices/invoice.module';
 import { EarningModule } from './earnings/earning.module';
 import { ScheduleModule } from '@nestjs/schedule';
-import { IngredientModule } from './ingredients/ingredient.module';
 import { RecipeModule } from './recipes/recipe.module';
 import { RestaurantModule } from './restaurant/restaurant.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -48,7 +47,6 @@ import { join } from 'path';
     EarningModule,
     ExcursionModule,
     GenericTypeModule,
-    IngredientModule,
     InvoiceModule,
     ProductModule,
     RecipeModule,

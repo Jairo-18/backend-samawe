@@ -3,13 +3,10 @@
   PaginatedProductSelectParamsDto,
   PartialProductDto,
 } from './../dtos/crudProduct.dto';
-import { Product } from './../../shared/entities/product.entity';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import {
   CreatedRecordResponseDto,
   DeleteReCordResponseDto,
-  DuplicatedResponseDto,
-  NotFoundResponseDto,
   UpdateRecordResponseDto,
 } from './../../shared/dtos/response.dto';
 import {
@@ -35,17 +32,23 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { LocalStorageService } from './../../local-storage/services/local-storage.service';
 import { ProductImageService } from '../services/productImage.service';
-import {
-  ApiBearerAuth,
-  ApiConflictResponse,
-  ApiNotFoundResponse,
-  ApiOkResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { ProductUC } from '../useCases/productUC.uc';
 import { AuthGuard } from '@nestjs/passport';
 import { CrudProductUC } from '../useCases/crudProductUC.uc';
 import { ProductInterfacePaginatedList } from '../interface/product.interface';
+import {
+  GetPaginatedPartialDocs,
+  CreateProductDocs,
+  FindAllProductsDocs,
+  UpdateProductDocs,
+  GetPaginatedListDocs,
+  FindOneProductDocs,
+  DeleteProductDocs,
+  UploadImageDocs,
+  GetImagesDocs,
+  DeleteImageDocs,
+} from '../decorators/product.decorators';
 
 @Controller('product')
 @ApiTags('Productos')
@@ -58,9 +61,8 @@ export class ProductController {
   ) {}
 
   @Get('/paginated-partial')
-  @ApiOkResponse({ type: ResponsePaginationDto<PartialProductDto> })
-  @ApiBearerAuth()
   @UseGuards(AuthGuard())
+  @GetPaginatedPartialDocs()
   async getPaginatedPartial(
     @Query() params: PaginatedProductSelectParamsDto,
   ): Promise<ResponsePaginationDto<PartialProductDto>> {
@@ -68,10 +70,8 @@ export class ProductController {
   }
 
   @Post('create')
-  @ApiBearerAuth()
   @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: CreatedRecordResponseDto })
-  @ApiConflictResponse({ type: DuplicatedResponseDto })
+  @CreateProductDocs()
   async create(
     @Body() productDto: CreateProductDto,
   ): Promise<CreatedRecordResponseDto> {
@@ -88,9 +88,8 @@ export class ProductController {
   }
 
   @Get()
-  @ApiBearerAuth()
   @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: GetAllProductsResposeDto })
+  @FindAllProductsDocs()
   async findAll(): Promise<GetAllProductsResposeDto> {
     const products = await this._productUC.findAll();
     return {
@@ -100,10 +99,8 @@ export class ProductController {
   }
 
   @Patch(':id')
-  @ApiBearerAuth()
   @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: UpdateRecordResponseDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @UpdateProductDocs()
   async update(
     @Param('id') productId: string,
     @Body() productData: UpdateProductDto,
@@ -117,7 +114,7 @@ export class ProductController {
   }
 
   @Get('/paginated-list')
-  @ApiOkResponse({ type: ResponsePaginationDto<Product> })
+  @GetPaginatedListDocs()
   async getPaginatedList(
     @Query() params: PaginatedListProductsParamsDto,
   ): Promise<ResponsePaginationDto<ProductInterfacePaginatedList>> {
@@ -125,10 +122,8 @@ export class ProductController {
   }
 
   @Get(':id')
-  @ApiBearerAuth()
   @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: GetProductDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @FindOneProductDocs()
   async findOne(@Param('id') productId: string): Promise<GetProductDto> {
     const user = await this._productUC.findOne(productId);
     return {
@@ -138,10 +133,8 @@ export class ProductController {
   }
 
   @Delete(':id')
-  @ApiBearerAuth()
   @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: DeleteReCordResponseDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @DeleteProductDocs()
   async delete(
     @Param('id') producId: number,
   ): Promise<DeleteReCordResponseDto> {
@@ -153,8 +146,8 @@ export class ProductController {
   }
 
   @Post(':id/images')
-  @ApiBearerAuth()
   @UseGuards(AuthGuard())
+  @UploadImageDocs()
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(
     @Param('id') productId: number,
@@ -177,8 +170,8 @@ export class ProductController {
   }
 
   @Get(':id/images')
-  @ApiBearerAuth()
   @UseGuards(AuthGuard())
+  @GetImagesDocs()
   async getImages(@Param('id') productId: number) {
     const images = await this._productImageService.getProductImages(productId);
     return {
@@ -187,8 +180,8 @@ export class ProductController {
   }
 
   @Delete(':id/images/*publicId')
-  @ApiBearerAuth()
   @UseGuards(AuthGuard())
+  @DeleteImageDocs()
   async deleteImage(
     @Param('id') productId: number,
     @Param('publicId') publicId: string,

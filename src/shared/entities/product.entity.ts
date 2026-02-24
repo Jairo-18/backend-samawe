@@ -12,6 +12,7 @@
 import { CategoryType } from './categoryType.entity';
 import { ProductImage } from './productImage.entity';
 import { UnitOfMeasure } from './unitOfMeasure.entity';
+import { Recipe } from './recipe.entity';
 
 @Entity({ name: 'Product' })
 export class Product {
@@ -44,6 +45,12 @@ export class Product {
     eager: true,
   })
   images: ProductImage[];
+
+  @Column({ type: 'boolean', default: false })
+  isPreparation: boolean;
+
+  @OneToMany(() => Recipe, (recipe) => recipe.ingredient, { cascade: true })
+  recipes: Recipe[];
 
   @ManyToOne(() => CategoryType, (categoryType) => categoryType.product)
   @JoinColumn({ name: 'categoryTypeId' })

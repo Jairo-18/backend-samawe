@@ -59,6 +59,15 @@ export class Invoice {
   @Column({ type: 'boolean', default: false })
   invoiceElectronic: boolean;
 
+  @Column({ type: 'timestamp', nullable: true })
+  orderTime?: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  readyTime?: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  servedTime?: Date;
+
   @Column({
     type: 'decimal',
     precision: 10,

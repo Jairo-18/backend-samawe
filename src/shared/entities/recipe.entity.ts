@@ -9,7 +9,6 @@
   JoinColumn,
 } from 'typeorm';
 import { Product } from './product.entity';
-import { Ingredient } from './ingredient.entity';
 
 @Entity({ name: 'Recipe' })
 export class Recipe {
@@ -20,12 +19,12 @@ export class Recipe {
   @JoinColumn({ name: 'productId' })
   product: Product;
 
-  @ManyToOne(() => Ingredient, (ingredient) => ingredient.recipes, {
+  @ManyToOne(() => Product, {
     nullable: false,
     eager: true,
   })
-  @JoinColumn({ name: 'ingredientId' })
-  ingredient: Ingredient;
+  @JoinColumn({ name: 'ingredientProductId' })
+  ingredient: Product;
 
   @Column('decimal', { precision: 10, scale: 3, nullable: false })
   quantity: number;

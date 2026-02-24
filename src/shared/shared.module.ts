@@ -58,9 +58,7 @@ import { ExcursionImage } from './entities/escursionImage.entity';
 import { DiscountTypeRepository } from './repositories/discount.repository';
 import { DiscountType } from './entities/discountType.entity';
 import { ProductImage } from './entities/productImage.entity';
-import { Ingredient } from './entities/ingredient.entity';
 import { Recipe } from './entities/recipe.entity';
-import { IngredientRepository } from './repositories/ingredient.repository';
 import { RecipeRepository } from './repositories/recipe.repository';
 import { UnitOfMeasureRepository } from './repositories/unitOfMeasure.repository';
 import { UnitOfMeasure } from './entities/unitOfMeasure.entity';
@@ -129,7 +127,6 @@ export class SharedModule {
           CategoryType,
           Excursion,
           IdentificationType,
-          Ingredient,
           Invoice,
           InvoiceDetaill,
           InvoiceType,
@@ -193,7 +190,6 @@ export class SharedModule {
         DiscountTypeRepository,
         ExcursionRepository,
         IdentificationTypeRepository,
-        IngredientRepository,
         InvoiceRepository,
         InvoiceDetaillRepository,
         InvoiceTypeRepository,
@@ -230,7 +226,6 @@ export class SharedModule {
         DiscountTypeRepository,
         ExcursionRepository,
         IdentificationTypeRepository,
-        IngredientRepository,
         InvoiceRepository,
         InvoiceDetaillRepository,
         InvoiceTypeRepository,

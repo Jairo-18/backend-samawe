@@ -20,12 +20,12 @@ import { Type } from 'class-transformer';
 export class RecipeIngredientDto {
   @ApiProperty({
     example: 1,
-    description: 'ID del ingrediente',
+    description: 'ID del producto que funciona como ingrediente',
     required: true,
   })
   @IsNumber()
-  @IsNotEmpty({ message: 'El ID del ingrediente es requerido' })
-  ingredientId: number;
+  @IsNotEmpty({ message: 'El ID del producto ingrediente es requerido' })
+  ingredientProductId: number;
 
   @ApiProperty({
     example: 0.25,
@@ -118,8 +118,8 @@ export interface RecipeWithDetailsResponse {
   productId: number;
   productName: string;
   ingredients: Array<{
-    ingredientId: number;
-    ingredientName: string;
+    ingredientProductId: number;
+    ingredientProductName: string;
     unit: string;
     quantity: number;
     cost: number;
@@ -181,8 +181,8 @@ export class CheckIngredientsAvailabilityDto {
 }
 
 export interface IngredientAvailability {
-  ingredientId: number;
-  ingredientName: string;
+  ingredientProductId: number;
+  ingredientProductName: string;
   required: number;
   available: number;
   unit: string;

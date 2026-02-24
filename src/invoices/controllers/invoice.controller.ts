@@ -1,8 +1,5 @@
 ﻿import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
-import {
-  PaginatedInvoiceResponseDto,
-  PaginatedListInvoicesParamsDto,
-} from './../dtos/paginatedInvoice.dto';
+import { PaginatedListInvoicesParamsDto } from './../dtos/paginatedInvoice.dto';
 import { Invoice } from './../../shared/entities/invoice.entity';
 import {
   CreateInvoiceDetailDto,
@@ -10,18 +7,15 @@ import {
   TogglePaymentBulkResponseDto,
   TogglePaymentResponseDto,
 } from './../dtos/invoiceDetaill.dto';
-import { CREATE_INVOICE_DETAILS_EXAMPLE } from '../constants/exampleInvoices.conts';
 import {
-  GetInvoiceWithDetailsResponseDto,
   GetInvoiceWithDetailsDto,
   UpdateInvoiceDto,
   CreateInvoiceDto,
 } from './../dtos/invoice.dto';
+
 import {
   CreatedRecordResponseDto,
   DeleteReCordResponseDto,
-  DuplicatedResponseDto,
-  NotFoundResponseDto,
   UpdateRecordResponseDto,
 } from './../../shared/dtos/response.dto';
 import {
@@ -38,26 +32,29 @@ import {
   Request,
   ParseArrayPipe,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import {
-  ApiBearerAuth,
-  ApiBody,
-  ApiConflictResponse,
-  ApiNotFoundResponse,
-  ApiOkResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+  GetPaginatedListDocs,
+  CreateInvoiceDocs,
+  FindOneInvoiceDocs,
+  DeleteInvoiceDocs,
+  CreateDetailsDocs,
+  UpdateInvoiceDocs,
+  DeleteDetailDocs,
+  ToggleDetailPaymentDocs,
+  ToggleDetailPaymentBulkDocs,
+} from '../decorators/invoice.decorators';
 import { InvoiceUC } from '../useCases/invoiceUC.uc';
 import { AuthGuard } from '@nestjs/passport';
 
 @Controller('invoices')
 @ApiTags('Facturas')
+@UseGuards(AuthGuard())
 export class InvoiceController {
   constructor(private readonly _invoiceUC: InvoiceUC) {}
 
   @Get('/paginated-list')
-  @ApiOkResponse({ type: PaginatedInvoiceResponseDto })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @GetPaginatedListDocs()
   async getPaginatedList(
     @Query() params: PaginatedListInvoicesParamsDto,
   ): Promise<ResponsePaginationDto<Invoice>> {
@@ -65,10 +62,7 @@ export class InvoiceController {
   }
 
   @Post()
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: CreateInvoiceDto })
-  @ApiConflictResponse({ type: DuplicatedResponseDto })
+  @CreateInvoiceDocs()
   async create(
     @Body() createInvoiceDto: CreateInvoiceDto,
     @Request() req: any,
@@ -89,10 +83,7 @@ export class InvoiceController {
   }
 
   @Get(':id')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: GetInvoiceWithDetailsResponseDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @FindOneInvoiceDocs()
   async findOne(
     @Param('id') invoiceId: number,
   ): Promise<{ statusCode: number; data: GetInvoiceWithDetailsDto }> {
@@ -104,10 +95,7 @@ export class InvoiceController {
   }
 
   @Delete(':id')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: DeleteReCordResponseDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @DeleteInvoiceDocs()
   async remove(
     @Param('id') invoiceId: number,
   ): Promise<DeleteReCordResponseDto> {
@@ -120,20 +108,7 @@ export class InvoiceController {
   }
 
   @Post('invoice/:invoiceId/details')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: CreatedRecordResponseDto })
-  @ApiBody({
-    type: [CreateInvoiceDetailDto],
-    examples: {
-      multipleItems: {
-        summary: 'Lista completa de items (Ejemplo)',
-        description:
-          'Ejemplo de array con múltiples items incluyendo todos los campos posibles (Producto, Hospedaje, Excursión)',
-        value: CREATE_INVOICE_DETAILS_EXAMPLE,
-      },
-    },
-  })
+  @CreateDetailsDocs()
   async createDetails(
     @Param('invoiceId') invoiceId: number,
     @Body(new ParseArrayPipe({ items: CreateInvoiceDetailDto }))
@@ -150,10 +125,7 @@ export class InvoiceController {
   }
 
   @Patch(':id')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: UpdateRecordResponseDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @UpdateInvoiceDocs()
   async update(
     @Param('id') invoiceId: number,
     @Body() invoiceData: UpdateInvoiceDto,
@@ -168,10 +140,7 @@ export class InvoiceController {
   }
 
   @Delete('details/:detailId')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: DeleteReCordResponseDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @DeleteDetailDocs()
   async deleteDetail(
     @Param('detailId') deleteDetailDto: number,
   ): Promise<DeleteReCordResponseDto> {
@@ -184,13 +153,7 @@ export class InvoiceController {
   }
 
   @Patch('invoice/:invoiceId/detail/:detailId/toggle-payment')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({
-    description:
-      'Actualiza el estado de pago del detalle y el total pagado de la factura',
-    type: TogglePaymentResponseDto,
-  })
+  @ToggleDetailPaymentDocs()
   async toggleDetailPayment(
     @Param('invoiceId') invoiceId: number,
     @Param('detailId') detailId: number,
@@ -215,14 +178,7 @@ export class InvoiceController {
   }
 
   @Patch('invoice/:invoiceId/details/toggle-payment-bulk')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({
-    description:
-      'Actualiza el estado de pago de múltiples detalles y el total pagado de la factura',
-    type: TogglePaymentBulkResponseDto,
-  })
-  @ApiBody({ type: TogglePaymentBulkDto })
+  @ToggleDetailPaymentBulkDocs()
   async toggleDetailPaymentBulk(
     @Param('invoiceId') invoiceId: number,
     @Body() body: TogglePaymentBulkDto,

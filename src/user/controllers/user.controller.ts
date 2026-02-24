@@ -1,11 +1,7 @@
 ﻿import { PaginatedCodePhoneUser } from './../dtos/crudUser.dto';
 import { PhoneCode } from './../../shared/entities/phoneCode.entity';
-import { UPDATED_MESSAGE } from './../../shared/constants/messages.constant';
-import {
-  NOT_FOUND_RESPONSE,
-  UPDATED_RESPONSE,
-} from './../../shared/constants/response.constant';
 import { CrudUserUC } from './../useCases/crudUserUC';
+import { UPDATED_MESSAGE } from './../../shared/constants/messages.constant';
 import { User } from 'src/shared/entities/user.entity';
 import {
   PaginatedListUsersParamsDto,
@@ -15,17 +11,22 @@ import {
 import {
   CreatedRecordResponseDto,
   DeleteReCordResponseDto,
-  DuplicatedResponseDto,
-  NotFoundResponseDto,
   UpdateRecordResponseDto,
 } from '../../shared/dtos/response.dto';
+import { ApiTags } from '@nestjs/swagger';
 import {
-  ApiBearerAuth,
-  ApiConflictResponse,
-  ApiNotFoundResponse,
-  ApiOkResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+  GetPaginatedPartialDocs,
+  PaginatedPhoneCodeSelectDocs,
+  GetPaginatedListDocs,
+  FindAllUsersDocs,
+  CreateUserDocs,
+  RegisterUserDocs,
+  RecoveryPasswordDocs,
+  ChangePasswordDocs,
+  FindOneUserDocs,
+  UpdateUserDocs,
+  DeleteUserDocs,
+} from '../decorators/user.decorators';
 import {
   GetAllUsersResposeDto,
   ChangePasswordDto,
@@ -54,6 +55,7 @@ import { ResponsePaginationDto } from 'src/shared/dtos/pagination.dto';
 
 @Controller('user')
 @ApiTags('Usuarios')
+@UseGuards(AuthGuard())
 export class UserController {
   constructor(
     private readonly _userUC: UserUC,
@@ -61,9 +63,7 @@ export class UserController {
   ) {}
 
   @Get('paginated-partial')
-  @ApiOkResponse({ type: ResponsePaginationDto<PartialUserDto> })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @GetPaginatedPartialDocs()
   async getPaginatedPartial(
     @Query() params: PaginatedUserSelectParamsDto,
   ): Promise<ResponsePaginationDto<PartialUserDto>> {
@@ -71,9 +71,7 @@ export class UserController {
   }
 
   @Get('paginated-phone-code')
-  @ApiOkResponse({ type: ResponsePaginationDto<PhoneCode> })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @PaginatedPhoneCodeSelectDocs()
   async paginatedPhoneCodeSelect(
     @Query() params: PaginatedCodePhoneUser,
   ): Promise<ResponsePaginationDto<PhoneCode>> {
@@ -81,9 +79,7 @@ export class UserController {
   }
 
   @Get('paginated-list')
-  @ApiOkResponse({ type: ResponsePaginationDto<User> })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @GetPaginatedListDocs()
   async getPaginatedList(
     @Query() params: PaginatedListUsersParamsDto,
   ): Promise<ResponsePaginationDto<User>> {
@@ -91,9 +87,7 @@ export class UserController {
   }
 
   @Get()
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: GetAllUsersResposeDto })
+  @FindAllUsersDocs()
   async findAll(): Promise<GetAllUsersResposeDto> {
     const users = await this._userUC.findAll();
     return {
@@ -103,10 +97,7 @@ export class UserController {
   }
 
   @Post()
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: CreatedRecordResponseDto })
-  @ApiConflictResponse({ type: DuplicatedResponseDto })
+  @CreateUserDocs()
   async create(@Body() user: CreateUserDto): Promise<CreatedRecordResponseDto> {
     const rowId = await this._userUC.create(user);
     return {
@@ -117,8 +108,7 @@ export class UserController {
   }
 
   @Post('register')
-  @ApiOkResponse({ type: CreatedRecordResponseDto })
-  @ApiConflictResponse({ type: DuplicatedResponseDto })
+  @RegisterUserDocs()
   async register(
     @Body() user: CreateUserDto,
   ): Promise<CreatedRecordResponseDto> {
@@ -131,8 +121,7 @@ export class UserController {
   }
 
   @Patch('recovery-password')
-  @ApiOkResponse(UPDATED_RESPONSE)
-  @ApiNotFoundResponse(NOT_FOUND_RESPONSE)
+  @RecoveryPasswordDocs()
   async recoveryPassword(
     @Body() body: RecoveryPasswordDto,
   ): Promise<UpdateRecordResponseDto> {
@@ -144,10 +133,7 @@ export class UserController {
   }
 
   @Post('change-password')
-  @ApiOkResponse(UPDATED_RESPONSE)
-  @ApiNotFoundResponse(NOT_FOUND_RESPONSE)
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @ChangePasswordDocs()
   async changePassword(
     @Body() body: ChangePasswordDto,
     @Req() req,
@@ -160,10 +146,7 @@ export class UserController {
   }
 
   @Get(':id')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: GetUserResponseDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @FindOneUserDocs()
   async findOne(@Param('id') id: string): Promise<GetUserResponseDto> {
     const user = await this._userUC.findOne(id);
     return {
@@ -173,10 +156,7 @@ export class UserController {
   }
 
   @Patch(':id')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: UpdateRecordResponseDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @UpdateUserDocs()
   async update(
     @Param('id') id: string,
     @Body() userData: UpdateUserDto,
@@ -190,10 +170,7 @@ export class UserController {
   }
 
   @Delete(':id')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: DeleteReCordResponseDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @DeleteUserDocs()
   async delete(@Param('id') id: string): Promise<DeleteReCordResponseDto> {
     await this._userUC.delete(id);
     return {

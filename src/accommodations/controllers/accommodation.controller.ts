@@ -4,13 +4,10 @@ import {
   PaginatedListAccommodationsParamsDto,
   PartialAccommodationDto,
 } from './../dtos/crudAccommodation.dto';
-import { Accommodation } from './../../shared/entities/accommodation.entity';
 import { CrudAccommodationUC } from '../useCases/crudAccommodationUC.uc';
 import {
-  DuplicatedResponseDto,
   CreatedRecordResponseDto,
   DeleteReCordResponseDto,
-  NotFoundResponseDto,
   UpdateRecordResponseDto,
 } from './../../shared/dtos/response.dto';
 import {
@@ -38,17 +35,24 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { LocalStorageService } from './../../local-storage/services/local-storage.service';
 import { AccommodationImageService } from '../services/accommodationImage.service';
 import { AuthGuard } from '@nestjs/passport';
-import {
-  ApiBearerAuth,
-  ApiConflictResponse,
-  ApiNotFoundResponse,
-  ApiOkResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { AccommodationInterfacePaginatedList } from '../interface/accommodation.interface';
+import {
+  GetPaginatedPartialDocs,
+  CreateAccommodationDocs,
+  FindAllAccommodationsDocs,
+  UpdateAccommodationDocs,
+  GetPaginatedListDocs,
+  FindOneAccommodationDocs,
+  DeleteAccommodationDocs,
+  UploadImageDocs,
+  GetImagesDocs,
+  DeleteImageDocs,
+} from '../decorators/accommodation.decorators';
 
 @Controller('accommodation')
 @ApiTags('Hospedajes')
+@UseGuards(AuthGuard())
 export class AccommodationController {
   constructor(
     private readonly _accommodationUC: AccommodationUC,
@@ -58,9 +62,7 @@ export class AccommodationController {
   ) {}
 
   @Get('/paginated-partial')
-  @ApiOkResponse({ type: ResponsePaginationDto<PartialAccommodationDto> })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @GetPaginatedPartialDocs()
   async getPaginatedPartial(
     @Query() params: PaginatedAccommodationSelectParamsDto,
   ): Promise<ResponsePaginationDto<PartialAccommodationDto>> {
@@ -68,10 +70,7 @@ export class AccommodationController {
   }
 
   @Post('create')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: CreateAccommodationDto })
-  @ApiConflictResponse({ type: DuplicatedResponseDto })
+  @CreateAccommodationDocs()
   async create(
     @Body() accommodationDto: CreateAccommodationDto,
   ): Promise<CreatedRecordResponseDto> {
@@ -89,9 +88,7 @@ export class AccommodationController {
   }
 
   @Get()
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: GetAllAccommodationsResposeDto })
+  @FindAllAccommodationsDocs()
   async findAll(): Promise<GetAllAccommodationsResposeDto> {
     const accommodations = await this._accommodationUC.findAll();
     return {
@@ -101,10 +98,7 @@ export class AccommodationController {
   }
 
   @Patch(':id')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: UpdateRecordResponseDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @UpdateAccommodationDocs()
   async update(
     @Param('id') accommodationId: string,
     @Body() accommodationData: UpdateAccommodationDto,
@@ -118,7 +112,7 @@ export class AccommodationController {
   }
 
   @Get('/paginated-list')
-  @ApiOkResponse({ type: ResponsePaginationDto<Accommodation> })
+  @GetPaginatedListDocs()
   async getPaginatedList(
     @Query() params: PaginatedListAccommodationsParamsDto,
   ): Promise<ResponsePaginationDto<AccommodationInterfacePaginatedList>> {
@@ -126,10 +120,7 @@ export class AccommodationController {
   }
 
   @Get(':id')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: GetAcommodationDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @FindOneAccommodationDocs()
   async findOne(
     @Param('id') accommodationId: string,
   ): Promise<GetAcommodationDto> {
@@ -141,10 +132,7 @@ export class AccommodationController {
   }
 
   @Delete(':id')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: DeleteReCordResponseDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @DeleteAccommodationDocs()
   async delete(
     @Param('id') accommodationId: number,
   ): Promise<DeleteReCordResponseDto> {
@@ -156,8 +144,7 @@ export class AccommodationController {
   }
 
   @Post(':id/images')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UploadImageDocs()
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(
     @Param('id') accommodationId: number,
@@ -181,8 +168,7 @@ export class AccommodationController {
   }
 
   @Get(':id/images')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @GetImagesDocs()
   async getImages(@Param('id') accommodationId: number) {
     const images =
       await this._accommodationImageService.getAccommodationImages(
@@ -194,8 +180,7 @@ export class AccommodationController {
   }
 
   @Delete(':id/images/*publicId')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @DeleteImageDocs()
   async deleteImage(
     @Param('id') accommodationId: number,
     @Param('publicId') publicId: string,

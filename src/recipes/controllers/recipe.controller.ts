@@ -9,12 +9,17 @@
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import {
-  ApiBearerAuth,
-  ApiOkResponse,
-  ApiTags,
-  ApiOperation,
-} from '@nestjs/swagger';
+  CreateRecipeDocs,
+  UpdateRecipeDocs,
+  UpdateRecipeIngredientDocs,
+  FindByProductDocs,
+  FindAllRecipesDocs,
+  CheckAvailabilityDocs,
+  DeleteByProductDocs,
+  DeleteIngredientDocs,
+} from '../decorators/recipe.decorators';
 import { AuthGuard } from '@nestjs/passport';
 import { RecipeService } from '../services/recipe.service';
 import {
@@ -26,17 +31,12 @@ import {
 
 @Controller('recipes')
 @ApiTags('Recetas')
+@UseGuards(AuthGuard())
 export class RecipeController {
   constructor(private readonly _recipeService: RecipeService) {}
 
   @Post()
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOperation({
-    summary: 'Crear receta para un plato',
-    description: 'Define qué ingredientes y en qué cantidad lleva un plato',
-  })
-  @ApiOkResponse({ description: 'Receta creada exitosamente' })
+  @CreateRecipeDocs()
   async create(@Body() createDto: CreateRecipeDto) {
     const recipes = await this._recipeService.create(createDto);
     return {
@@ -47,13 +47,7 @@ export class RecipeController {
   }
 
   @Patch('product/:productId')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOperation({
-    summary: 'Actualizar receta completa de un plato',
-    description: 'Reemplaza todos los ingredientes de la receta',
-  })
-  @ApiOkResponse({ description: 'Receta actualizada' })
+  @UpdateRecipeDocs()
   async updateByProduct(
     @Param('productId') productId: string,
     @Body() updateDto: UpdateRecipeDto,
@@ -70,12 +64,7 @@ export class RecipeController {
   }
 
   @Patch(':recipeId')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOperation({
-    summary: 'Actualizar un ingrediente específico de una receta',
-  })
-  @ApiOkResponse({ description: 'Ingrediente de receta actualizado' })
+  @UpdateRecipeIngredientDocs()
   async updateIngredient(
     @Param('recipeId') recipeId: string,
     @Body() updateDto: UpdateRecipeIngredientDto,
@@ -92,14 +81,7 @@ export class RecipeController {
   }
 
   @Get('product/:productId')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOperation({
-    summary: 'Obtener receta completa de un plato',
-    description:
-      'Devuelve todos los ingredientes con cantidades y costo total',
-  })
-  @ApiOkResponse({ description: 'Receta del plato' })
+  @FindByProductDocs()
   async findByProduct(@Param('productId') productId: string) {
     const recipe = await this._recipeService.findByProduct(parseInt(productId));
     return {
@@ -109,10 +91,7 @@ export class RecipeController {
   }
 
   @Get()
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOperation({ summary: 'Obtener todas las recetas' })
-  @ApiOkResponse({ description: 'Lista de recetas' })
+  @FindAllRecipesDocs()
   async findAll() {
     const recipes = await this._recipeService.findAll();
     return {
@@ -122,16 +101,7 @@ export class RecipeController {
   }
 
   @Post('check-availability')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOperation({
-    summary: 'Verificar disponibilidad de ingredientes para un plato',
-    description:
-      'Verifica si hay stock suficiente para preparar N porciones de un plato',
-  })
-  @ApiOkResponse({
-    description: 'Disponibilidad de ingredientes con detalles',
-  })
+  @CheckAvailabilityDocs()
   async checkAvailability(@Body() checkDto: CheckIngredientsAvailabilityDto) {
     const availability = await this._recipeService.checkAvailability(checkDto);
     return {
@@ -141,12 +111,7 @@ export class RecipeController {
   }
 
   @Delete('product/:productId')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOperation({
-    summary: 'Eliminar receta completa de un plato',
-  })
-  @ApiOkResponse({ description: 'Receta eliminada' })
+  @DeleteByProductDocs()
   async deleteByProduct(@Param('productId') productId: string) {
     await this._recipeService.deleteByProduct(parseInt(productId));
     return {
@@ -156,12 +121,7 @@ export class RecipeController {
   }
 
   @Delete(':recipeId')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOperation({
-    summary: 'Eliminar un ingrediente específico de una receta',
-  })
-  @ApiOkResponse({ description: 'Ingrediente eliminado de la receta' })
+  @DeleteIngredientDocs()
   async deleteIngredient(@Param('recipeId') recipeId: string) {
     await this._recipeService.deleteIngredient(parseInt(recipeId));
     return {

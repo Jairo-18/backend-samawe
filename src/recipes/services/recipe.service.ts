@@ -1,5 +1,5 @@
 ﻿import { RecipeRepository } from './../../shared/repositories/recipe.repository';
-import { IngredientRepository } from './../../shared/repositories/ingredient.repository';
+
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { Recipe } from './../../shared/entities/recipe.entity';
 import {
@@ -22,7 +22,6 @@ import { In } from 'typeorm';
 export class RecipeService {
   constructor(
     private readonly _recipeRepository: RecipeRepository,
-    private readonly _ingredientRepository: IngredientRepository,
     private readonly _productRepository: ProductRepository,
   ) {}
 
@@ -40,9 +39,9 @@ export class RecipeService {
       throw new NotFoundException(`Producto con ID ${productId} no encontrado`);
     }
 
-    const ingredientIds = ingredients.map((i) => i.ingredientId);
-    const foundIngredients = await this._ingredientRepository.find({
-      where: { ingredientId: In(ingredientIds) },
+    const ingredientIds = ingredients.map((i) => i.ingredientProductId);
+    const foundIngredients = await this._productRepository.find({
+      where: { productId: In(ingredientIds) },
     });
 
     if (foundIngredients.length !== ingredientIds.length) {
@@ -56,7 +55,7 @@ export class RecipeService {
     const recipes: Recipe[] = [];
     for (const ingredientDto of ingredients) {
       const ingredient = foundIngredients.find(
-        (i) => i.ingredientId === ingredientDto.ingredientId,
+        (i) => i.productId === ingredientDto.ingredientProductId,
       );
 
       const recipe = this._recipeRepository.create({
@@ -131,7 +130,7 @@ export class RecipeService {
 
     const recipes = await this._recipeRepository.find({
       where: { product: { productId } },
-      relations: ['ingredient'],
+      relations: ['ingredient', 'ingredient.unitOfMeasure'],
     });
 
     if (!recipes || recipes.length === 0) {
@@ -144,15 +143,17 @@ export class RecipeService {
 
     const ingredients = recipes.map((recipe) => {
       const totalCost =
-        Number(recipe.quantity) * Number(recipe.ingredient.cost);
+        Number(recipe.quantity) * Number(recipe.ingredient.priceBuy);
       totalRecipeCost += totalCost;
 
       return {
-        ingredientId: recipe.ingredient.ingredientId,
-        ingredientName: recipe.ingredient.name,
-        unit: recipe.ingredient.unit,
+        ingredientProductId: recipe.ingredient.productId,
+        ingredientProductName: recipe.ingredient.name,
+        unit: recipe.ingredient.unitOfMeasure
+          ? recipe.ingredient.unitOfMeasure.code
+          : 'N/A',
         quantity: Number(recipe.quantity),
-        cost: Number(recipe.ingredient.cost),
+        cost: Number(recipe.ingredient.priceBuy),
         totalCost: Number(totalCost.toFixed(2)),
         notes: recipe.notes,
       };
@@ -190,8 +191,9 @@ export class RecipeService {
     let canPrepare = true;
 
     for (const recipeIngredient of recipeDetails.ingredients) {
-      const ingredient = await this._ingredientRepository.findOne({
-        where: { ingredientId: recipeIngredient.ingredientId },
+      const ingredient = await this._productRepository.findOne({
+        where: { productId: recipeIngredient.ingredientProductId },
+        relations: ['unitOfMeasure'],
       });
 
       const required = Number(recipeIngredient.quantity) * portions;
@@ -203,11 +205,11 @@ export class RecipeService {
       }
 
       ingredientsAvailability.push({
-        ingredientId: ingredient.ingredientId,
-        ingredientName: ingredient.name,
+        ingredientProductId: ingredient.productId,
+        ingredientProductName: ingredient.name,
         required: Number(required.toFixed(3)),
         available: Number(available.toFixed(3)),
-        unit: ingredient.unit,
+        unit: ingredient.unitOfMeasure ? ingredient.unitOfMeasure.code : 'N/A',
         isAvailable,
       });
     }
@@ -240,7 +242,7 @@ export class RecipeService {
       const missing = availability.missingIngredients
         .map(
           (i) =>
-            `${i.ingredientName}: falta ${(i.required - i.available).toFixed(3)} ${i.unit}`,
+            `${i.ingredientProductName}: falta ${(i.required - i.available).toFixed(3)} ${i.unit}`,
         )
         .join(', ');
 
@@ -251,7 +253,7 @@ export class RecipeService {
 
     const recipes = await this._recipeRepository.find({
       where: { product: { productId } },
-      relations: ['ingredient'],
+      relations: ['ingredient', 'ingredient.unitOfMeasure'],
     });
 
     for (const recipe of recipes) {
@@ -260,10 +262,13 @@ export class RecipeService {
 
       ingredient.amount = Number(ingredient.amount) - quantityToReduce;
 
-      await this._ingredientRepository.save(ingredient);
+      await this._productRepository.save(ingredient);
 
+      const unitCode = ingredient.unitOfMeasure
+        ? ingredient.unitOfMeasure.code
+        : 'N/A';
       console.log(
-        `🍳 Ingrediente consumido - ${ingredient.name}: -${quantityToReduce.toFixed(3)} ${ingredient.unit} (Restante: ${ingredient.amount.toFixed(3)} ${ingredient.unit})`,
+        `🍳 Ingrediente consumido - ${ingredient.name}: -${quantityToReduce.toFixed(3)} ${unitCode} (Restante: ${ingredient.amount.toFixed(3)} ${unitCode})`,
       );
     }
 

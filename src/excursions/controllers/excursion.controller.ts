@@ -4,7 +4,6 @@
   PartialExcursionDto,
 } from './../dtos/crudExcursion.dto';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
-import { Excursion } from './../../shared/entities/excursion.entity';
 import { CrudExcursionUC } from './../useCases/crudExcursionUC.uc';
 import {
   CreateExcursionDto,
@@ -16,8 +15,6 @@ import { AuthGuard } from '@nestjs/passport';
 import {
   CreatedRecordResponseDto,
   DeleteReCordResponseDto,
-  DuplicatedResponseDto,
-  NotFoundResponseDto,
   UpdateRecordResponseDto,
 } from './../../shared/dtos/response.dto';
 import { ExcursionUC } from './../useCases/excursionUC.uc';
@@ -38,17 +35,24 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { LocalStorageService } from './../../local-storage/services/local-storage.service';
 import { ExcursionImageService } from '../services/excursionImage.service';
-import {
-  ApiBearerAuth,
-  ApiConflictResponse,
-  ApiNotFoundResponse,
-  ApiOkResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { ExcursionInterfacePaginatedList } from '../interface/excursion.interface';
+import {
+  GetPaginatedPartialDocs,
+  CreateExcursionDocs,
+  FindAllExcursionsDocs,
+  UpdateExcursionDocs,
+  GetPaginatedListDocs,
+  FindOneExcursionDocs,
+  DeleteExcursionDocs,
+  UploadImageDocs,
+  GetImagesDocs,
+  DeleteImageDocs,
+} from '../decorators/excursion.decorators';
 
 @Controller('excursion')
 @ApiTags('Pasadías')
+@UseGuards(AuthGuard())
 export class ExcursionController {
   constructor(
     private readonly _excursionUC: ExcursionUC,
@@ -58,9 +62,7 @@ export class ExcursionController {
   ) {}
 
   @Get('/paginated-partial')
-  @ApiOkResponse({ type: ResponsePaginationDto<PartialExcursionDto> })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @GetPaginatedPartialDocs()
   async getPaginatedPartial(
     @Query() params: PaginatedExcursionSelectParamsDto,
   ): Promise<ResponsePaginationDto<PartialExcursionDto>> {
@@ -68,10 +70,7 @@ export class ExcursionController {
   }
 
   @Post('create')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: CreateExcursionDto })
-  @ApiConflictResponse({ type: DuplicatedResponseDto })
+  @CreateExcursionDocs()
   async create(
     @Body() excursionDto: CreateExcursionDto,
   ): Promise<CreatedRecordResponseDto> {
@@ -87,9 +86,7 @@ export class ExcursionController {
   }
 
   @Get()
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: GetAllExcursionsResposeDto })
+  @FindAllExcursionsDocs()
   async findAll(): Promise<GetAllExcursionsResposeDto> {
     const excursions = await this._excursionUC.findAll();
     return {
@@ -99,10 +96,7 @@ export class ExcursionController {
   }
 
   @Patch(':id')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: UpdateRecordResponseDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @UpdateExcursionDocs()
   async update(
     @Param('id') excursionId: string,
     @Body() excursionData: UpdateExcursionDto,
@@ -116,7 +110,7 @@ export class ExcursionController {
   }
 
   @Get('/paginated-list')
-  @ApiOkResponse({ type: ResponsePaginationDto<Excursion> })
+  @GetPaginatedListDocs()
   async getPaginatedList(
     @Query() params: PaginatedListExcursionsParamsDto,
   ): Promise<ResponsePaginationDto<ExcursionInterfacePaginatedList>> {
@@ -124,10 +118,7 @@ export class ExcursionController {
   }
 
   @Get(':id')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: GetExcursionDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @FindOneExcursionDocs()
   async findOne(@Param('id') excursionId: string): Promise<GetExcursionDto> {
     const excursion = await this._excursionUC.findOne(excursionId);
     return {
@@ -137,10 +128,7 @@ export class ExcursionController {
   }
 
   @Delete(':id')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
-  @ApiOkResponse({ type: DeleteReCordResponseDto })
-  @ApiNotFoundResponse({ type: NotFoundResponseDto })
+  @DeleteExcursionDocs()
   async delete(
     @Param('id') excursionId: number,
   ): Promise<DeleteReCordResponseDto> {
@@ -152,8 +140,7 @@ export class ExcursionController {
   }
 
   @Post(':id/images')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UploadImageDocs()
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(
     @Param('id') excursionId: number,
@@ -176,8 +163,7 @@ export class ExcursionController {
   }
 
   @Get(':id/images')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @GetImagesDocs()
   async getImages(@Param('id') excursionId: number) {
     const images =
       await this._excursionImageService.getExcursionImages(excursionId);
@@ -187,8 +173,7 @@ export class ExcursionController {
   }
 
   @Delete(':id/images/*publicId')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @DeleteImageDocs()
   async deleteImage(
     @Param('id') excursionId: number,
     @Param('publicId') publicId: string,

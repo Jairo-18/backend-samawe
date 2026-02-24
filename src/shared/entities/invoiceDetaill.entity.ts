@@ -13,7 +13,6 @@ import { TaxeType } from './taxeType.entity';
 import { Product } from './product.entity';
 import { Accommodation } from './accommodation.entity';
 import { Excursion } from './excursion.entity';
-import { StateType } from './stateType.entity';
 
 @Entity({ name: 'InvoiceDetaill' })
 export class InvoiceDetaill {
@@ -66,19 +65,6 @@ export class InvoiceDetaill {
 
   @Column({ type: 'boolean', default: true })
   isPaid: boolean;
-
-  @ManyToOne(() => StateType, { nullable: true })
-  @JoinColumn({ name: 'stateTypeId' })
-  stateType?: StateType;
-
-  @Column({ type: 'timestamp', nullable: true })
-  orderTime?: Date;
-
-  @Column({ type: 'timestamp', nullable: true })
-  readyTime?: Date;
-
-  @Column({ type: 'timestamp', nullable: true })
-  servedTime?: Date;
 
   @CreateDateColumn()
   createdAt: Date;
