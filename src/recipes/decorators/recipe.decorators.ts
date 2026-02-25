@@ -45,14 +45,6 @@ export function FindByProductDocs() {
   );
 }
 
-export function FindAllRecipesDocs() {
-  return applyDecorators(
-    ApiBearerAuth(),
-    ApiOperation({ summary: 'Obtener todas las recetas' }),
-    ApiOkResponse({ description: 'Lista de recetas' }),
-  );
-}
-
 export function CheckAvailabilityDocs() {
   return applyDecorators(
     ApiBearerAuth(),

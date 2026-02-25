@@ -13,7 +13,6 @@ import {
 import {
   CreateAccommodationDto,
   GetAcommodationDto,
-  GetAllAccommodationsResposeDto,
   UpdateAccommodationDto,
 } from './../dtos/accommodation.dto';
 import { AccommodationUC } from './../useCases/accommodationUC.uc';
@@ -40,7 +39,6 @@ import { AccommodationInterfacePaginatedList } from '../interface/accommodation.
 import {
   GetPaginatedPartialDocs,
   CreateAccommodationDocs,
-  FindAllAccommodationsDocs,
   UpdateAccommodationDocs,
   GetPaginatedListDocs,
   FindOneAccommodationDocs,
@@ -84,16 +82,6 @@ export class AccommodationController {
         rowId: createAccommodation.accommodationId.toString(),
         ...createAccommodation,
       },
-    };
-  }
-
-  @Get()
-  @FindAllAccommodationsDocs()
-  async findAll(): Promise<GetAllAccommodationsResposeDto> {
-    const accommodations = await this._accommodationUC.findAll();
-    return {
-      statusCode: HttpStatus.OK,
-      data: { accommodations },
     };
   }
 

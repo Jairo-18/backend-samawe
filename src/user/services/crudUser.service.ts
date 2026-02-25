@@ -129,7 +129,7 @@ export class CrudUserService {
       where: where.length ? where : undefined,
       skip,
       take: params.perPage,
-      order: { firstName: 'ASC' },
+      order: { firstName: 'ASC', lastName: 'ASC' },
       select: [
         'userId',
         'firstName',

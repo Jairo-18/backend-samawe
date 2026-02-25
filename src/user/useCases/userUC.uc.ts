@@ -19,10 +19,6 @@ export class UserUC {
     return await this._userService.register(user);
   }
 
-  async findAll() {
-    return await this._userService.findAll();
-  }
-
   async findOne(id: string) {
     return await this._userService.findOne(id);
   }

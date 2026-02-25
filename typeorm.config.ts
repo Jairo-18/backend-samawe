@@ -1,4 +1,3 @@
-// backend-samawe/src/typeorm.config.ts
 import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
 
@@ -37,9 +36,6 @@ if (sslEnabled) {
       rejectUnauthorized: false,
     },
   };
-  console.log('🔒 SSL habilitado');
-} else {
-  console.log('🔓 SSL deshabilitado (local)');
 }
 
 export const AppDataSource = new DataSource(dataSourceConfig);

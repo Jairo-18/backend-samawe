@@ -129,15 +129,6 @@ export class ProductService {
     return await this._productRepository.save(product);
   }
 
-  async findAll(): Promise<Product[]> {
-    return await this._productRepository
-      .createQueryBuilder('product')
-      .leftJoinAndSelect('product.categoryType', 'categoryType')
-      .leftJoinAndSelect('product.unitOfMeasure', 'unitOfMeasure')
-      .orderBy('categoryType.name', 'ASC')
-      .getMany();
-  }
-
   async findOne(productId: string): Promise<ProductDetailDto> {
     const parsedId = parseInt(productId, 10);
 
@@ -150,11 +141,45 @@ export class ProductService {
 
     const product = await this._productRepository.findOne({
       where: { productId: parsedId },
-      relations: ['categoryType', 'unitOfMeasure'],
+      relations: [
+        'categoryType',
+        'unitOfMeasure',
+        'productRecipes',
+        'productRecipes.ingredient',
+        'images',
+      ],
     });
 
     if (!product) {
       throw new HttpException('El producto no existe', HttpStatus.NOT_FOUND);
+    }
+
+    const catName = product.categoryType?.name?.toUpperCase();
+    if (
+      catName === 'RESTAURANTE' ||
+      catName === 'BAR' ||
+      catName === 'MECATO'
+    ) {
+      let dynamicAmount = 0;
+      if (product.productRecipes && product.productRecipes.length > 0) {
+        let minPortions = Infinity;
+
+        for (const recipe of product.productRecipes) {
+          const reqQty = Number(recipe.quantity);
+          const availableQty = Number(recipe.ingredient?.amount || 0);
+
+          if (reqQty > 0) {
+            const portions = Math.floor(availableQty / reqQty);
+            if (portions < minPortions) {
+              minPortions = portions;
+            }
+          } else {
+            minPortions = 0;
+          }
+        }
+        dynamicAmount = minPortions === Infinity ? 0 : minPortions;
+      }
+      product.amount = dynamicAmount;
     }
 
     return mapProductDetail(product);

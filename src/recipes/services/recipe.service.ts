@@ -1,5 +1,4 @@
 ﻿import { RecipeRepository } from './../../shared/repositories/recipe.repository';
-
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { Recipe } from './../../shared/entities/recipe.entity';
 import {
@@ -10,6 +9,7 @@ import {
   CheckIngredientsAvailabilityDto,
   CheckAvailabilityResponse,
   IngredientAvailability,
+  PaginatedRecipesParamsDto,
 } from './../dtos/recipe.dto';
 import {
   BadRequestException,
@@ -17,6 +17,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { In } from 'typeorm';
+import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
+import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 
 @Injectable()
 export class RecipeService {
@@ -24,6 +26,91 @@ export class RecipeService {
     private readonly _recipeRepository: RecipeRepository,
     private readonly _productRepository: ProductRepository,
   ) {}
+
+  /**
+   * Listar todas las recetas paginadas, agrupadas por producto.
+   * Sigue el mismo patrón que CrudProductService: PageMetaDto + ResponsePaginationDto.
+   */
+  async findAllPaginated(
+    params: PaginatedRecipesParamsDto,
+  ): Promise<ResponsePaginationDto<RecipeWithDetailsResponse>> {
+    const qb = this._recipeRepository
+      .createQueryBuilder('recipe')
+      .leftJoinAndSelect('recipe.product', 'product')
+      .leftJoinAndSelect('product.images', 'images')
+      .leftJoinAndSelect('recipe.ingredient', 'ingredient')
+      .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
+      .where('product.deletedAt IS NULL');
+
+    if (params.search) {
+      qb.andWhere('LOWER(product.name) LIKE LOWER(:search)', {
+        search: `%${params.search.trim()}%`,
+      });
+    }
+
+    const allRows = await qb.orderBy('product.name', 'ASC').getMany();
+
+    const grouped = new Map<number, RecipeWithDetailsResponse>();
+    for (const row of allRows) {
+      const pid = row.product.productId;
+      if (!grouped.has(pid)) {
+        grouped.set(pid, {
+          productId: pid,
+          productName: row.product.name,
+          images:
+            row.product.images?.map((img) => ({
+              productImageId: img.productImageId,
+              imageUrl: img.imageUrl,
+              publicId: img.publicId,
+            })) || [],
+          ingredients: [],
+          totalRecipeCost: 0,
+          availablePortions: Infinity,
+        });
+      }
+      const entry = grouped.get(pid)!;
+
+      const reqQty = Number(row.quantity);
+      const availableQty = Number(row.ingredient?.amount || 0);
+
+      if (reqQty > 0) {
+        const portions = Math.floor(availableQty / reqQty);
+        if (portions < entry.availablePortions!) {
+          entry.availablePortions = portions;
+        }
+      } else {
+        entry.availablePortions = 0;
+      }
+
+      const totalCost = reqQty * Number(row.ingredient?.priceBuy || 0);
+      entry.totalRecipeCost = Number(
+        (Number(entry.totalRecipeCost) + totalCost).toFixed(2),
+      );
+      entry.ingredients.push({
+        ingredientProductId: row.ingredient.productId,
+        ingredientProductName: row.ingredient.name,
+        unit: row.ingredient.unitOfMeasure?.code ?? 'N/A',
+        quantity: reqQty,
+        cost: Number(row.ingredient.priceBuy),
+        totalCost: Number(totalCost.toFixed(2)),
+        notes: row.notes,
+      });
+    }
+
+    const allRecipes = Array.from(grouped.values()).map((recipe) => {
+      if (recipe.availablePortions === Infinity) {
+        recipe.availablePortions = 0;
+      }
+      return recipe;
+    });
+
+    const itemCount = allRecipes.length;
+    const skip = ((params.page ?? 1) - 1) * (params.perPage ?? 10);
+    const data = allRecipes.slice(skip, skip + (params.perPage ?? 10));
+
+    const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto: params });
+    return new ResponsePaginationDto(data, pageMetaDto);
+  }
 
   /**
    * Crear una receta completa para un plato
@@ -68,10 +155,6 @@ export class RecipeService {
       const savedRecipe = await this._recipeRepository.save(recipe);
       recipes.push(savedRecipe);
     }
-
-    console.log(
-      `📝 Receta creada para ${product.name} con ${recipes.length} ingredientes`,
-    );
 
     return recipes;
   }
@@ -122,21 +205,35 @@ export class RecipeService {
   async findByProduct(productId: number): Promise<RecipeWithDetailsResponse> {
     const product = await this._productRepository.findOne({
       where: { productId },
+      relations: ['images'],
     });
 
     if (!product) {
       throw new NotFoundException(`Producto con ID ${productId} no encontrado`);
     }
 
-    const recipes = await this._recipeRepository.find({
-      where: { product: { productId } },
-      relations: ['ingredient', 'ingredient.unitOfMeasure'],
-    });
+    const recipes = await this._recipeRepository
+      .createQueryBuilder('recipe')
+      .leftJoinAndSelect('recipe.product', 'product')
+      .leftJoinAndSelect('product.images', 'product_images')
+      .leftJoinAndSelect('recipe.ingredient', 'ingredient')
+      .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
+      .where('product.productId = :productId', { productId })
+      .getMany();
 
     if (!recipes || recipes.length === 0) {
-      throw new NotFoundException(
-        `No se encontró receta para el producto ${product.name}`,
-      );
+      return {
+        productId: product.productId,
+        productName: product.name,
+        images:
+          product.images?.map((img) => ({
+            productImageId: img.productImageId,
+            imageUrl: img.imageUrl,
+            publicId: img.publicId,
+          })) || [],
+        ingredients: [],
+        totalRecipeCost: 0,
+      };
     }
 
     let totalRecipeCost = 0;
@@ -162,26 +259,25 @@ export class RecipeService {
     return {
       productId: product.productId,
       productName: product.name,
+      images:
+        product.images?.map((img) => ({
+          productImageId: img.productImageId,
+          imageUrl: img.imageUrl,
+          publicId: img.publicId,
+        })) || [],
       ingredients,
       totalRecipeCost: Number(totalRecipeCost.toFixed(2)),
     };
   }
 
   /**
-   * Obtener todas las recetas
-   */
-  async findAll(): Promise<Recipe[]> {
-    return await this._recipeRepository.find({
-      relations: ['product', 'ingredient'],
-      order: { product: { name: 'ASC' } },
-    });
-  }
-
-  /**
-   * Verificar disponibilidad de ingredientes para preparar un plato
+   * Verificar disponibilidad de ingredientes para preparar un plato.
+   * Soporta recetas anidadas: si un ingrediente es a su vez un sub-preparado,
+   * verifica recursivamente los ingredientes base de ese sub-preparado.
    */
   async checkAvailability(
     dto: CheckIngredientsAvailabilityDto,
+    visited: Set<number> = new Set(),
   ): Promise<CheckAvailabilityResponse> {
     const { productId, portions = 1 } = dto;
 
@@ -191,27 +287,70 @@ export class RecipeService {
     let canPrepare = true;
 
     for (const recipeIngredient of recipeDetails.ingredients) {
-      const ingredient = await this._productRepository.findOne({
-        where: { productId: recipeIngredient.ingredientProductId },
-        relations: ['unitOfMeasure'],
-      });
-
       const required = Number(recipeIngredient.quantity) * portions;
-      const available = Number(ingredient.amount);
-      const isAvailable = available >= required;
 
-      if (!isAvailable) {
-        canPrepare = false;
-      }
-
-      ingredientsAvailability.push({
-        ingredientProductId: ingredient.productId,
-        ingredientProductName: ingredient.name,
-        required: Number(required.toFixed(3)),
-        available: Number(available.toFixed(3)),
-        unit: ingredient.unitOfMeasure ? ingredient.unitOfMeasure.code : 'N/A',
-        isAvailable,
+      const subRecipeCount = await this._recipeRepository.count({
+        where: { product: { productId: recipeIngredient.ingredientProductId } },
       });
+
+      if (
+        subRecipeCount > 0 &&
+        !visited.has(recipeIngredient.ingredientProductId)
+      ) {
+        visited.add(recipeIngredient.ingredientProductId);
+        const subAvailability = await this.checkAvailability(
+          {
+            productId: recipeIngredient.ingredientProductId,
+            portions: required,
+          },
+          visited,
+        );
+
+        for (const subIng of subAvailability.ingredients) {
+          const existing = ingredientsAvailability.find(
+            (i) => i.ingredientProductId === subIng.ingredientProductId,
+          );
+          if (existing) {
+            existing.required += subIng.required;
+            existing.isAvailable = existing.available >= existing.required;
+          } else {
+            ingredientsAvailability.push({ ...subIng });
+          }
+          if (!subIng.isAvailable) canPrepare = false;
+        }
+      } else {
+        const ingredient = await this._productRepository.findOne({
+          where: { productId: recipeIngredient.ingredientProductId },
+          relations: ['unitOfMeasure'],
+        });
+
+        if (!ingredient) continue;
+
+        const available = Number(ingredient.amount);
+        const isAvailable = available >= required;
+
+        if (!isAvailable) canPrepare = false;
+
+        const existing = ingredientsAvailability.find(
+          (i) => i.ingredientProductId === ingredient.productId,
+        );
+        if (existing) {
+          existing.required += required;
+          existing.isAvailable = existing.available >= existing.required;
+          if (!existing.isAvailable) canPrepare = false;
+        } else {
+          ingredientsAvailability.push({
+            ingredientProductId: ingredient.productId,
+            ingredientProductName: ingredient.name,
+            required: Number(required.toFixed(3)),
+            available: Number(available.toFixed(3)),
+            unit: ingredient.unitOfMeasure
+              ? ingredient.unitOfMeasure.code
+              : 'N/A',
+            isAvailable,
+          });
+        }
+      }
     }
 
     const missingIngredients = ingredientsAvailability.filter(
@@ -229,52 +368,135 @@ export class RecipeService {
   }
 
   /**
-   * Reducir stock de ingredientes al preparar un plato
-   * Esta es la función CLAVE que se llama cuando se cocina un plato
+   * Reducir stock de ingredientes al preparar un plato.
+   * Soporta recetas ANIDADAS: si un ingrediente del plato a su vez tiene
+   * su propia receta (ej: "Cebolla caramelizada" tiene receta con miel,
+   * vinagre, cebolla y sal), se consumen recursivamente los ingredientes
+   * de esa sub-receta en lugar de descontar el stock del preparado intermedio.
    */
   async consumeIngredients(
     productId: number,
     portions: number = 1,
+    visited: Set<number> = new Set(),
   ): Promise<void> {
-    const availability = await this.checkAvailability({ productId, portions });
+    if (visited.has(productId)) {
+      return;
+    }
+    visited.add(productId);
 
-    if (!availability.canPrepare) {
-      const missing = availability.missingIngredients
-        .map(
-          (i) =>
-            `${i.ingredientProductName}: falta ${(i.required - i.available).toFixed(3)} ${i.unit}`,
-        )
-        .join(', ');
-
-      throw new BadRequestException(
-        `No hay suficientes ingredientes para preparar ${portions} porción(es). Faltantes: ${missing}`,
-      );
+    if (visited.size === 1) {
+      const availability = await this.checkAvailability({
+        productId,
+        portions,
+      });
+      if (!availability.canPrepare) {
+        const missing = availability.missingIngredients
+          .map(
+            (i) =>
+              `${i.ingredientProductName}: falta ${(i.required - i.available).toFixed(3)} ${i.unit}`,
+          )
+          .join(', ');
+        throw new BadRequestException(
+          `No hay suficientes ingredientes para preparar ${portions} porción(es). Faltantes: ${missing}`,
+        );
+      }
     }
 
-    const recipes = await this._recipeRepository.find({
-      where: { product: { productId } },
-      relations: ['ingredient', 'ingredient.unitOfMeasure'],
-    });
+    const recipes = await this._recipeRepository
+      .createQueryBuilder('recipe')
+      .leftJoinAndSelect('recipe.product', 'product')
+      .leftJoinAndSelect('recipe.ingredient', 'ingredient')
+      .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
+      .where('product.productId = :productId', { productId })
+      .getMany();
 
     for (const recipe of recipes) {
       const quantityToReduce = Number(recipe.quantity) * portions;
       const ingredient = recipe.ingredient;
 
-      ingredient.amount = Number(ingredient.amount) - quantityToReduce;
+      const subRecipeCount = await this._recipeRepository.count({
+        where: { product: { productId: ingredient.productId } },
+      });
 
-      await this._productRepository.save(ingredient);
+      if (subRecipeCount > 0) {
+        await this.consumeIngredients(
+          ingredient.productId,
+          quantityToReduce,
+          visited,
+        );
+      } else {
+        const ingredientFresh = await this._productRepository.findOne({
+          where: { productId: ingredient.productId },
+          relations: ['unitOfMeasure'],
+        });
 
-      const unitCode = ingredient.unitOfMeasure
-        ? ingredient.unitOfMeasure.code
-        : 'N/A';
-      console.log(
-        `🍳 Ingrediente consumido - ${ingredient.name}: -${quantityToReduce.toFixed(3)} ${unitCode} (Restante: ${ingredient.amount.toFixed(3)} ${unitCode})`,
-      );
+        if (!ingredientFresh) continue;
+
+        ingredientFresh.amount =
+          Number(ingredientFresh.amount) - quantityToReduce;
+
+        await this._productRepository.save(ingredientFresh);
+      }
+    }
+  }
+
+  /**
+   * Devolver al stock los ingredientes de una receta (operación inversa a consumeIngredients).
+   * Soporta recetas anidadas: si un ingrediente es un sub-preparado, restaura
+   * recursivamente sus ingredientes base.
+   *
+   * Se usa cuando se elimina/cancela un detalle de factura de tipo restaurante.
+   */
+  async restoreIngredients(
+    productId: number,
+    portions: number = 1,
+    visited: Set<number> = new Set(),
+  ): Promise<void> {
+    if (visited.has(productId)) {
+      return;
+    }
+    visited.add(productId);
+
+    const recipes = await this._recipeRepository
+      .createQueryBuilder('recipe')
+      .leftJoinAndSelect('recipe.product', 'product')
+      .leftJoinAndSelect('recipe.ingredient', 'ingredient')
+      .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
+      .where('product.productId = :productId', { productId })
+      .getMany();
+
+    if (!recipes || recipes.length === 0) {
+      return;
     }
 
-    console.log(
-      `✅ Stock reducido para ${availability.productName} - ${portions} porción(es)`,
-    );
+    for (const recipe of recipes) {
+      const quantityToRestore = Number(recipe.quantity) * portions;
+      const ingredient = recipe.ingredient;
+
+      const subRecipeCount = await this._recipeRepository.count({
+        where: { product: { productId: ingredient.productId } },
+      });
+
+      if (subRecipeCount > 0) {
+        await this.restoreIngredients(
+          ingredient.productId,
+          quantityToRestore,
+          visited,
+        );
+      } else {
+        const ingredientFresh = await this._productRepository.findOne({
+          where: { productId: ingredient.productId },
+          relations: ['unitOfMeasure'],
+        });
+
+        if (!ingredientFresh) continue;
+
+        ingredientFresh.amount =
+          Number(ingredientFresh.amount) + quantityToRestore;
+
+        await this._productRepository.save(ingredientFresh);
+      }
+    }
   }
 
   /**
@@ -282,7 +504,6 @@ export class RecipeService {
    */
   async deleteByProduct(productId: number): Promise<void> {
     await this._recipeRepository.delete({ product: { productId } });
-    console.log(`🗑️ Receta eliminada para producto ID ${productId}`);
   }
 
   /**

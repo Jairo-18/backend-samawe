@@ -8,11 +8,7 @@ import {
 } from '@nestjs/swagger';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { PartialExcursionDto } from './../dtos/crudExcursion.dto';
-import {
-  CreateExcursionDto,
-  GetAllExcursionsResposeDto,
-  GetExcursionDto,
-} from './../dtos/excursion.dto';
+import { CreateExcursionDto, GetExcursionDto } from './../dtos/excursion.dto';
 import {
   DeleteReCordResponseDto,
   DuplicatedResponseDto,
@@ -35,14 +31,6 @@ export function CreateExcursionDocs() {
     ApiOperation({ summary: 'Crea un nuevo pasadía' }),
     ApiOkResponse({ type: CreateExcursionDto }),
     ApiConflictResponse({ type: DuplicatedResponseDto }),
-  );
-}
-
-export function FindAllExcursionsDocs() {
-  return applyDecorators(
-    ApiBearerAuth(),
-    ApiOperation({ summary: 'Obtiene todos los pasadías' }),
-    ApiOkResponse({ type: GetAllExcursionsResposeDto }),
   );
 }
 

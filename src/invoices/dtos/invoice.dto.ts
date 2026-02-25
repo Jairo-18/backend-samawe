@@ -187,6 +187,14 @@ export class UpdateInvoiceDto {
   @IsBoolean()
   @IsOptional()
   invoiceElectronic?: boolean;
+
+  @ApiProperty({
+    example: 6,
+    description: 'ID del estado de la factura (StateType)',
+  })
+  @IsNumber()
+  @IsOptional()
+  stateTypeId?: number;
 }
 
 export class EmployeMiniDto {

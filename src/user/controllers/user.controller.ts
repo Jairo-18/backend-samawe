@@ -18,7 +18,6 @@ import {
   GetPaginatedPartialDocs,
   PaginatedPhoneCodeSelectDocs,
   GetPaginatedListDocs,
-  FindAllUsersDocs,
   CreateUserDocs,
   RegisterUserDocs,
   RecoveryPasswordDocs,
@@ -28,7 +27,6 @@ import {
   DeleteUserDocs,
 } from '../decorators/user.decorators';
 import {
-  GetAllUsersResposeDto,
   ChangePasswordDto,
   CreateUserDto,
   UpdateUserDto,
@@ -84,16 +82,6 @@ export class UserController {
     @Query() params: PaginatedListUsersParamsDto,
   ): Promise<ResponsePaginationDto<User>> {
     return await this._crudUserUC.paginatedList(params);
-  }
-
-  @Get()
-  @FindAllUsersDocs()
-  async findAll(): Promise<GetAllUsersResposeDto> {
-    const users = await this._userUC.findAll();
-    return {
-      statusCode: HttpStatus.OK,
-      data: { users },
-    };
   }
 
   @Post()

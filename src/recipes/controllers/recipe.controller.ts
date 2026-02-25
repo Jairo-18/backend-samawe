@@ -7,6 +7,7 @@
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -15,7 +16,6 @@ import {
   UpdateRecipeDocs,
   UpdateRecipeIngredientDocs,
   FindByProductDocs,
-  FindAllRecipesDocs,
   CheckAvailabilityDocs,
   DeleteByProductDocs,
   DeleteIngredientDocs,
@@ -27,6 +27,7 @@ import {
   UpdateRecipeDto,
   UpdateRecipeIngredientDto,
   CheckIngredientsAvailabilityDto,
+  PaginatedRecipesParamsDto,
 } from '../dtos/recipe.dto';
 
 @Controller('recipes')
@@ -80,6 +81,11 @@ export class RecipeController {
     };
   }
 
+  @Get('paginated')
+  async findAllPaginated(@Query() params: PaginatedRecipesParamsDto) {
+    return await this._recipeService.findAllPaginated(params);
+  }
+
   @Get('product/:productId')
   @FindByProductDocs()
   async findByProduct(@Param('productId') productId: string) {
@@ -87,16 +93,6 @@ export class RecipeController {
     return {
       statusCode: HttpStatus.OK,
       data: recipe,
-    };
-  }
-
-  @Get()
-  @FindAllRecipesDocs()
-  async findAll() {
-    const recipes = await this._recipeService.findAll();
-    return {
-      statusCode: HttpStatus.OK,
-      data: recipes,
     };
   }
 

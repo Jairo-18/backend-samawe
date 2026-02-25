@@ -56,7 +56,7 @@ export class AuthService {
     }
 
     const accessSessionId = await this._accessSessionsService.generateSession({
-      userId: user.userId, // ← aquí estaba el error
+      userId: user.userId,
       accessToken: tokens.accessToken,
       id: uuidv4(),
     });

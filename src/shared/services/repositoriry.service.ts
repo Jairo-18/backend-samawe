@@ -10,7 +10,6 @@ import { CategoryTypeRepository } from './../repositories/categoryType.repositor
 import { PhoneCodeRepository } from './../repositories/phoneCode.repository';
 import { Injectable } from '@nestjs/common';
 import { IdentificationTypeRepository } from '../repositories/identificationType.repository';
-import { Repository } from 'typeorm';
 import { InvoiceTypeRepository } from '../repositories/invoiceType.repository';
 import { UnitOfMeasureRepository } from '../repositories/unitOfMeasure.repository';
 
@@ -62,14 +61,5 @@ export class RepositoryService {
       discountType: _discountTypeRepository,
       unitOfMeasure: _unitOfMeasureRepository,
     };
-  }
-
-  /**
-   * Método para obtener todas las entidades del repositorio enviado por los parametros
-   * @param repository
-   * @returns
-   */
-  async getEntities<T>(repository: Repository<T>): Promise<T[]> {
-    return await repository.find();
   }
 }

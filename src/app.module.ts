@@ -16,9 +16,9 @@ import { InvoiceModule } from './invoices/invoice.module';
 import { EarningModule } from './earnings/earning.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { RecipeModule } from './recipes/recipe.module';
-import { RestaurantModule } from './restaurant/restaurant.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { SocketModule } from './socket/socket.module';
 
 @Module({
   imports: [
@@ -30,6 +30,7 @@ import { join } from 'path';
           ? '.env.production'
           : '.env.development',
     }),
+    SocketModule,
     ServeStaticModule.forRoot({
       rootPath:
         process.platform === 'win32'
@@ -50,7 +51,6 @@ import { join } from 'path';
     InvoiceModule,
     ProductModule,
     RecipeModule,
-    RestaurantModule,
     UserModule,
   ],
   controllers: [AppController],

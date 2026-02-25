@@ -1,5 +1,6 @@
 ﻿import { User } from './../../shared/entities/user.entity';
 import { StateType } from './../../shared/entities/stateType.entity';
+import { OrdersGateway } from './../../socket/gateways/orders.gateway';
 import { ExcursionRepository } from './../../shared/repositories/excursion.repository';
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
@@ -43,6 +44,7 @@ export class InvoiceService {
     private readonly _accommodationRepository: AccommodationRepository,
     private readonly _excursionRepository: ExcursionRepository,
     private readonly _eventEmitter: EventEmitter2,
+    private readonly _ordersGateway: OrdersGateway,
   ) {}
 
   private toDateOnly(dateString: string): Date {
@@ -441,8 +443,45 @@ export class InvoiceService {
       if (updateInvoiceDto.transfer !== undefined)
         invoice.transfer = updateInvoiceDto.transfer;
 
+      if (updateInvoiceDto.stateTypeId !== undefined) {
+        const stateType = await queryRunner.manager.findOne(StateType, {
+          where: { stateTypeId: updateInvoiceDto.stateTypeId },
+        });
+        if (!stateType) {
+          throw new BadRequestException('Estado de factura no válido');
+        }
+        invoice.stateType = stateType;
+
+        // Lógica de marcas de tiempo según el estado
+        const now = new Date();
+        const stateCode = stateType.code?.toUpperCase();
+
+        if (stateCode === 'PEN') {
+          // Pendiente / Enviado a cocina
+          invoice.orderTime = now;
+        } else if (stateCode === 'LIS') {
+          // Listo para servir
+          invoice.readyTime = now;
+        } else if (stateCode === 'ENT') {
+          // Entregado
+          invoice.servedTime = now;
+        }
+      }
+
       await queryRunner.manager.save(invoice);
       await queryRunner.commitTransaction();
+
+      // Emitir evento por WebSocket si el estado cambió a uno relevante para cocina/meseros
+      if (updateInvoiceDto.stateTypeId !== undefined) {
+        this._ordersGateway.emitOrderUpdate({
+          invoiceId: invoice.invoiceId,
+          code: invoice.code,
+          state: invoice.stateType.name,
+          stateCode: invoice.stateType.code,
+          tableNumber: invoice.tableNumber,
+          updatedAt: new Date(),
+        });
+      }
 
       return this.findOne(invoiceId);
     } catch (error) {

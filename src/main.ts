@@ -33,9 +33,6 @@ async function bootstrap() {
   if (process.argv.includes('--migrations')) {
     try {
       await AppDataSource.initialize();
-      console.log('📦 Ejecutando migraciones...');
-      const migrations = await AppDataSource.runMigrations();
-      console.log('✅ Migraciones ejecutadas:', migrations);
       await AppDataSource.destroy();
       process.exit(0);
     } catch (err) {
@@ -103,7 +100,7 @@ async function bootstrap() {
   const port = configService.get<number>('app.port') || 3000;
   await app.listen(port, '0.0.0.0');
   console.log(
-    `🚀 App corriendo en el puerto ${port} en todas las interfaces de red [${configService.get('app.env')}]`,
+    `App corriendo en el puerto ${port} en todas las interfaces de red [${configService.get('app.env')}]`,
   );
 }
 

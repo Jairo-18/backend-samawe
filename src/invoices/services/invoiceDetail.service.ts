@@ -1,5 +1,4 @@
 ﻿import { StateTypeRepository } from './../../shared/repositories/stateType.repository';
-import { RepositoryService } from './../../shared/services/repositoriry.service';
 import { ExcursionRepository } from './../../shared/repositories/excursion.repository';
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
@@ -13,6 +12,8 @@ import {
 } from '@nestjs/common';
 import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
 import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
+import { RecipeService } from './../../recipes/services/recipe.service';
+import { RecipeRepository } from './../../shared/repositories/recipe.repository';
 
 import {
   CreateInvoiceDetailDto,
@@ -23,6 +24,13 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GeneralInvoiceDetaillService } from 'src/shared/services/generalInvoiceDetaill.service';
 import { In } from 'typeorm';
 
+/**
+ * Códigos de categoría que activan el flujo de recetas al ser vendidos.
+ * Solo RESTAURANTE (RES): al agregar un plato a la factura, se descuentan
+ * automáticamente los ingredientes de su receta en lugar del stock del plato.
+ */
+const RECIPE_CATEGORY_CODES = ['RES'];
+
 @Injectable()
 export class InvoiceDetailService {
   constructor(
@@ -32,10 +40,11 @@ export class InvoiceDetailService {
     private readonly _accommodationRepository: AccommodationRepository,
     private readonly _excursionRepository: ExcursionRepository,
     private readonly _taxeTypeRepository: TaxeTypeRepository,
-    private readonly _repositoriesService: RepositoryService,
     private readonly _stateTypeRepository: StateTypeRepository,
     private readonly _eventEmitter: EventEmitter2,
     private readonly _generalInvoiceDetaillService: GeneralInvoiceDetaillService,
+    private readonly _recipeService: RecipeService,
+    private readonly _recipeRepository: RecipeRepository,
   ) {}
 
   async create(
@@ -91,16 +100,11 @@ export class InvoiceDetailService {
       if (createInvoiceDetailDto.productId) {
         product = await this._productRepository.findOne({
           where: { productId: createInvoiceDetailDto.productId },
+          relations: ['categoryType'],
         });
         if (!product) throw new NotFoundException('Producto no encontrado');
         if (!product.isActive)
           throw new BadRequestException('Este producto está inactivo');
-
-        if (isSale && !isQuote) {
-          const currentStock = product.amount ?? 0;
-          if (amount > currentStock) {
-          }
-        }
 
         const prices = this._generalInvoiceDetaillService.getHistoricalPrices(
           product,
@@ -248,8 +252,24 @@ export class InvoiceDetailService {
       if (isProduct) {
         const currentAmount = Number(product.amount) || 0;
 
+        const categoryCode = product.categoryType?.code?.toUpperCase();
+        const isRecipeProduct = RECIPE_CATEGORY_CODES.includes(categoryCode);
+        const recipeCount = isRecipeProduct
+          ? await this._recipeRepository.count({
+              where: { product: { productId: product.productId } },
+            })
+          : 0;
+        const hasRecipe = recipeCount > 0;
+
         if (isSale && !isQuote) {
-          product.amount = currentAmount - amount;
+          if (isRecipeProduct && hasRecipe) {
+            await this._recipeService.consumeIngredients(
+              product.productId,
+              amount,
+            );
+          } else {
+            product.amount = currentAmount - amount;
+          }
         } else if (isBuy) {
           product.amount = currentAmount + amount;
         } else if (isQuote) {
@@ -260,8 +280,15 @@ export class InvoiceDetailService {
         }
       }
 
+      const categoryCode2 = product?.categoryType?.code?.toUpperCase();
+      const isRecipeProduct2 = RECIPE_CATEGORY_CODES.includes(categoryCode2);
+      const shouldSaveProduct =
+        isProduct &&
+        !isQuote &&
+        !(isSale && isRecipeProduct2 && product?.productId > 0);
+
       const savePromises = [
-        isProduct && !isQuote
+        shouldSaveProduct
           ? this._productRepository.save(product)
           : Promise.resolve(),
         this._generalInvoiceDetaillService.updateInvoiceTotal(invoiceId),
@@ -350,28 +377,42 @@ export class InvoiceDetailService {
     const ops: Promise<any>[] = [];
 
     if (product && !isQuote) {
-      const currentAmount = Number(product.amount ?? 0);
-      const amt = Number(detailAmount ?? 0);
+      const productFull = await this._productRepository.findOne({
+        where: { productId: product.productId },
+        relations: ['categoryType'],
+      });
+      const categoryCode = productFull?.categoryType?.code?.toUpperCase();
+      const isRecipeProduct = RECIPE_CATEGORY_CODES.includes(categoryCode);
 
-      if (isNaN(currentAmount) || isNaN(amt)) {
-        throw new Error(
-          `Stock inválido: product.amount=${product.amount}, detail.amount=${detail.amount}`,
+      if (isSale && isRecipeProduct) {
+        const amt = Number(detailAmount ?? 0);
+        ops.push(
+          this._recipeService.restoreIngredients(product.productId, amt),
         );
-      }
+      } else {
+        const currentAmount = Number(product.amount ?? 0);
+        const amt = Number(detailAmount ?? 0);
 
-      if (isSale) {
-        product.amount = currentAmount + amt;
-      } else if (isBuy) {
-        const newAmount = currentAmount - amt;
-        if (newAmount < 0) {
-          throw new BadRequestException(
-            `No se puede eliminar: dejaría el stock del producto ${product.name} en negativo`,
+        if (isNaN(currentAmount) || isNaN(amt)) {
+          throw new Error(
+            `Stock inválido: product.amount=${product.amount}, detail.amount=${detail.amount}`,
           );
         }
-        product.amount = newAmount;
-      }
 
-      ops.push(this._productRepository.save(product));
+        if (isSale) {
+          product.amount = currentAmount + amt;
+        } else if (isBuy) {
+          const newAmount = currentAmount - amt;
+          if (newAmount < 0) {
+            throw new BadRequestException(
+              `No se puede eliminar: dejaría el stock del producto ${product.name} en negativo`,
+            );
+          }
+          product.amount = newAmount;
+        }
+
+        ops.push(this._productRepository.save(product));
+      }
     }
 
     if (accommodation && !isQuote) {

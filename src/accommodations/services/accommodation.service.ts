@@ -176,10 +176,6 @@ export class AccommodationService {
     return mapAccommodationDetail(accommodation);
   }
 
-  async findAll(): Promise<Accommodation[]> {
-    return await this._accommodationRepository.find();
-  }
-
   async delete(accommodationId: number): Promise<void> {
     const accommodation = await this.findOne(accommodationId.toString());
 

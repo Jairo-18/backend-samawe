@@ -6,11 +6,14 @@ import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { SharedModule } from '../shared/shared.module';
 import { InvoiceDetailService } from './services/invoiceDetail.service';
+import { RecipeModule } from '../recipes/recipe.module';
+import { RecipeService } from '../recipes/services/recipe.service';
 
 @Module({
   imports: [
     SharedModule.forRoot(),
     PassportModule.register({ defaultStrategy: 'jwt' }),
+    RecipeModule,
   ],
   controllers: [InvoiceController],
   providers: [
@@ -18,6 +21,7 @@ import { InvoiceDetailService } from './services/invoiceDetail.service';
     InvoiceUC,
     InvoiceDetailService,
     InvoicedPaginatedService,
+    RecipeService,
   ],
   exports: [InvoiceService, InvoiceDetailService],
 })

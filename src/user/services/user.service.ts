@@ -288,10 +288,6 @@ export class UserService {
     }
   }
 
-  async findAll(): Promise<User[]> {
-    return await this._userRepository.find();
-  }
-
   async findOne(userId: string): Promise<UserDetailDto> {
     const user = await this._userRepository.findOne({
       where: { userId },

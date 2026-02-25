@@ -15,10 +15,6 @@ export class ProductUC {
     return await this._productService.update(productId, productData);
   }
 
-  async findAll() {
-    return await this._productService.findAll();
-  }
-
   async findOne(productId: string) {
     return await this._productService.findOne(productId);
   }

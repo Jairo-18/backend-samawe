@@ -8,10 +8,7 @@ import {
 } from '@nestjs/swagger';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { PartialAccommodationDto } from './../dtos/crudAccommodation.dto';
-import {
-  GetAcommodationDto,
-  GetAllAccommodationsResposeDto,
-} from './../dtos/accommodation.dto';
+import { GetAcommodationDto } from './../dtos/accommodation.dto';
 import {
   DuplicatedResponseDto,
   DeleteReCordResponseDto,
@@ -37,14 +34,6 @@ export function CreateAccommodationDocs() {
     ApiOperation({ summary: 'Crea un nuevo hospedaje' }),
     ApiOkResponse({ type: CreatedRecordResponseDto }),
     ApiConflictResponse({ type: DuplicatedResponseDto }),
-  );
-}
-
-export function FindAllAccommodationsDocs() {
-  return applyDecorators(
-    ApiBearerAuth(),
-    ApiOperation({ summary: 'Obtiene todos los hospedajes' }),
-    ApiOkResponse({ type: GetAllAccommodationsResposeDto }),
   );
 }
 

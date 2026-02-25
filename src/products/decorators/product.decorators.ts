@@ -13,7 +13,7 @@ import {
   NotFoundResponseDto,
   UpdateRecordResponseDto,
 } from './../../shared/dtos/response.dto';
-import { GetAllProductsResposeDto, GetProductDto } from './../dtos/product.dto';
+import { GetProductDto } from './../dtos/product.dto';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { PartialProductDto } from './../dtos/crudProduct.dto';
 import { Product } from './../../shared/entities/product.entity';
@@ -34,14 +34,6 @@ export function CreateProductDocs() {
     ApiOperation({ summary: 'Crea un nuevo producto' }),
     ApiOkResponse({ type: CreatedRecordResponseDto }),
     ApiConflictResponse({ type: DuplicatedResponseDto }),
-  );
-}
-
-export function FindAllProductsDocs() {
-  return applyDecorators(
-    ApiBearerAuth(),
-    ApiOperation({ summary: 'Obtiene todos los productos' }),
-    ApiOkResponse({ type: GetAllProductsResposeDto }),
   );
 }
 

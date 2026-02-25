@@ -7,7 +7,6 @@ import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { CrudExcursionUC } from './../useCases/crudExcursionUC.uc';
 import {
   CreateExcursionDto,
-  GetAllExcursionsResposeDto,
   GetExcursionDto,
   UpdateExcursionDto,
 } from './../dtos/excursion.dto';
@@ -40,7 +39,6 @@ import { ExcursionInterfacePaginatedList } from '../interface/excursion.interfac
 import {
   GetPaginatedPartialDocs,
   CreateExcursionDocs,
-  FindAllExcursionsDocs,
   UpdateExcursionDocs,
   GetPaginatedListDocs,
   FindOneExcursionDocs,
@@ -82,16 +80,6 @@ export class ExcursionController {
         rowId: createExcursion.excursionId.toString(),
         ...createExcursion,
       },
-    };
-  }
-
-  @Get()
-  @FindAllExcursionsDocs()
-  async findAll(): Promise<GetAllExcursionsResposeDto> {
-    const excursions = await this._excursionUC.findAll();
-    return {
-      statusCode: HttpStatus.OK,
-      data: { excursions },
     };
   }
 

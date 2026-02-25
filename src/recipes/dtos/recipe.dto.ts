@@ -13,6 +13,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ParamsPaginationDto } from './../../shared/dtos/pagination.dto';
 
 /**
  * DTO para ingredientes de una receta
@@ -112,11 +113,21 @@ export class UpdateRecipeIngredientDto {
 }
 
 /**
+ * DTO para paginar y filtrar la lista de recetas
+ */
+export class PaginatedRecipesParamsDto extends ParamsPaginationDto {}
+
+/**
  * Respuesta con información de la receta completa
  */
 export interface RecipeWithDetailsResponse {
   productId: number;
   productName: string;
+  images?: Array<{
+    productImageId: number;
+    imageUrl: string;
+    publicId: string;
+  }>;
   ingredients: Array<{
     ingredientProductId: number;
     ingredientProductName: string;
@@ -127,6 +138,7 @@ export interface RecipeWithDetailsResponse {
     notes?: string;
   }>;
   totalRecipeCost: number;
+  availablePortions?: number;
 }
 
 export class GetRecipeDto implements BaseResponseDto {

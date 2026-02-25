@@ -17,10 +17,6 @@ export class AccommodationUC {
     return await this._accommodationService.findOne(accommodationId);
   }
 
-  async findAll() {
-    return await this._accommodationService.findAll();
-  }
-
   async update(
     accommodationId: string,
     accommodationData: UpdateAccommodationDto,

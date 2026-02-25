@@ -55,6 +55,17 @@ export class CrudProductService {
       };
     }
 
+    if (params.categoryTypeCode) {
+      const currentCategoryType =
+        typeof baseConditions.categoryType === 'object'
+          ? baseConditions.categoryType
+          : {};
+      baseConditions.categoryType = {
+        ...currentCategoryType,
+        code: Equal(params.categoryTypeCode),
+      };
+    }
+
     if (params.search) {
       const search = params.search.trim();
       const searchConditions: FindOptionsWhere<Product>[] = [
@@ -84,40 +95,78 @@ export class CrudProductService {
       skip,
       take: params.perPage,
       order: { name: 'ASC' },
-      relations: ['categoryType', 'unitOfMeasure'],
+      relations: [
+        'categoryType',
+        'unitOfMeasure',
+        'productRecipes',
+        'productRecipes.ingredient',
+      ],
     });
 
     const products: ProductInterfacePaginatedList[] = entities.map(
-      (product) => ({
-        productId: product.productId,
-        code: product.code,
-        name: product.name,
-        description: product.description,
-        amount: product.amount,
-        isActive: product.isActive,
-        priceBuy: product.priceBuy,
-        priceSale: product.priceSale,
-        categoryType: product.categoryType
-          ? {
-              categoryTypeId: product.categoryType.categoryTypeId,
-              code: product.categoryType.code,
-              name: product.categoryType.name,
+      (product) => {
+        let dynamicAmount = Number(product.amount || 0);
+
+        const catName = product.categoryType?.name?.toUpperCase();
+        if (
+          catName === 'RESTAURANTE' ||
+          catName === 'BAR' ||
+          catName === 'MECATO'
+        ) {
+          if (product.productRecipes && product.productRecipes.length > 0) {
+            let minPortions = Infinity;
+
+            for (const recipe of product.productRecipes) {
+              const reqQty = Number(recipe.quantity);
+              const availableQty = Number(recipe.ingredient?.amount || 0);
+
+              if (reqQty > 0) {
+                const portions = Math.floor(availableQty / reqQty);
+                if (portions < minPortions) {
+                  minPortions = portions;
+                }
+              } else {
+                minPortions = 0;
+              }
             }
-          : null,
-        unitOfMeasure: product.unitOfMeasure
-          ? {
-              unitOfMeasureId: product.unitOfMeasure.unitOfMeasureId,
-              code: product.unitOfMeasure.code,
-              name: product.unitOfMeasure.name,
-            }
-          : null,
-        images:
-          product.images?.map((img) => ({
-            productImageId: img.productImageId,
-            imageUrl: img.imageUrl,
-            publicId: img.publicId,
-          })) || [],
-      }),
+
+            dynamicAmount = minPortions === Infinity ? 0 : minPortions;
+          } else if (catName === 'RESTAURANTE') {
+            dynamicAmount = 0;
+          }
+        }
+
+        return {
+          productId: product.productId,
+          code: product.code,
+          name: product.name,
+          description: product.description,
+          amount: dynamicAmount,
+          isActive: product.isActive,
+          priceBuy: product.priceBuy,
+          priceSale: product.priceSale,
+          categoryType: product.categoryType
+            ? {
+                categoryTypeId: product.categoryType.categoryTypeId,
+                code: product.categoryType.code,
+                name: product.categoryType.name,
+              }
+            : null,
+          unitOfMeasure: product.unitOfMeasure
+            ? {
+                unitOfMeasureId: product.unitOfMeasure.unitOfMeasureId,
+                code: product.unitOfMeasure.code,
+                name: product.unitOfMeasure.name,
+              }
+            : null,
+          images:
+            product.images?.map((img) => ({
+              productImageId: img.productImageId,
+              imageUrl: img.imageUrl,
+              publicId: img.publicId,
+            })) || [],
+        };
+      },
     );
 
     const pageMetaDto = new PageMetaDto({

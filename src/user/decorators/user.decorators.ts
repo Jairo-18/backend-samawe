@@ -10,7 +10,7 @@ import { ResponsePaginationDto } from 'src/shared/dtos/pagination.dto';
 import { PartialUserDto } from '../dtos/crudUser.dto';
 import { PhoneCode } from './../../shared/entities/phoneCode.entity';
 import { User } from 'src/shared/entities/user.entity';
-import { GetAllUsersResposeDto, GetUserResponseDto } from '../dtos/user.dto';
+import { GetUserResponseDto } from '../dtos/user.dto';
 import {
   CreatedRecordResponseDto,
   DuplicatedResponseDto,
@@ -48,14 +48,6 @@ export function GetPaginatedListDocs() {
     }),
     ApiOkResponse({ type: ResponsePaginationDto<User> }),
     ApiBearerAuth(),
-  );
-}
-
-export function FindAllUsersDocs() {
-  return applyDecorators(
-    ApiBearerAuth(),
-    ApiOperation({ summary: 'Obtiene todos los usuarios' }),
-    ApiOkResponse({ type: GetAllUsersResposeDto }),
   );
 }
 

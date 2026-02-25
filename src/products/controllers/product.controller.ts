@@ -13,7 +13,6 @@ import {
   CreateProductDto,
   UpdateProductDto,
   GetProductDto,
-  GetAllProductsResposeDto,
 } from './../dtos/product.dto';
 import {
   Body,
@@ -40,7 +39,6 @@ import { ProductInterfacePaginatedList } from '../interface/product.interface';
 import {
   GetPaginatedPartialDocs,
   CreateProductDocs,
-  FindAllProductsDocs,
   UpdateProductDocs,
   GetPaginatedListDocs,
   FindOneProductDocs,
@@ -84,17 +82,6 @@ export class ProductController {
         rowId: createdProduct.productId.toString(),
         ...createdProduct,
       },
-    };
-  }
-
-  @Get()
-  @UseGuards(AuthGuard())
-  @FindAllProductsDocs()
-  async findAll(): Promise<GetAllProductsResposeDto> {
-    const products = await this._productUC.findAll();
-    return {
-      statusCode: HttpStatus.OK,
-      data: { products },
     };
   }
 
@@ -159,7 +146,7 @@ export class ProductController {
     );
     const addedImage = await this._productImageService.addProductImage(
       productId,
-      uploadResult.imageUrl, // usar imageUrl
+      uploadResult.imageUrl,
       uploadResult.publicId,
     );
 

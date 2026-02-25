@@ -45,7 +45,6 @@ export class LocalStorageService {
       throw new InternalServerErrorException('Archivo no válido o vacío');
     }
 
-    // Validar tipo MIME
     const allowedMimeTypes = [
       'image/jpeg',
       'image/png',
@@ -58,32 +57,24 @@ export class LocalStorageService {
       );
     }
 
-    // Crear directorio si no existe
     const targetDir = path.join(this.uploadsDir, folder);
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
-    // Generar nombre único para el archivo (siempre será webp para optimizar tamaño)
     const filename = `${uuidv4()}.webp`;
     const filePath = path.join(targetDir, filename);
 
-    // Comprobar si pesa más de 2MB (2 * 1024 * 1024 bytes)
     const isLargeFile = file.buffer.length > 2 * 1024 * 1024;
 
-    // Guardar el archivo en disco optimizado con sharp
     try {
       if (isLargeFile) {
-        // Optimización agresiva: imagen > 2MB
         await sharp(file.buffer)
           .webp({ quality: 80, effort: 4 })
           .resize({ width: 1920, withoutEnlargement: true })
           .toFile(filePath);
       } else {
-        // Optimización suave: imagen <= 2MB
-        await sharp(file.buffer)
-          .webp({ quality: 95 }) // Mantiene alta calidad
-          .toFile(filePath);
+        await sharp(file.buffer).webp({ quality: 95 }).toFile(filePath);
       }
     } catch (error) {
       console.error('Error optimizando o guardando imagen en disco:', error);
@@ -92,10 +83,8 @@ export class LocalStorageService {
       );
     }
 
-    // publicId = ruta relativa (folder/filename) → usado para eliminar el archivo
     const publicId = `${folder}/${filename}`;
 
-    // imageUrl = URL pública accesible desde el frontend
     const imageUrl = `${this.baseUrl}/uploads/${publicId}`;
 
     return { imageUrl, publicId };
@@ -116,9 +105,6 @@ export class LocalStorageService {
       }
     } catch (error) {
       console.error('Error eliminando imagen del disco:', error);
-      // No bloqueamos el flujo si el archivo ya no existe
     }
   }
-
-  // getExtension ya no se utiliza porque forzamos webp, se puede quitar
 }

@@ -52,6 +52,9 @@ export class Product {
   @OneToMany(() => Recipe, (recipe) => recipe.ingredient, { cascade: true })
   recipes: Recipe[];
 
+  @OneToMany(() => Recipe, (recipe) => recipe.product, { cascade: true })
+  productRecipes: Recipe[];
+
   @ManyToOne(() => CategoryType, (categoryType) => categoryType.product)
   @JoinColumn({ name: 'categoryTypeId' })
   categoryType: CategoryType;
