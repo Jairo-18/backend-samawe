@@ -135,10 +135,12 @@ export interface RecipeWithDetailsResponse {
     quantity: number;
     cost: number;
     totalCost: number;
+    ingredientAmount: number;
     notes?: string;
   }>;
   totalRecipeCost: number;
   availablePortions?: number;
+  minIngredientAmount?: number;
 }
 
 export class GetRecipeDto implements BaseResponseDto {

@@ -66,6 +66,7 @@ export class RecipeService {
           ingredients: [],
           totalRecipeCost: 0,
           availablePortions: Infinity,
+          minIngredientAmount: Infinity,
         });
       }
       const entry = grouped.get(pid)!;
@@ -82,6 +83,10 @@ export class RecipeService {
         entry.availablePortions = 0;
       }
 
+      if (availableQty < entry.minIngredientAmount!) {
+        entry.minIngredientAmount = availableQty;
+      }
+
       const totalCost = reqQty * Number(row.ingredient?.priceBuy || 0);
       entry.totalRecipeCost = Number(
         (Number(entry.totalRecipeCost) + totalCost).toFixed(2),
@@ -93,6 +98,7 @@ export class RecipeService {
         quantity: reqQty,
         cost: Number(row.ingredient.priceBuy),
         totalCost: Number(totalCost.toFixed(2)),
+        ingredientAmount: availableQty,
         notes: row.notes,
       });
     }
@@ -100,6 +106,9 @@ export class RecipeService {
     const allRecipes = Array.from(grouped.values()).map((recipe) => {
       if (recipe.availablePortions === Infinity) {
         recipe.availablePortions = 0;
+      }
+      if (recipe.minIngredientAmount === Infinity) {
+        recipe.minIngredientAmount = 0;
       }
       return recipe;
     });
@@ -252,6 +261,7 @@ export class RecipeService {
         quantity: Number(recipe.quantity),
         cost: Number(recipe.ingredient.priceBuy),
         totalCost: Number(totalCost.toFixed(2)),
+        ingredientAmount: Number(recipe.ingredient.amount),
         notes: recipe.notes,
       };
     });
