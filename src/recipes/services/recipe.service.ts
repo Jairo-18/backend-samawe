@@ -37,6 +37,7 @@ export class RecipeService {
     const qb = this._recipeRepository
       .createQueryBuilder('recipe')
       .leftJoinAndSelect('recipe.product', 'product')
+      .leftJoinAndSelect('product.categoryType', 'categoryType')
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('recipe.ingredient', 'ingredient')
       .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
@@ -157,15 +158,36 @@ export class RecipeService {
       });
     }
 
-    const allRecipes = Array.from(grouped.values()).map((recipe) => {
-      if (recipe.availablePortions === Infinity) {
-        recipe.availablePortions = 0;
+    const productCategoryMap = new Map<number, string>();
+    for (const row of allRows) {
+      if (!productCategoryMap.has(row.product.productId)) {
+        productCategoryMap.set(
+          row.product.productId,
+          row.product.categoryType?.name?.toUpperCase() || '',
+        );
       }
-      if (recipe.minIngredientAmount === Infinity) {
-        recipe.minIngredientAmount = 0;
-      }
-      return recipe;
-    });
+    }
+
+    const MAIN_CATEGORIES = ['RESTAURANTE', 'BAR', 'MECATO'];
+
+    const allRecipes = Array.from(grouped.values())
+      .map((recipe) => {
+        if (recipe.availablePortions === Infinity) {
+          recipe.availablePortions = 0;
+        }
+        if (recipe.minIngredientAmount === Infinity) {
+          recipe.minIngredientAmount = 0;
+        }
+        return recipe;
+      })
+      .sort((a, b) => {
+        const catA = productCategoryMap.get(a.productId) || '';
+        const catB = productCategoryMap.get(b.productId) || '';
+        const isMainA = MAIN_CATEGORIES.includes(catA) ? 0 : 1;
+        const isMainB = MAIN_CATEGORIES.includes(catB) ? 0 : 1;
+        if (isMainA !== isMainB) return isMainA - isMainB;
+        return a.productName.localeCompare(b.productName);
+      });
 
     const itemCount = allRecipes.length;
     const skip = ((params.page ?? 1) - 1) * (params.perPage ?? 10);
@@ -564,9 +586,23 @@ export class RecipeService {
   }
 
   /**
-   * Eliminar receta de un producto
+   * Eliminar receta de un producto.
+   * No permite eliminar si el producto se usa como ingrediente en otras recetas.
    */
   async deleteByProduct(productId: number): Promise<void> {
+    const usedAsIngredientCount = await this._recipeRepository.count({
+      where: { ingredient: { productId } },
+    });
+
+    if (usedAsIngredientCount > 0) {
+      const product = await this._productRepository.findOne({
+        where: { productId },
+      });
+      throw new BadRequestException(
+        `No se puede eliminar la receta de "${product?.name || productId}" porque se usa como ingrediente en ${usedAsIngredientCount} receta(s)`,
+      );
+    }
+
     await this._recipeRepository.delete({ product: { productId } });
   }
 
