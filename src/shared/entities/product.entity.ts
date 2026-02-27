@@ -46,9 +46,6 @@ export class Product {
   })
   images: ProductImage[];
 
-  @Column({ type: 'boolean', default: false })
-  isPreparation: boolean;
-
   @OneToMany(() => Recipe, (recipe) => recipe.ingredient, { cascade: true })
   recipes: Recipe[];
 

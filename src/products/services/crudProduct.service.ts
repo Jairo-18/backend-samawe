@@ -8,7 +8,7 @@ import {
   PartialProductDto,
 } from './../dtos/crudProduct.dto';
 import { Injectable } from '@nestjs/common';
-import { Equal, FindOptionsWhere, ILike } from 'typeorm';
+import { Equal, FindOptionsWhere, ILike, In } from 'typeorm';
 import { ProductInterfacePaginatedList } from '../interface/product.interface';
 
 @Injectable()
@@ -60,9 +60,12 @@ export class CrudProductService {
         typeof baseConditions.categoryType === 'object'
           ? baseConditions.categoryType
           : {};
+
+      const codes = params.categoryTypeCode.split(',').map((c) => c.trim());
+
       baseConditions.categoryType = {
         ...currentCategoryType,
-        code: Equal(params.categoryTypeCode),
+        code: codes.length > 1 ? In(codes) : Equal(codes[0]),
       };
     }
 

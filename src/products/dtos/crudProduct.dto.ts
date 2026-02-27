@@ -13,8 +13,8 @@ export class PaginatedListProductsParamsDto extends ParamsPaginationDto {
   categoryType?: number;
 
   @ApiProperty({
-    example: 'RES',
-    description: 'Código del tipo de categoría (ej: RES, ING)',
+    example: 'RES,ING',
+    description: 'Código del tipo de categoría (ej: RES, o RES,ING)',
     required: false,
   })
   @IsOptional()
