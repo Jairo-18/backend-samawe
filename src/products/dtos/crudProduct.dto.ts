@@ -83,6 +83,16 @@ export class PaginatedListProductsParamsDto extends ParamsPaginationDto {
   @IsOptional()
   @IsString()
   isActive?: boolean;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'Boolean para excluir productos que ya tienen una receta asignada',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  excludeWithRecipe?: boolean;
 }
 
 export class PaginatedProductSelectParamsDto extends ParamsPaginationDto {

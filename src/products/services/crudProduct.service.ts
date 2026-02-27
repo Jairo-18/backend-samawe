@@ -1,14 +1,13 @@
 ﻿import { ProductRepository } from './../../shared/repositories/product.repository';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
-import { Product } from './../../shared/entities/product.entity';
 import {
   PaginatedListProductsParamsDto,
   PaginatedProductSelectParamsDto,
   PartialProductDto,
 } from './../dtos/crudProduct.dto';
 import { Injectable } from '@nestjs/common';
-import { Equal, FindOptionsWhere, ILike, In } from 'typeorm';
+import { ILike } from 'typeorm';
 import { ProductInterfacePaginatedList } from '../interface/product.interface';
 
 @Injectable()
@@ -17,94 +16,95 @@ export class CrudProductService {
 
   async paginatedList(params: PaginatedListProductsParamsDto) {
     const skip = (params.page - 1) * params.perPage;
-    const where: FindOptionsWhere<Product>[] = [];
-
-    const baseConditions: FindOptionsWhere<Product> = {};
+    const query = this._productRepository
+      .createQueryBuilder('Product')
+      .leftJoinAndSelect('Product.categoryType', 'categoryType')
+      .leftJoinAndSelect('Product.unitOfMeasure', 'unitOfMeasure')
+      .leftJoinAndSelect('Product.productRecipes', 'productRecipes')
+      .leftJoinAndSelect(
+        'productRecipes.ingredient',
+        'productRecipesIngredient',
+      )
+      .leftJoinAndSelect('Product.images', 'images')
+      .skip(skip)
+      .take(params.perPage)
+      .orderBy('Product.name', 'ASC');
 
     if (params.name) {
-      baseConditions.name = ILike(`%${params.name}%`);
+      query.andWhere('Product.name ILIKE :name', { name: `%${params.name}%` });
     }
 
     if (params.code) {
-      baseConditions.code = ILike(`%${params.code}%`);
+      query.andWhere('Product.code ILIKE :code', { name: `%${params.code}%` });
     }
 
     if (params.description) {
-      baseConditions.description = ILike(`%${params.description}%`);
+      query.andWhere('Product.description ILIKE :description', {
+        description: `%${params.description}%`,
+      });
     }
 
     if (params.amount !== undefined) {
-      baseConditions.amount = Equal(params.amount);
+      query.andWhere('Product.amount = :amount', { amount: params.amount });
     }
 
     if (params.priceBuy !== undefined) {
-      baseConditions.priceBuy = Equal(params.priceBuy);
+      query.andWhere('Product.priceBuy = :priceBuy', {
+        priceBuy: params.priceBuy,
+      });
     }
 
     if (params.priceSale !== undefined) {
-      baseConditions.priceSale = Equal(params.priceSale);
+      query.andWhere('Product.priceSale = :priceSale', {
+        priceSale: params.priceSale,
+      });
     }
 
     if (params.isActive !== undefined) {
-      baseConditions.isActive = Equal(params.isActive);
+      query.andWhere('Product.isActive = :isActive', {
+        isActive: params.isActive,
+      });
     }
 
     if (params.categoryType) {
-      baseConditions.categoryType = {
+      query.andWhere('categoryType.categoryTypeId = :categoryTypeId', {
         categoryTypeId: params.categoryType,
-      };
+      });
     }
 
     if (params.categoryTypeCode) {
-      const currentCategoryType =
-        typeof baseConditions.categoryType === 'object'
-          ? baseConditions.categoryType
-          : {};
-
       const codes = params.categoryTypeCode.split(',').map((c) => c.trim());
+      if (codes.length > 1) {
+        query.andWhere('categoryType.code IN (:...codes)', { codes });
+      } else {
+        query.andWhere('categoryType.code = :code', { code: codes[0] });
+      }
+    }
 
-      baseConditions.categoryType = {
-        ...currentCategoryType,
-        code: codes.length > 1 ? In(codes) : Equal(codes[0]),
-      };
+    if (
+      params.excludeWithRecipe === true ||
+      params.excludeWithRecipe === ('true' as any)
+    ) {
+      query.andWhere((qb) => {
+        const subQuery = qb
+          .subQuery()
+          .select('recipe.productId')
+          .from('Recipe', 'recipe')
+          .where('recipe.productId = Product.productId')
+          .getQuery();
+        return 'NOT EXISTS ' + subQuery;
+      });
     }
 
     if (params.search) {
       const search = params.search.trim();
-      const searchConditions: FindOptionsWhere<Product>[] = [
-        { name: ILike(`%${search}%`) },
-        { code: ILike(`%${search}%`) },
-        { description: ILike(`%${search}%`) },
-      ];
-
-      const searchNumber = Number(search);
-      if (!isNaN(searchNumber)) {
-        searchConditions.push(
-          { amount: Equal(searchNumber) },
-          { priceBuy: Equal(searchNumber) },
-          { priceSale: Equal(searchNumber) },
-        );
-      }
-
-      searchConditions.forEach((condition) => {
-        where.push({ ...baseConditions, ...condition });
-      });
-    } else {
-      where.push(baseConditions);
+      query.andWhere(
+        '(Product.name ILIKE :search OR Product.code ILIKE :search OR Product.description ILIKE :search)',
+        { search: `%${search}%` },
+      );
     }
 
-    const [entities, itemCount] = await this._productRepository.findAndCount({
-      where,
-      skip,
-      take: params.perPage,
-      order: { name: 'ASC' },
-      relations: [
-        'categoryType',
-        'unitOfMeasure',
-        'productRecipes',
-        'productRecipes.ingredient',
-      ],
-    });
+    const [entities, itemCount] = await query.getManyAndCount();
 
     const products: ProductInterfacePaginatedList[] = entities.map(
       (product) => {
