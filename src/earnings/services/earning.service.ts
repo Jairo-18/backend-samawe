@@ -40,18 +40,25 @@ export class EarningService {
   }
 
   async getProductSummary(): Promise<BalanceProductSummaryDto> {
-    const daily = await this.getLatestBalanceByType(BalanceType.DAILY);
-    if (!daily) {
-      return {
-        totalProductPriceSale: 0,
-        totalProductPriceBuy: 0,
-        balanceProduct: 0,
-      };
+    const products = await this._productRepository.find();
+
+    let totalProductPriceSale = 0;
+    let totalProductPriceBuy = 0;
+
+    for (const product of products) {
+      const amount = Number(product.amount ?? 0);
+      const priceSale = Number(product.priceSale ?? 0);
+      const priceBuy = Number(product.priceBuy ?? 0);
+
+      totalProductPriceSale += amount * priceSale;
+      totalProductPriceBuy += amount * priceBuy;
     }
 
-    const { totalProductPriceSale, totalProductPriceBuy, balanceProduct } =
-      daily;
-    return { totalProductPriceSale, totalProductPriceBuy, balanceProduct };
+    return {
+      totalProductPriceSale,
+      totalProductPriceBuy,
+      balanceProduct: totalProductPriceSale - totalProductPriceBuy,
+    };
   }
 
   async getInvoiceSummary(

@@ -113,32 +113,50 @@ export class CrudProductService {
         const hasRecipes =
           product.productRecipes && product.productRecipes.length > 0;
 
-        if (
-          catName === 'RESTAURANTE' ||
-          catName === 'BAR' ||
-          catName === 'MECATO'
-        ) {
-          if (hasRecipes) {
-            let minPortions = Infinity;
+        if (catName === 'RESTAURANTE' && hasRecipes) {
+          let minPortions = Infinity;
+          let calculatedPriceBuy = 0;
 
-            for (const recipe of product.productRecipes) {
-              const reqQty = Number(recipe.quantity);
-              const availableQty = Number(recipe.ingredient?.amount || 0);
+          for (const recipe of product.productRecipes) {
+            const reqQty = Number(recipe.quantity);
+            const ingredient = recipe.ingredient;
+            const availableQty = Number(ingredient?.amount || 0);
+            const ingredientPriceBuy = Number(ingredient?.priceBuy || 0);
 
-              if (reqQty > 0) {
-                const portions = Math.floor(availableQty / reqQty);
-                if (portions < minPortions) {
-                  minPortions = portions;
-                }
-              } else {
-                minPortions = 0;
+            calculatedPriceBuy += reqQty * ingredientPriceBuy;
+
+            if (reqQty > 0) {
+              const portions = Math.floor(availableQty / reqQty);
+              if (portions < minPortions) {
+                minPortions = portions;
               }
+            } else {
+              minPortions = 0;
             }
-
-            dynamicAmount = minPortions === Infinity ? 0 : minPortions;
-          } else if (catName === 'RESTAURANTE') {
-            dynamicAmount = 0;
           }
+
+          dynamicPriceBuy = Number(calculatedPriceBuy.toFixed(2));
+          dynamicAmount = minPortions === Infinity ? 0 : minPortions;
+        } else if (
+          (catName === 'RESTAURANTE' ||
+            catName === 'BAR' ||
+            catName === 'MECATO') &&
+          hasRecipes
+        ) {
+          let minPortions = Infinity;
+          for (const recipe of product.productRecipes) {
+            const reqQty = Number(recipe.quantity);
+            const availableQty = Number(recipe.ingredient?.amount || 0);
+            if (reqQty > 0) {
+              const portions = Math.floor(availableQty / reqQty);
+              if (portions < minPortions) minPortions = portions;
+            } else {
+              minPortions = 0;
+            }
+          }
+          dynamicAmount = minPortions === Infinity ? 0 : minPortions;
+        } else if (catName === 'RESTAURANTE') {
+          dynamicAmount = 0;
         }
 
         if (catName === 'INGREDIENTE' && hasRecipes) {

@@ -166,10 +166,12 @@ export class ProductService {
       let dynamicAmount = 0;
       if (hasRecipes) {
         let minPortions = Infinity;
+        let calculatedPriceBuy = 0;
 
         for (const recipe of product.productRecipes) {
           const reqQty = Number(recipe.quantity);
-          const availableQty = Number(recipe.ingredient?.amount || 0);
+          const ingredient = recipe.ingredient;
+          const availableQty = Number(ingredient?.amount || 0);
 
           if (reqQty > 0) {
             const portions = Math.floor(availableQty / reqQty);
@@ -179,8 +181,17 @@ export class ProductService {
           } else {
             minPortions = 0;
           }
+
+          if (catName === 'RESTAURANTE') {
+            const ingredientPriceBuy = Number(ingredient?.priceBuy || 0);
+            calculatedPriceBuy += reqQty * ingredientPriceBuy;
+          }
         }
         dynamicAmount = minPortions === Infinity ? 0 : minPortions;
+
+        if (catName === 'RESTAURANTE') {
+          product.priceBuy = Number(calculatedPriceBuy.toFixed(2));
+        }
       }
       product.amount = dynamicAmount;
     }
