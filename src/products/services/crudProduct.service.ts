@@ -83,7 +83,7 @@ export class CrudProductService {
 
     if (
       params.excludeWithRecipe === true ||
-      params.excludeWithRecipe === ('true' as any)
+      params.excludeWithRecipe?.toString() === 'true'
     ) {
       query.andWhere((qb) => {
         const subQuery = qb
