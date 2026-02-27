@@ -51,6 +51,32 @@ export class RecipeService {
     const allRows = await qb.orderBy('product.name', 'ASC').getMany();
 
     const grouped = new Map<number, RecipeWithDetailsResponse>();
+
+    const ingredientSubRecipeMap = new Map<number, Recipe[]>();
+    const ingredientProductIds = new Set<number>();
+    for (const row of allRows) {
+      ingredientProductIds.add(row.ingredient.productId);
+    }
+
+    if (ingredientProductIds.size > 0) {
+      const subRecipeRows = await this._recipeRepository
+        .createQueryBuilder('recipe')
+        .leftJoinAndSelect('recipe.product', 'product')
+        .leftJoinAndSelect('recipe.ingredient', 'ingredient')
+        .where('product.productId IN (:...ids)', {
+          ids: Array.from(ingredientProductIds),
+        })
+        .getMany();
+
+      for (const sr of subRecipeRows) {
+        const pid = sr.product.productId;
+        if (!ingredientSubRecipeMap.has(pid)) {
+          ingredientSubRecipeMap.set(pid, []);
+        }
+        ingredientSubRecipeMap.get(pid)!.push(sr);
+      }
+    }
+
     for (const row of allRows) {
       const pid = row.product.productId;
       if (!grouped.has(pid)) {
@@ -72,7 +98,25 @@ export class RecipeService {
       const entry = grouped.get(pid)!;
 
       const reqQty = Number(row.quantity);
-      const availableQty = Number(row.ingredient?.amount || 0);
+      let availableQty = Number(row.ingredient?.amount || 0);
+
+      const subRecipes = ingredientSubRecipeMap.get(row.ingredient.productId);
+      if (subRecipes && subRecipes.length > 0) {
+        let subMinPortions = Infinity;
+        for (const sr of subRecipes) {
+          const srReqQty = Number(sr.quantity);
+          const srAvailQty = Number(sr.ingredient?.amount || 0);
+          if (srReqQty > 0) {
+            const srPortions = Math.floor(srAvailQty / srReqQty);
+            if (srPortions < subMinPortions) {
+              subMinPortions = srPortions;
+            }
+          } else {
+            subMinPortions = 0;
+          }
+        }
+        availableQty = subMinPortions === Infinity ? 0 : subMinPortions;
+      }
 
       if (reqQty > 0) {
         const portions = Math.floor(availableQty / reqQty);
@@ -87,7 +131,17 @@ export class RecipeService {
         entry.minIngredientAmount = availableQty;
       }
 
-      const totalCost = reqQty * Number(row.ingredient?.priceBuy || 0);
+      const ingredientPriceBuy = Number(row.ingredient?.priceBuy || 0);
+      let effectivePriceBuy = ingredientPriceBuy;
+      if (subRecipes && subRecipes.length > 0) {
+        effectivePriceBuy = 0;
+        for (const sr of subRecipes) {
+          effectivePriceBuy +=
+            Number(sr.quantity) * Number(sr.ingredient?.priceBuy || 0);
+        }
+      }
+
+      const totalCost = reqQty * effectivePriceBuy;
       entry.totalRecipeCost = Number(
         (Number(entry.totalRecipeCost) + totalCost).toFixed(2),
       );
@@ -96,7 +150,7 @@ export class RecipeService {
         ingredientProductName: row.ingredient.name,
         unit: row.ingredient.unitOfMeasure?.code ?? 'N/A',
         quantity: reqQty,
-        cost: Number(row.ingredient.priceBuy),
+        cost: Number(effectivePriceBuy.toFixed(2)),
         totalCost: Number(totalCost.toFixed(2)),
         ingredientAmount: availableQty,
         notes: row.notes,

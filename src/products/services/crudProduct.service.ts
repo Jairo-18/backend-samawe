@@ -106,14 +106,19 @@ export class CrudProductService {
     const products: ProductInterfacePaginatedList[] = entities.map(
       (product) => {
         let dynamicAmount = Number(product.amount || 0);
+        let dynamicPriceBuy = Number(product.priceBuy || 0);
+        let dynamicPriceSale = Number(product.priceSale || 0);
 
         const catName = product.categoryType?.name?.toUpperCase();
+        const hasRecipes =
+          product.productRecipes && product.productRecipes.length > 0;
+
         if (
           catName === 'RESTAURANTE' ||
           catName === 'BAR' ||
           catName === 'MECATO'
         ) {
-          if (product.productRecipes && product.productRecipes.length > 0) {
+          if (hasRecipes) {
             let minPortions = Infinity;
 
             for (const recipe of product.productRecipes) {
@@ -136,6 +141,36 @@ export class CrudProductService {
           }
         }
 
+        if (catName === 'INGREDIENTE' && hasRecipes) {
+          let calculatedPriceBuy = 0;
+          let calculatedPriceSale = 0;
+          let minPortions = Infinity;
+
+          for (const recipe of product.productRecipes) {
+            const reqQty = Number(recipe.quantity);
+            const ingredient = recipe.ingredient;
+            const ingredientPriceBuy = Number(ingredient?.priceBuy || 0);
+            const ingredientPriceSale = Number(ingredient?.priceSale || 0);
+            const availableQty = Number(ingredient?.amount || 0);
+
+            calculatedPriceBuy += reqQty * ingredientPriceBuy;
+            calculatedPriceSale += reqQty * ingredientPriceSale;
+
+            if (reqQty > 0) {
+              const portions = Math.floor(availableQty / reqQty);
+              if (portions < minPortions) {
+                minPortions = portions;
+              }
+            } else {
+              minPortions = 0;
+            }
+          }
+
+          dynamicPriceBuy = Number(calculatedPriceBuy.toFixed(2));
+          dynamicPriceSale = Number(calculatedPriceSale.toFixed(2));
+          dynamicAmount = minPortions === Infinity ? 0 : minPortions;
+        }
+
         return {
           productId: product.productId,
           code: product.code,
@@ -143,8 +178,8 @@ export class CrudProductService {
           description: product.description,
           amount: dynamicAmount,
           isActive: product.isActive,
-          priceBuy: product.priceBuy,
-          priceSale: product.priceSale,
+          priceBuy: dynamicPriceBuy,
+          priceSale: dynamicPriceSale,
           categoryType: product.categoryType
             ? {
                 categoryTypeId: product.categoryType.categoryTypeId,

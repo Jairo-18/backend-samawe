@@ -155,13 +155,16 @@ export class ProductService {
     }
 
     const catName = product.categoryType?.name?.toUpperCase();
+    const hasRecipes =
+      product.productRecipes && product.productRecipes.length > 0;
+
     if (
       catName === 'RESTAURANTE' ||
       catName === 'BAR' ||
       catName === 'MECATO'
     ) {
       let dynamicAmount = 0;
-      if (product.productRecipes && product.productRecipes.length > 0) {
+      if (hasRecipes) {
         let minPortions = Infinity;
 
         for (const recipe of product.productRecipes) {
@@ -180,6 +183,36 @@ export class ProductService {
         dynamicAmount = minPortions === Infinity ? 0 : minPortions;
       }
       product.amount = dynamicAmount;
+    }
+
+    if (catName === 'INGREDIENTE' && hasRecipes) {
+      let calculatedPriceBuy = 0;
+      let calculatedPriceSale = 0;
+      let minPortions = Infinity;
+
+      for (const recipe of product.productRecipes) {
+        const reqQty = Number(recipe.quantity);
+        const ingredient = recipe.ingredient;
+        const ingredientPriceBuy = Number(ingredient?.priceBuy || 0);
+        const ingredientPriceSale = Number(ingredient?.priceSale || 0);
+        const availableQty = Number(ingredient?.amount || 0);
+
+        calculatedPriceBuy += reqQty * ingredientPriceBuy;
+        calculatedPriceSale += reqQty * ingredientPriceSale;
+
+        if (reqQty > 0) {
+          const portions = Math.floor(availableQty / reqQty);
+          if (portions < minPortions) {
+            minPortions = portions;
+          }
+        } else {
+          minPortions = 0;
+        }
+      }
+
+      product.priceBuy = Number(calculatedPriceBuy.toFixed(2));
+      product.priceSale = Number(calculatedPriceSale.toFixed(2));
+      product.amount = minPortions === Infinity ? 0 : minPortions;
     }
 
     return mapProductDetail(product);
