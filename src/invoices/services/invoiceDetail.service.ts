@@ -294,6 +294,14 @@ export class InvoiceDetailService {
         this._generalInvoiceDetaillService.updateInvoiceTotal(invoiceId),
       ];
 
+      if (isProduct && isRecipeProduct2 && !invoice.orderTime) {
+        savePromises.push(
+          this._invoiceRepository.update(invoiceId, {
+            orderTime: new Date(),
+          }) as any,
+        );
+      }
+
       await Promise.all(savePromises);
 
       this._eventEmitter.emit('invoice.detail.created', {
@@ -527,27 +535,24 @@ export class InvoiceDetailService {
           throw new NotFoundException('Detalle de factura no encontrado');
         }
 
-        const previousIsPaid = detail.isPaid;
-        detail.isPaid = !previousIsPaid;
-
-        const subtotal = Number(detail.subtotal);
-        const currentPaidTotal = Number(detail.invoice.paidTotal);
-
-        if (detail.isPaid) {
-          detail.invoice.paidTotal = currentPaidTotal + subtotal;
-        } else {
-          detail.invoice.paidTotal = currentPaidTotal - subtotal;
-        }
-
-        if (detail.invoice.paidTotal < 0) detail.invoice.paidTotal = 0;
-
+        detail.isPaid = !detail.isPaid;
         await manager.save(detail);
+
+        const { paidTotal } = await manager
+          .createQueryBuilder(this._invoiceDetaillRepository.target, 'd')
+          .select('COALESCE(SUM(d.subtotal), 0)', 'paidTotal')
+          .where('d.invoiceId = :invoiceId', { invoiceId })
+          .andWhere('d.isPaid = true')
+          .getRawOne();
+
+        const newPaidTotal = Math.round(Number(paidTotal) * 100) / 100;
+        detail.invoice.paidTotal = newPaidTotal;
         await manager.save(detail.invoice);
 
         return {
           invoiceDetailId: detail.invoiceDetailId,
           isPaid: detail.isPaid,
-          invoicePaidTotal: Number(detail.invoice.paidTotal),
+          invoicePaidTotal: newPaidTotal,
         };
       },
     );
@@ -589,19 +594,8 @@ export class InvoiceDetailService {
           }
 
           detail.isPaid = targetIsPaid;
-
-          const subtotal = Number(detail.subtotal);
-          const currentPaidTotal = Number(detail.invoice.paidTotal);
-
-          if (targetIsPaid) {
-            detail.invoice.paidTotal = currentPaidTotal + subtotal;
-          } else {
-            detail.invoice.paidTotal = currentPaidTotal - subtotal;
-          }
-
-          if (detail.invoice.paidTotal < 0) detail.invoice.paidTotal = 0;
-
           await manager.save(detail);
+
           invoiceToUpdate = detail.invoice;
 
           updatedDetails.push({
@@ -611,6 +605,15 @@ export class InvoiceDetailService {
         }
 
         if (invoiceToUpdate) {
+          const { paidTotal } = await manager
+            .createQueryBuilder(this._invoiceDetaillRepository.target, 'd')
+            .select('COALESCE(SUM(d.subtotal), 0)', 'paidTotal')
+            .where('d.invoiceId = :invoiceId', { invoiceId })
+            .andWhere('d.isPaid = true')
+            .getRawOne();
+
+          const newPaidTotal = Math.round(Number(paidTotal) * 100) / 100;
+          invoiceToUpdate.paidTotal = newPaidTotal;
           await manager.save(invoiceToUpdate);
         } else if (details.length > 0) {
           invoiceToUpdate = details[0].invoice;

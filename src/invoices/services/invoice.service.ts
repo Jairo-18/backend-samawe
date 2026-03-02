@@ -8,6 +8,10 @@ import { CreateInvoiceDetailDto } from './../dtos/invoiceDetaill.dto';
 import { InvoiceDetaill } from './../../shared/entities/invoiceDetaill.entity';
 import { Product } from './../../shared/entities/product.entity';
 import {
+  Notification,
+  NotificationType,
+} from './../../shared/entities/notification.entity';
+import {
   Injectable,
   BadRequestException,
   NotFoundException,
@@ -267,6 +271,10 @@ export class InvoiceService {
           employee: { userId: employeeId } as User,
           payType: payType ?? undefined,
           paidType: paidType ?? undefined,
+          stateType: createInvoiceDto.stateTypeId
+            ? ({ stateTypeId: createInvoiceDto.stateTypeId } as StateType)
+            : undefined,
+          tableNumber: createInvoiceDto.tableNumber,
         };
 
         const newInvoice = invoiceRepo.create(invoiceData);
@@ -286,6 +294,7 @@ export class InvoiceService {
         'invoiceType',
         'payType',
         'paidType',
+        'stateType',
         'user',
         'employee',
         'invoiceDetails',
@@ -321,6 +330,10 @@ export class InvoiceService {
       transfer: invoice.transfer,
       total: invoice.total?.toString(),
       totalTaxes: Number(totalTaxes),
+      tableNumber: invoice.tableNumber,
+      orderTime: invoice.orderTime?.toISOString(),
+      readyTime: invoice.readyTime?.toISOString(),
+      servedTime: invoice.servedTime?.toISOString(),
       invoiceType: invoice.invoiceType && {
         invoiceTypeId: invoice.invoiceType.invoiceTypeId,
         code: invoice.invoiceType.code,
@@ -335,6 +348,11 @@ export class InvoiceService {
         paidTypeId: invoice.paidType.paidTypeId,
         code: invoice.paidType.code,
         name: invoice.paidType.name,
+      },
+      stateType: invoice.stateType && {
+        stateTypeId: invoice.stateType.stateTypeId,
+        code: invoice.stateType.code,
+        name: invoice.stateType.name,
       },
       user: invoice.user && {
         userId: invoice.user.userId,
@@ -452,37 +470,87 @@ export class InvoiceService {
         }
         invoice.stateType = stateType;
 
-        // Lógica de marcas de tiempo según el estado
         const now = new Date();
         const stateCode = stateType.code?.toUpperCase();
 
         if (stateCode === 'PEN') {
-          // Pendiente / Enviado a cocina
           invoice.orderTime = now;
         } else if (stateCode === 'LIS') {
-          // Listo para servir
           invoice.readyTime = now;
         } else if (stateCode === 'ENT') {
-          // Entregado
           invoice.servedTime = now;
         }
       }
 
       await queryRunner.manager.save(invoice);
-      await queryRunner.commitTransaction();
 
-      // Emitir evento por WebSocket si el estado cambió a uno relevante para cocina/meseros
       if (updateInvoiceDto.stateTypeId !== undefined) {
-        this._ordersGateway.emitOrderUpdate({
-          invoiceId: invoice.invoiceId,
-          code: invoice.code,
-          state: invoice.stateType.name,
-          stateCode: invoice.stateType.code,
-          tableNumber: invoice.tableNumber,
-          updatedAt: new Date(),
-        });
+        const notificationStates = ['PEN', 'ENC', 'CAN', 'ENT', 'LIS'];
+
+        if (
+          invoice.stateType?.code &&
+          notificationStates.includes(invoice.stateType.code.toUpperCase())
+        ) {
+          const roleNames = [
+            'ADMINISTRADOR',
+            'Administrador',
+            'MESERO',
+            'Mesero',
+            'CHEF',
+            'Chef',
+            'RECEPCIONISTA',
+            'Recepcionista',
+          ];
+          const usersToNotify = await queryRunner.manager.find(User, {
+            where: {
+              roleType: {
+                name: In(roleNames),
+              },
+            },
+            relations: ['roleType'],
+          });
+
+          if (usersToNotify.length > 0) {
+            const notificationsToInsert = usersToNotify.map((user) => {
+              const notif = new Notification();
+              notif.title = `Actualización de Orden`;
+              notif.message = `La orden de la mesa ${invoice.tableNumber || 'N/A'} (Factura ${invoice.code}) cambió a ${invoice.stateType.name}.`;
+              notif.type = NotificationType.ORDER_STATE_CHANGED;
+              notif.user = user;
+              notif.metadata = {
+                invoiceId: invoice.invoiceId,
+                code: invoice.code,
+                tableNumber: invoice.tableNumber,
+                state: invoice.stateType.name,
+                stateCode: invoice.stateType.code,
+                orderTime: invoice.orderTime,
+                readyTime: invoice.readyTime,
+                servedTime: invoice.servedTime,
+              };
+              return notif;
+            });
+
+            await queryRunner.manager.save(Notification, notificationsToInsert);
+
+            for (const notif of notificationsToInsert) {
+              this._ordersGateway.emitToUser(notif.user.userId, {
+                notificationId: notif.notificationId,
+                invoiceId: invoice.invoiceId,
+                code: invoice.code,
+                state: invoice.stateType.name,
+                stateCode: invoice.stateType.code,
+                tableNumber: invoice.tableNumber,
+                updatedAt: new Date(),
+                orderTime: invoice.orderTime,
+                readyTime: invoice.readyTime,
+                servedTime: invoice.servedTime,
+              });
+            }
+          }
+        }
       }
 
+      await queryRunner.commitTransaction();
       return this.findOne(invoiceId);
     } catch (error) {
       await queryRunner.rollbackTransaction();

@@ -95,8 +95,6 @@ async function bootstrap() {
     }),
   );
 
-  // El serving de /uploads ahora lo maneja ServeStaticModule en AppModule.ts
-
   const port = configService.get<number>('app.port') || 3000;
   await app.listen(port, '0.0.0.0');
   console.log(

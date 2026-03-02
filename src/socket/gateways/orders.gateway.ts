@@ -6,6 +6,7 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { OrderUpdate } from '../interfaces/order-socket.interface';
 
 @WebSocketGateway({
   cors: {
@@ -29,13 +30,25 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
    * Notifica a todos los clientes sobre un cambio en un pedido.
    * @param orderData Datos del pedido actualizado.
    */
-  emitOrderUpdate(orderData: any) {
+  emitOrderUpdate(orderData: OrderUpdate) {
     this.server.emit('orderUpdated', orderData);
+  }
+
+  emitToUser(userId: string, orderData: OrderUpdate) {
+    this.server.to(`user_${userId}`).emit('orderUpdated', orderData);
   }
 
   @SubscribeMessage('joinOrders')
   handleJoinOrders(client: Socket) {
     client.join('orderRoom');
     return { event: 'joined', data: 'Joined to orders room' };
+  }
+
+  @SubscribeMessage('joinUserRoom')
+  handleJoinUserRoom(client: Socket, data: { userId: string }) {
+    if (data.userId) {
+      client.join(`user_${data.userId}`);
+      return { event: 'joinedUser', data: `Joined to user_${data.userId}` };
+    }
   }
 }

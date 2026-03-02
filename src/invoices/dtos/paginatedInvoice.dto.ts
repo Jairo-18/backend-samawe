@@ -146,6 +146,25 @@ export class PaginatedListInvoicesParamsDto extends ParamsPaginationDto {
   @IsOptional()
   @IsString()
   taxeTypeId?: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID del tipo de estado (para órdenes)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  stateTypeId?: number;
+
+  @ApiProperty({
+    example: '6,7,8,9,10',
+    description:
+      'IDs de estado separados por coma para filtrar (ej. órdenes de restaurante)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  stateTypeIds?: string;
 }
 
 export class PaginatedInvoiceResponseDto extends ResponsePaginationDto<GetInvoiceWithDetailsDto> {

@@ -31,12 +31,32 @@ export class InvoicedPaginatedService {
       .leftJoinAndSelect('invoice.payType', 'payType')
       .leftJoinAndSelect('invoice.paidType', 'paidType')
       .leftJoinAndSelect('invoice.invoiceType', 'invoiceType')
+      .leftJoinAndSelect('invoice.stateType', 'stateType')
       .where('1=1');
 
     if (params.invoiceTypeId) {
       query.andWhere('invoice.invoiceType = :invoiceType', {
         invoiceType: params.invoiceTypeId,
       });
+    }
+
+    if (params.stateTypeId) {
+      query.andWhere('invoice.stateType = :stateTypeId', {
+        stateTypeId: params.stateTypeId,
+      });
+    }
+
+    if (params.stateTypeIds) {
+      const stateIds = params.stateTypeIds
+        .split(',')
+        .map((id) => Number(id.trim()))
+        .filter((id) => !isNaN(id));
+
+      if (stateIds.length > 0) {
+        query.andWhere('invoice.stateType IN (:...stateTypeIds)', {
+          stateTypeIds: stateIds,
+        });
+      }
     }
 
     if (params.code) {
@@ -184,6 +204,10 @@ export class InvoicedPaginatedService {
             ? parseFloat(invoice.total) || 0
             : invoice.total || 0,
         totalTaxes,
+        tableNumber: invoice.tableNumber,
+        orderTime: invoice.orderTime,
+        readyTime: invoice.readyTime,
+        servedTime: invoice.servedTime,
         startDate: invoice.startDate,
         endDate: invoice.endDate,
         user: invoice.user
@@ -249,6 +273,13 @@ export class InvoicedPaginatedService {
               invoiceTypeId: Number(invoice.invoiceType.invoiceTypeId),
               code: invoice.invoiceType.code,
               name: invoice.invoiceType.name,
+            }
+          : undefined,
+        stateType: invoice.stateType
+          ? {
+              stateTypeId: Number(invoice.stateType.stateTypeId),
+              code: invoice.stateType.code,
+              name: invoice.stateType.name,
             }
           : undefined,
       };

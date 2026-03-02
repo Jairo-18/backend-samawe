@@ -109,6 +109,24 @@ export class CreateInvoiceDto {
   @IsNumber()
   cash?: number;
 
+  @ApiProperty({
+    example: 6,
+    description: 'Estado inicial de la orden de restaurante',
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  stateTypeId?: number;
+
+  @ApiProperty({
+    example: '12',
+    description: 'Número de mesa para órdenes de restaurante',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  tableNumber?: string;
+
   @ApiProperty()
   details?: CreateInvoiceDetailDto[];
 }
@@ -195,6 +213,15 @@ export class UpdateInvoiceDto {
   @IsNumber()
   @IsOptional()
   stateTypeId?: number;
+
+  @ApiProperty({
+    example: '12',
+    description: 'Número de mesa para órdenes de restaurante',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  tableNumber?: string;
 }
 
 export class EmployeMiniDto {
@@ -368,6 +395,17 @@ export class InvoiceDetailDto {
   excursion?: ExcursionMiniDto;
 }
 
+export class StateTypeDto {
+  @ApiProperty()
+  stateTypeId: number;
+
+  @ApiProperty()
+  code: string;
+
+  @ApiProperty()
+  name: string;
+}
+
 export class GetInvoiceWithDetailsDto {
   @ApiProperty({
     example: 100,
@@ -439,6 +477,37 @@ export class GetInvoiceWithDetailsDto {
 
   @ApiProperty({ type: () => PaidTypeDto })
   paidType: PaidTypeDto;
+
+  @ApiProperty({ type: () => StateTypeDto, required: false })
+  stateType?: StateTypeDto;
+
+  @ApiProperty({
+    example: '12',
+    description: 'Número de mesa para órdenes de restaurante',
+    required: false,
+  })
+  tableNumber?: string;
+
+  @ApiProperty({
+    example: '2025-05-27T10:00:00.000Z',
+    description: 'Hora de la orden',
+    required: false,
+  })
+  orderTime?: string;
+
+  @ApiProperty({
+    example: '2025-05-27T10:30:00.000Z',
+    description: 'Hora que estuvo listo',
+    required: false,
+  })
+  readyTime?: string;
+
+  @ApiProperty({
+    example: '2025-05-27T10:35:00.000Z',
+    description: 'Hora que se sirvió',
+    required: false,
+  })
+  servedTime?: string;
 
   @ApiProperty({ type: () => EmployeMiniDto })
   employee: EmployeMiniDto;

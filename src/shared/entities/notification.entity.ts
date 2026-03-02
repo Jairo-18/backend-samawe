@@ -10,6 +10,7 @@ import { User } from './user.entity';
 export enum NotificationType {
   LOW_PRODUCT = 'LOW_PRODUCT',
   ROOM_MAINTENANCE = 'ROOM_MAINTENANCE',
+  ORDER_STATE_CHANGED = 'ORDER_STATE_CHANGED',
 }
 
 @Entity('notifications')

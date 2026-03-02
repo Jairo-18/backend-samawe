@@ -6,6 +6,10 @@
   subtotalWithTax?: number;
   total: number;
   totalTaxes?: number;
+  tableNumber?: string;
+  orderTime?: Date;
+  readyTime?: Date;
+  servedTime?: Date;
   startDate: Date;
   endDate: Date;
   user?: {
@@ -50,6 +54,11 @@
   };
   invoiceType?: {
     invoiceTypeId: number;
+    code: string;
+    name: string;
+  };
+  stateType?: {
+    stateTypeId: number;
     code: string;
     name: string;
   };
