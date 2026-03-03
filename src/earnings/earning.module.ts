@@ -10,7 +10,7 @@ import { EarningService } from './services/earning.service';
 
 @Module({
   imports: [
-    SharedModule.forRoot(),
+    SharedModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [EarningController, ReportController],

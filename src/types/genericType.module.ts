@@ -8,7 +8,7 @@ import { SharedModule } from '../shared/shared.module';
 
 @Module({
   imports: [
-    SharedModule.forRoot(),
+    SharedModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [GenericTypeController],

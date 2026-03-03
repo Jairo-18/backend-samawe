@@ -6,7 +6,7 @@ import { PassportModule } from '@nestjs/passport';
 
 @Module({
   imports: [
-    SharedModule.forRoot(),
+    SharedModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [NotificationsController],

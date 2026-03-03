@@ -6,7 +6,7 @@ import { CronJobService } from './services/cron.job.service';
 
 @Module({
   imports: [
-    SharedModule.forRoot(),
+    SharedModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     InvoiceModule,
   ],

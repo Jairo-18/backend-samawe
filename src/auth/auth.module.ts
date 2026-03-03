@@ -12,7 +12,7 @@ import { PassportModule } from '@nestjs/passport';
 
 @Module({
   imports: [
-    SharedModule.forRoot(),
+    SharedModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({

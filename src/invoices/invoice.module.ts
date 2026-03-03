@@ -11,7 +11,7 @@ import { RecipeService } from '../recipes/services/recipe.service';
 
 @Module({
   imports: [
-    SharedModule.forRoot(),
+    SharedModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     RecipeModule,
   ],

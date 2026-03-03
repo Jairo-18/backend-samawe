@@ -10,7 +10,7 @@ import { PasswordService } from './services/password.service';
 
 @Module({
   imports: [
-    SharedModule.forRoot(),
+    SharedModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [UserController],

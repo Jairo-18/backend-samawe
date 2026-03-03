@@ -1,6 +1,5 @@
 ﻿import { Product } from './../entities/product.entity';
 import { InvoiceRepository } from './../repositories/invoice.repository';
-import { AccommodationRepository } from './../repositories/accommodation.repository';
 import { InvoiceDetaillRepository } from './../repositories/invoiceDetaill.repository';
 
 import {
@@ -14,7 +13,6 @@ export class GeneralInvoiceDetaillService {
   constructor(
     private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
     private readonly _invoiceRepository: InvoiceRepository,
-    private readonly _accommodationRepository: AccommodationRepository,
   ) {}
   async updateInvoiceTotal(invoiceId: number): Promise<void> {
     try {

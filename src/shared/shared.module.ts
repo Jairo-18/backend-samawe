@@ -70,6 +70,7 @@ import { ExcursionImageRepository } from './repositories/excursionImage.reposito
 export class SharedModule {
   static forRoot(): DynamicModule {
     return {
+      global: true,
       module: SharedModule,
       imports: [
         ScheduleModule.forRoot(),

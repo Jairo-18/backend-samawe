@@ -11,7 +11,7 @@ import { LocalStorageModule } from '../local-storage/local-storage.module';
 
 @Module({
   imports: [
-    SharedModule.forRoot(),
+    SharedModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     LocalStorageModule,
   ],
