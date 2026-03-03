@@ -6,10 +6,13 @@ import {
   Param,
   Request,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { NotificationsService } from '../services/notifications.service';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+
+import { PaginatedNotificationParamsDto } from '../dtos/notification.dto';
 
 @ApiTags('notifications')
 @ApiBearerAuth()
@@ -20,15 +23,45 @@ export class NotificationsController {
 
   @Get()
   @ApiOperation({
-    summary: 'Obtener todas las notificaciones del usuario logueado en sesión',
+    summary:
+      'Obtener todas las notificaciones del usuario logueado en sesión (paginadas)',
   })
-  async getUserNotifications(@Request() req) {
+  async getUserNotifications(
+    @Request() req,
+    @Query() params: PaginatedNotificationParamsDto,
+  ) {
     const userId = req.user.userId;
-    const items = await this.notificationsService.getUserNotifications(userId);
+    return await this.notificationsService.getUserNotifications(userId, params);
+  }
+
+  @Get('unread-count')
+  @ApiOperation({
+    summary:
+      'Obtener el contador global de notificaciones no leídas del usuario',
+  })
+  async getUnreadCount(@Request() req) {
+    const userId = req.user.userId;
+    const count = await this.notificationsService.getUnreadCount(userId);
     return {
       statusCode: 200,
-      message: 'Notificaciones obtenidas',
-      data: items,
+      message: 'Contador obtenido',
+      data: { count },
+    };
+  }
+
+  @Get('initial')
+  @ApiOperation({
+    summary:
+      'Obtener la carga inicial de notificaciones paginadas por cada estado',
+  })
+  async getInitialNotifications(@Request() req) {
+    const userId = req.user.userId;
+    const result =
+      await this.notificationsService.getInitialNotifications(userId);
+    return {
+      statusCode: 200,
+      message: 'Carga inicial obtenida',
+      data: result,
     };
   }
 

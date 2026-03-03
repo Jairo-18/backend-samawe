@@ -470,24 +470,6 @@ export class RecipeService {
     }
     visited.add(productId);
 
-    if (visited.size === 1) {
-      const availability = await this.checkAvailability({
-        productId,
-        portions,
-      });
-      if (!availability.canPrepare) {
-        const missing = availability.missingIngredients
-          .map(
-            (i) =>
-              `${i.ingredientProductName}: falta ${(i.required - i.available).toFixed(3)} ${i.unit}`,
-          )
-          .join(', ');
-        throw new BadRequestException(
-          `No hay suficientes ingredientes para preparar ${portions} porción(es). Faltantes: ${missing}`,
-        );
-      }
-    }
-
     const recipes = await this._recipeRepository
       .createQueryBuilder('recipe')
       .leftJoinAndSelect('recipe.product', 'product')

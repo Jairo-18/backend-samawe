@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { NotificationRepository } from '../../shared/repositories/notification.repository';
 import { Notification } from '../../shared/entities/notification.entity';
+import { PageMetaDto } from '../../shared/dtos/pageMeta.dto';
+import { ResponsePaginationDto } from '../../shared/dtos/pagination.dto';
+import { PaginatedNotificationParamsDto } from '../dtos/notification.dto';
 
 @Injectable()
 export class NotificationsService {
@@ -10,12 +13,71 @@ export class NotificationsService {
 
   /**
    * Obtener todas las notificaciones para un usuario específico buscando por user ID,
-   * ordenadas cronológicamente por la más reciente
+   * ordenadas cronológicamente por la más reciente con soporte para paginación y filtro por estado.
    */
-  async getUserNotifications(userId: string): Promise<Notification[]> {
-    return this.notificationRepository.find({
-      where: { user: { userId } },
-      order: { createdAt: 'DESC' },
+  async getUserNotifications(
+    userId: string,
+    params: PaginatedNotificationParamsDto,
+  ): Promise<ResponsePaginationDto<Notification>> {
+    const skip = (params.page - 1) * params.perPage;
+    let query = this.notificationRepository
+      .createQueryBuilder('notification')
+      .where('notification.user.userId = :userId', { userId })
+      .orderBy('notification.createdAt', 'DESC')
+      .skip(skip)
+      .take(params.perPage);
+
+    if (params.stateCode) {
+      query = query.andWhere(
+        "notification.metadata->>'stateCode' = :stateCode",
+        { stateCode: params.stateCode },
+      );
+    }
+
+    const [notifications, itemCount] = await query.getManyAndCount();
+
+    const pageMetaDto = new PageMetaDto({
+      itemCount,
+      pageOptionsDto: params,
+    });
+
+    return new ResponsePaginationDto(notifications, pageMetaDto);
+  }
+
+  /**
+   * Obtener la carga inicial consolidada para las 5 pestañas de notificaciones
+   */
+  async getInitialNotifications(
+    userId: string,
+  ): Promise<Record<string, ResponsePaginationDto<Notification>>> {
+    const states = ['PEN', 'ENC', 'LIS', 'ENT', 'CAN'];
+    const promises = states.map((stateCode) =>
+      this.getUserNotifications(userId, {
+        page: 1,
+        perPage: 10,
+        stateCode,
+      } as PaginatedNotificationParamsDto),
+    );
+
+    const results = await Promise.all(promises);
+
+    const consolidatedData: Record<
+      string,
+      ResponsePaginationDto<Notification>
+    > = {};
+    states.forEach((stateCode, index) => {
+      consolidatedData[stateCode] = results[index];
+    });
+
+    return consolidatedData;
+  }
+
+  /**
+   * Obtener el conteo global de notificaciones no leídas de un usuario
+   */
+  async getUnreadCount(userId: string): Promise<number> {
+    return this.notificationRepository.count({
+      where: { user: { userId }, read: false },
     });
   }
 

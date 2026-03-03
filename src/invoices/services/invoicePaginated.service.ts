@@ -46,6 +46,12 @@ export class InvoicedPaginatedService {
       });
     }
 
+    if (params.hasTable) {
+      query.andWhere(
+        "invoice.tableNumber IS NOT NULL AND invoice.tableNumber != '0' AND invoice.tableNumber != ''",
+      );
+    }
+
     if (params.stateTypeIds) {
       const stateIds = params.stateTypeIds
         .split(',')

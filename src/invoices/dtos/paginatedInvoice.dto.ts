@@ -42,6 +42,17 @@ export class PaginatedListInvoicesParamsDto extends ParamsPaginationDto {
   @IsString()
   code?: string;
 
+  @ApiProperty({
+    description:
+      'Filtrar facturas que tengan una mesa asignada (diferente de nulo o 0)',
+    required: false,
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true' || value === true)
+  hasTable?: boolean;
+
   @IsOptional()
   @IsBoolean()
   @Transform(({ value }) => value === 'true' || value === true)
