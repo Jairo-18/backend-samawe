@@ -47,9 +47,10 @@ export class NotificationsService {
   /**
    * Obtener la carga inicial consolidada para las 5 pestañas de notificaciones
    */
-  async getInitialNotifications(
-    userId: string,
-  ): Promise<Record<string, ResponsePaginationDto<Notification>>> {
+  async getInitialNotifications(userId: string): Promise<{
+    notifications: Record<string, ResponsePaginationDto<Notification>>;
+    unreadCount: number;
+  }> {
     const states = ['PEN', 'ENC', 'LIS', 'ENT', 'CAN'];
     const promises = states.map((stateCode) =>
       this.getUserNotifications(userId, {
@@ -59,7 +60,10 @@ export class NotificationsService {
       } as PaginatedNotificationParamsDto),
     );
 
-    const results = await Promise.all(promises);
+    const [results, unreadCount] = await Promise.all([
+      Promise.all(promises),
+      this.getUnreadCount(userId),
+    ]);
 
     const consolidatedData: Record<
       string,
@@ -69,7 +73,10 @@ export class NotificationsService {
       consolidatedData[stateCode] = results[index];
     });
 
-    return consolidatedData;
+    return {
+      notifications: consolidatedData,
+      unreadCount,
+    };
   }
 
   /**

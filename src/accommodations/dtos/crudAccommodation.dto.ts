@@ -174,7 +174,7 @@ export class AccommodationImageDto {
 
   @ApiProperty({
     example: 'publicId123',
-    description: 'ID público en Cloudinary',
+    description: 'ID público ',
   })
   publicId: string;
 }

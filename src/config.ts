@@ -51,11 +51,5 @@
       sender: process.env.MAIL_SENDER || 'noreply@samawe.com',
       secure: process.env.MAIL_SECURE === 'true',
     },
-    cloudinary: {
-      url: process.env.CLOUDINARY_URL || '',
-      cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
-      apiKey: process.env.CLOUDINARY_API_KEY || '',
-      apiSecret: process.env.CLOUDINARY_API_SECRET || '',
-    },
   };
 };

@@ -10,15 +10,14 @@ export class AccommodationImageResponseDto {
   accommodationImageId: number;
 
   @ApiProperty({
-    example:
-      'https://res.cloudinary.com/your-cloud/image/upload/v1234567890/accommodations/sample.jpg',
+    example: 'https://res ',
     description: 'URL de la imagen',
   })
   imageUrl: string;
 
   @ApiProperty({
     example: 'accommodations/sample_abc123',
-    description: 'ID público de Cloudinary',
+    description: 'ID público ',
   })
   publicId: string;
 }
@@ -72,7 +71,7 @@ export class AccommodationImageParamsDto {
 
   @ApiPropertyOptional({
     example: 'accommodations/sample_abc123',
-    description: 'Public ID de la imagen en Cloudinary',
+    description: 'Public ID de la imagen ',
   })
   @IsOptional()
   @IsString()
