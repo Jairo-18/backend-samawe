@@ -55,11 +55,6 @@ export class BackupService {
     sql += `-- Generated at: ${new Date().toISOString()}\n\n`;
 
     for (const meta of sortedMetadatas) {
-      sql += `ALTER TABLE "${meta.tableName}" DISABLE TRIGGER ALL;\n`;
-    }
-    sql += '\n';
-
-    for (const meta of sortedMetadatas) {
       const records = await this.dataSource.query(
         `SELECT * FROM "${meta.tableName}"`,
       );
@@ -76,10 +71,6 @@ export class BackupService {
         sql += `INSERT INTO "${meta.tableName}" (${columns.map((c) => `"${c}"`).join(', ')}) VALUES (${values.join(', ')});\n`;
       }
       sql += '\n';
-    }
-
-    for (const meta of sortedMetadatas) {
-      sql += `ALTER TABLE "${meta.tableName}" ENABLE TRIGGER ALL;\n`;
     }
 
     return sql;
@@ -118,10 +109,20 @@ export class BackupService {
 
       visiting.add(meta.name);
 
-      for (const fk of meta.foreignKeys) {
+      for (const fk of meta.foreignKeys || []) {
         const referencedMeta = fk.referencedEntityMetadata;
         if (referencedMeta && referencedMeta.name !== meta.name) {
           visit(referencedMeta);
+        }
+      }
+
+      for (const rel of meta.relations || []) {
+        if (
+          rel.isOwning &&
+          rel.inverseEntityMetadata &&
+          rel.inverseEntityMetadata.name !== meta.name
+        ) {
+          visit(rel.inverseEntityMetadata);
         }
       }
 
