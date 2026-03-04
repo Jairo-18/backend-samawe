@@ -1,0 +1,72 @@
+{
+  "phone_code": [],
+  "IdentificationType": [],
+  "RoleType": [],
+  "PersonType": [],
+  "User": [
+    "phone_code",
+    "RoleType",
+    "IdentificationType",
+    "PersonType"
+  ],
+  "PayType": [
+    "Invoice"
+  ],
+  "PaidType": [],
+  "TaxeType": [],
+  "AccommodationImage": [
+    "Accommodation"
+  ],
+  "BedType": [],
+  "ExcursionImage": [
+    "Excursion"
+  ],
+  "Excursion": [
+    "StateType",
+    "CategoryType"
+  ],
+  "StateType": [],
+  "Accommodation": [
+    "StateType",
+    "BedType",
+    "CategoryType"
+  ],
+  "CategoryType": [],
+  "ProductImage": [
+    "Product"
+  ],
+  "UnitOfMeasure": [],
+  "Recipe": [
+    "Product",
+    "Product"
+  ],
+  "Product": [
+    "CategoryType",
+    "UnitOfMeasure"
+  ],
+  "InvoiceDetaill": [
+    "Invoice",
+    "Product",
+    "Accommodation",
+    "Excursion",
+    "TaxeType"
+  ],
+  "InvoiceType": [],
+  "Invoice": [
+    "InvoiceType",
+    "User",
+    "User",
+    "PaidType",
+    "PayType",
+    "StateType"
+  ],
+  "notifications": [
+    "User"
+  ],
+  "Balance": [],
+  "AdditionalType": [],
+  "DiscountType": [],
+  "AccessSessions": [
+    "User"
+  ]
+}

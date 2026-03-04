@@ -97,22 +97,17 @@ export class BackupService {
   }
 
   private topologicalSort(metadatas: any[]): any[] {
-    const sorted = [];
-    const visited = new Set<string>();
-    const visiting = new Set<string>();
+    const dependencies: Record<string, string[]> = {};
 
-    const visit = (meta: any) => {
-      if (visited.has(meta.name)) return;
-      if (visiting.has(meta.name)) {
-        return;
-      }
-
-      visiting.add(meta.name);
+    for (const meta of metadatas) {
+      dependencies[meta.name] = [];
 
       for (const fk of meta.foreignKeys || []) {
-        const referencedMeta = fk.referencedEntityMetadata;
-        if (referencedMeta && referencedMeta.name !== meta.name) {
-          visit(referencedMeta);
+        if (
+          fk.referencedEntityMetadata &&
+          fk.referencedEntityMetadata.name !== meta.name
+        ) {
+          dependencies[meta.name].push(fk.referencedEntityMetadata.name);
         }
       }
 
@@ -122,17 +117,47 @@ export class BackupService {
           rel.inverseEntityMetadata &&
           rel.inverseEntityMetadata.name !== meta.name
         ) {
-          visit(rel.inverseEntityMetadata);
+          if (
+            !dependencies[meta.name].includes(rel.inverseEntityMetadata.name)
+          ) {
+            dependencies[meta.name].push(rel.inverseEntityMetadata.name);
+          }
         }
       }
+    }
 
-      visiting.delete(meta.name);
-      visited.add(meta.name);
-      sorted.push(meta);
+    const sorted = [];
+    const visited = new Set<string>();
+    const visiting = new Set<string>();
+
+    const visit = (metaName: string) => {
+      if (visited.has(metaName)) return;
+      if (visiting.has(metaName)) {
+        return;
+      }
+
+      visiting.add(metaName);
+
+      const deps = dependencies[metaName] || [];
+      for (const dep of deps) {
+        visit(dep);
+      }
+
+      visiting.delete(metaName);
+      visited.add(metaName);
+
+      const actualMeta = metadatas.find((m) => m.name === metaName);
+      if (actualMeta) sorted.push(actualMeta);
     };
 
-    for (const meta of metadatas) {
-      visit(meta);
+    const sortedMetadatas = [...metadatas].sort((a, b) => {
+      const depsA = dependencies[a.name]?.length || 0;
+      const depsB = dependencies[b.name]?.length || 0;
+      return depsB - depsA;
+    });
+
+    for (const meta of sortedMetadatas) {
+      visit(meta.name);
     }
 
     return sorted;
