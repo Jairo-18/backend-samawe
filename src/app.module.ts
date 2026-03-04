@@ -20,6 +20,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { SocketModule } from './socket/socket.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { BackupModule } from './backup/backup.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     RecipeModule,
     UserModule,
     NotificationsModule,
+    BackupModule,
   ],
   controllers: [AppController],
   providers: [AppService],
