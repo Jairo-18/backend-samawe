@@ -54,7 +54,10 @@ export class BackupService {
     let sql = '-- Samawe Database Dump (Topological Order)\n';
     sql += `-- Generated at: ${new Date().toISOString()}\n\n`;
 
-    sql += `SET session_replication_role = 'replica';\n\n`;
+    for (const meta of sortedMetadatas) {
+      sql += `ALTER TABLE "${meta.tableName}" DISABLE TRIGGER ALL;\n`;
+    }
+    sql += '\n';
 
     for (const meta of sortedMetadatas) {
       const records = await this.dataSource.query(
@@ -75,8 +78,9 @@ export class BackupService {
       sql += '\n';
     }
 
-    // Reactiva la verificación de llaves foráneas
-    sql += `SET session_replication_role = 'origin';\n`;
+    for (const meta of sortedMetadatas) {
+      sql += `ALTER TABLE "${meta.tableName}" ENABLE TRIGGER ALL;\n`;
+    }
 
     return sql;
   }
