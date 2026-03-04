@@ -109,6 +109,15 @@ export class CreateUserDto {
   @IsUUID()
   @IsOptional()
   roleType?: string;
+
+  @ApiProperty({
+    example: '1',
+    description: 'Tipo de persona / id',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  personType?: string;
 }
 
 export interface GetAllUsersRespose {
@@ -197,6 +206,15 @@ export class UpdateUserDto {
   @IsOptional()
   @IsUUID('4', { message: 'El ID del rol no es válido' })
   roleType: string;
+
+  @ApiProperty({
+    example: '1',
+    description: 'Tipo de persona / id',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  personType: string;
 }
 
 export class ChangePasswordBaseDto {

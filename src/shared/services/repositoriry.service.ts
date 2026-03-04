@@ -12,6 +12,7 @@ import { Injectable } from '@nestjs/common';
 import { IdentificationTypeRepository } from '../repositories/identificationType.repository';
 import { InvoiceTypeRepository } from '../repositories/invoiceType.repository';
 import { UnitOfMeasureRepository } from '../repositories/unitOfMeasure.repository';
+import { PersonTypeRepository } from '../repositories/personType.repository';
 
 @Injectable()
 export class RepositoryService {
@@ -29,6 +30,7 @@ export class RepositoryService {
     additionalType: AdditionalTypeRepository;
     discountType: DiscountTypeRepository;
     unitOfMeasure: UnitOfMeasureRepository;
+    personType: PersonTypeRepository;
   };
 
   constructor(
@@ -45,6 +47,7 @@ export class RepositoryService {
     private readonly _additionalTypeRepository: AdditionalTypeRepository,
     private readonly _discountTypeRepository: DiscountTypeRepository,
     private readonly _unitOfMeasureRepository: UnitOfMeasureRepository,
+    private readonly _personTypeRepository: PersonTypeRepository,
   ) {
     this.repositories = {
       bedType: _bedTypeRepository,
@@ -60,6 +63,7 @@ export class RepositoryService {
       additionalType: _additionalTypeRepository,
       discountType: _discountTypeRepository,
       unitOfMeasure: _unitOfMeasureRepository,
+      personType: _personTypeRepository,
     };
   }
 }

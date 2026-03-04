@@ -67,6 +67,12 @@ export class CrudUserService {
       };
     }
 
+    if (params.personType) {
+      baseConditions.personType = {
+        personTypeId: Number(params.personType),
+      };
+    }
+
     if (params.search) {
       const searchConditions: FindOptionsWhere<User>[] = [
         { firstName: ILike(`%${params.search}%`) },
@@ -88,7 +94,7 @@ export class CrudUserService {
       skip,
       take: params.perPage,
       order: { firstName: 'ASC', lastName: 'ASC' },
-      relations: ['roleType', 'identificationType', 'phoneCode'],
+      relations: ['roleType', 'identificationType', 'phoneCode', 'personType'],
     });
 
     const users = entities.map((user) => {
@@ -97,6 +103,7 @@ export class CrudUserService {
         roleTypeId: user?.roleType?.roleTypeId,
         identificationTypeId: user?.identificationType?.identificationTypeId,
         phoneCodeId: user?.phoneCode?.phoneCodeId,
+        personTypeId: user?.personType?.personTypeId,
       };
 
       return newUser;

@@ -52,6 +52,7 @@ export class AppService {
       paidType,
       discountType,
       additionalType,
+      personType,
     ] = await Promise.all([
       this._repositoryService.repositories.identificationType.find({
         select: ['identificationTypeId', 'name', 'code'],
@@ -92,6 +93,9 @@ export class AppService {
       this._repositoryService.repositories.additionalType.find({
         select: ['additionalTypeId', 'code', 'value'],
       }),
+      this._repositoryService.repositories.personType.find({
+        select: ['personTypeId', 'name', 'code'],
+      }),
     ]);
 
     return {
@@ -108,6 +112,7 @@ export class AppService {
       paidType,
       discountType,
       additionalType,
+      personType,
     };
   }
 }

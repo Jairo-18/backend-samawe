@@ -12,6 +12,7 @@ import {
 import { IdentificationType } from './identificationType.entity';
 import { RoleType } from './roleType.entity';
 import { Invoice } from './invoice.entity';
+import { PersonType } from './personType.entity';
 
 @Entity({ name: 'User' })
 export class User {
@@ -68,6 +69,10 @@ export class User {
   )
   @JoinColumn({ name: 'identificationTypeId' })
   identificationType: IdentificationType;
+
+  @ManyToOne(() => PersonType, (personType) => personType.user)
+  @JoinColumn({ name: 'personTypeId' })
+  personType: PersonType;
 
   @OneToMany(() => Invoice, (invoice) => invoice.user)
   invoices: Invoice[];

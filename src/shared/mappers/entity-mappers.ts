@@ -179,6 +179,7 @@ export interface UserDetailDto {
     name: string;
   } | null;
   phoneCode: { phoneCodeId: string; code: string; name: string } | null;
+  personType: { personTypeId: number; code: string; name: string } | null;
 }
 
 export function mapUserDetail(user: User): UserDetailDto {
@@ -209,6 +210,13 @@ export function mapUserDetail(user: User): UserDetailDto {
           phoneCodeId: user.phoneCode.phoneCodeId,
           code: user.phoneCode.code,
           name: user.phoneCode.name,
+        }
+      : null,
+    personType: user.personType
+      ? {
+          personTypeId: user.personType.personTypeId,
+          code: user.personType.code,
+          name: user.personType.name,
         }
       : null,
   };

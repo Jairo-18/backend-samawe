@@ -15,6 +15,7 @@ import {
 import { IdentificationTypeRepository } from '../../shared/repositories/identificationType.repository';
 import { UserRepository } from '../../shared/repositories/user.repository';
 import { User } from '../../shared/entities/user.entity';
+import { PersonTypeRepository } from '../../shared/repositories/personType.repository';
 import {
   BadRequestException,
   HttpException,
@@ -40,6 +41,7 @@ export class UserService {
     private readonly _phoneCodeRepository: PhoneCodeRepository,
     private readonly _passwordService: PasswordService,
     private readonly _invoiceRepository: InvoiceRepository,
+    private readonly _personTypeRepository: PersonTypeRepository,
   ) {}
 
   async create(user: CreateUserDto): Promise<{ rowId: string }> {
@@ -104,6 +106,8 @@ export class UserService {
       );
     }
 
+    const personType = await this.resolvePersonType(user.identificationType);
+
     const hashedPassword = await bcrypt.hash(user.password, 10);
 
     const res = await this._userRepository.insert({
@@ -112,6 +116,7 @@ export class UserService {
       roleType,
       identificationType,
       phoneCode,
+      personType,
     });
 
     return { rowId: res.identifiers[0].id };
@@ -193,12 +198,19 @@ export class UserService {
       );
     }
 
+    const personType = await this.resolvePersonType(
+      typeof user.identificationType === 'string'
+        ? user.identificationType
+        : (identificationType as any)?.identificationTypeId,
+    );
+
     const userConfirm = {
       ...user,
       password: await bcrypt.hash(user.password, salt),
       roleType,
       identificationType,
       phoneCode,
+      personType,
     };
 
     const res = await this._userRepository.insert(userConfirm);
@@ -275,8 +287,27 @@ export class UserService {
             userData.identificationType ||
             userExist.identificationType.identificationTypeId,
         },
+        personType: await this.resolvePersonType(
+          userData.identificationType ||
+            userExist.identificationType.identificationTypeId,
+        ),
       },
     );
+  }
+
+  private async resolvePersonType(identificationTypeId: string) {
+    const NIT_ID = '3';
+    const PERSONA_JURIDICA_ID = 2;
+    const PERSONA_NATURAL_ID = 1;
+
+    const personTypeId =
+      identificationTypeId?.toString() === NIT_ID
+        ? PERSONA_JURIDICA_ID
+        : PERSONA_NATURAL_ID;
+
+    return await this._personTypeRepository.findOne({
+      where: { personTypeId },
+    });
   }
 
   private validatePasswordMatch(password: string, confirmPassword: string) {
@@ -291,7 +322,7 @@ export class UserService {
   async findOne(userId: string): Promise<UserDetailDto> {
     const user = await this._userRepository.findOne({
       where: { userId },
-      relations: ['roleType', 'identificationType', 'phoneCode'],
+      relations: ['roleType', 'identificationType', 'phoneCode', 'personType'],
     });
 
     if (!user) {

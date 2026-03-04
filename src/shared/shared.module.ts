@@ -65,6 +65,8 @@ import { UnitOfMeasure } from './entities/unitOfMeasure.entity';
 import { ProductImageRepository } from './repositories/productImage.repository';
 import { AccommodationImageRepository } from './repositories/accommodationImage.repository';
 import { ExcursionImageRepository } from './repositories/excursionImage.repository';
+import { PersonType } from './entities/personType.entity';
+import { PersonTypeRepository } from './repositories/personType.repository';
 
 @Module({})
 export class SharedModule {
@@ -135,6 +137,7 @@ export class SharedModule {
           PaidType,
           PayType,
           PhoneCode,
+          PersonType,
           Product,
           Recipe,
           RoleType,
@@ -196,6 +199,7 @@ export class SharedModule {
         InvoiceTypeRepository,
         NotificationRepository,
         PaidTypeRepository,
+        PersonTypeRepository,
         PayTypeRepository,
         PhoneCodeRepository,
         ProductRepository,
@@ -232,6 +236,7 @@ export class SharedModule {
         InvoiceTypeRepository,
         NotificationRepository,
         PaidTypeRepository,
+        PersonTypeRepository,
         PayTypeRepository,
         PhoneCodeRepository,
         ProductRepository,

@@ -8,6 +8,7 @@
   phoneCode: string;
   phone: string;
   roleType: string;
+  personType: string;
   password?: string;
   confirmPassword?: string;
   createdAt: Date;
@@ -25,10 +26,20 @@ export interface UserModelComplete {
   phoneCode: PhoneCOde;
   phone: string;
   roleType: RoleType;
+  personType: PersonType;
   password?: string;
   confirmPassword?: string;
   createdAt: Date;
   updatedAt: Date;
+  deletedAt?: Date;
+}
+
+export interface PersonType {
+  personTypeId?: number;
+  code?: string;
+  name?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
   deletedAt?: Date;
 }
 
@@ -42,6 +53,7 @@ export interface UpdateUserModel {
   phone: string;
   isActive: boolean;
   roleType: string;
+  personType: string;
 }
 
 export interface IdentificationType {

@@ -1,6 +1,7 @@
 ﻿import { PhoneCode } from './../../shared/entities/phoneCode.entity';
 import { RoleType } from '../../shared/entities/roleType.entity';
 import { IdentificationType } from './../../shared/entities/identificationType.entity';
+import { PersonType } from './../../shared/entities/personType.entity';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { HttpStatus } from '@nestjs/common';
@@ -11,6 +12,7 @@ export interface CreateUserRelatedDataDto {
   roleType?: RoleType[];
   identificationType: IdentificationType[];
   phoneCode: PhoneCode[];
+  personType: PersonType[];
 }
 
 export class CreateUserRelatedDataReponseDto implements BaseResponseDto {
@@ -101,6 +103,15 @@ export class PaginatedListUsersParamsDto extends ParamsPaginationDto {
   @IsOptional()
   @IsString()
   isActive?: boolean;
+
+  @ApiProperty({
+    example: '1',
+    description: 'ID del tipo de persona',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  personType?: string;
 }
 
 export class PaginatedUserSelectParamsDto extends ParamsPaginationDto {
