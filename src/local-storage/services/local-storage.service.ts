@@ -70,11 +70,14 @@ export class LocalStorageService {
     try {
       if (isLargeFile) {
         await sharp(file.buffer)
-          .webp({ quality: 80, effort: 4 })
+          .webp({ quality: 80, effort: 6 })
           .resize({ width: 1920, withoutEnlargement: true })
           .toFile(filePath);
       } else {
-        await sharp(file.buffer).webp({ quality: 95 }).toFile(filePath);
+        await sharp(file.buffer)
+          .webp({ quality: 80, effort: 6 })
+          .resize({ width: 1200, withoutEnlargement: true })
+          .toFile(filePath);
       }
     } catch (error) {
       console.error('Error optimizando o guardando imagen en disco:', error);
