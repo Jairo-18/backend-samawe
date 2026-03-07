@@ -15,6 +15,7 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  ConflictException,
 } from '@nestjs/common';
 import { Invoice } from './../../shared/entities/invoice.entity';
 import { PaidType } from './../../shared/entities/paidType.entity';
@@ -224,6 +225,10 @@ export class InvoiceService {
 
     const invoiceEntity = await this._invoiceRepository.manager.transaction(
       async (manager) => {
+        await manager.query(`SELECT pg_advisory_xact_lock($1)`, [
+          createInvoiceDto.invoiceTypeId,
+        ]);
+
         const lastInvoice = await manager
           .getRepository(Invoice)
           .createQueryBuilder('invoice')
@@ -231,7 +236,7 @@ export class InvoiceService {
           .where('invoiceType.invoiceTypeId = :typeId', {
             typeId: createInvoiceDto.invoiceTypeId,
           })
-          .orderBy('invoice.invoiceId', 'DESC')
+          .orderBy('CAST(invoice.code AS INTEGER)', 'DESC')
           .getOne();
 
         let nextNumber = 1;
@@ -278,9 +283,20 @@ export class InvoiceService {
         };
 
         const newInvoice = invoiceRepo.create(invoiceData);
-        const saved = await invoiceRepo.save(newInvoice);
-
-        return saved;
+        try {
+          const saved = await invoiceRepo.save(newInvoice);
+          return saved;
+        } catch (error) {
+          if (
+            error?.code === '23505' &&
+            error?.constraint === 'UQ_invoice_code_per_type'
+          ) {
+            throw new ConflictException(
+              `Ya existe una factura con el código ${code} para este tipo. Intente nuevamente.`,
+            );
+          }
+          throw error;
+        }
       },
     );
 
