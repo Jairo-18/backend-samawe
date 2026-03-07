@@ -110,7 +110,7 @@ export class CrudProductService {
       (product) => {
         let dynamicAmount = Number(product.amount || 0);
         let dynamicPriceBuy = Number(product.priceBuy || 0);
-        let dynamicPriceSale = Number(product.priceSale || 0);
+        const dynamicPriceSale = Number(product.priceSale || 0);
 
         const catName = product.categoryType?.name?.toUpperCase();
         const hasRecipes =
@@ -164,18 +164,15 @@ export class CrudProductService {
 
         if (catName === 'INGREDIENTE' && hasRecipes) {
           let calculatedPriceBuy = 0;
-          let calculatedPriceSale = 0;
           let minPortions = Infinity;
 
           for (const recipe of product.productRecipes) {
             const reqQty = Number(recipe.quantity);
             const ingredient = recipe.ingredient;
             const ingredientPriceBuy = Number(ingredient?.priceBuy || 0);
-            const ingredientPriceSale = Number(ingredient?.priceSale || 0);
             const availableQty = Number(ingredient?.amount || 0);
 
             calculatedPriceBuy += reqQty * ingredientPriceBuy;
-            calculatedPriceSale += reqQty * ingredientPriceSale;
 
             if (reqQty > 0) {
               const portions = Math.floor(availableQty / reqQty);
@@ -188,7 +185,6 @@ export class CrudProductService {
           }
 
           dynamicPriceBuy = Number(calculatedPriceBuy.toFixed(2));
-          dynamicPriceSale = Number(calculatedPriceSale.toFixed(2));
           dynamicAmount = minPortions === Infinity ? 0 : minPortions;
         }
 

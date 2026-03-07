@@ -7,10 +7,7 @@ import { PassportModule } from '@nestjs/passport';
 import { SharedModule } from '../shared/shared.module';
 
 @Module({
-  imports: [
-    SharedModule,
-    PassportModule.register({ defaultStrategy: 'jwt' }),
-  ],
+  imports: [SharedModule, PassportModule.register({ defaultStrategy: 'jwt' })],
   controllers: [GenericTypeController],
   providers: [GenericTypeUC, GenericTypeService, RepositoryService],
 })

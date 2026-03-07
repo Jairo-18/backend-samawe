@@ -92,7 +92,6 @@ export class InvalidAccessDataResponseDto implements BaseResponseDto {
     example: HttpStatus.UNAUTHORIZED,
   })
   statusCode: number;
-
 }
 
 export class AuthTokenResponseDto {

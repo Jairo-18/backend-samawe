@@ -1,6 +1,7 @@
 ﻿import { User } from './../../shared/entities/user.entity';
 import { StateType } from './../../shared/entities/stateType.entity';
 import { OrdersGateway } from './../../socket/gateways/orders.gateway';
+import { RecipeService } from './../../recipes/services/recipe.service';
 import { ExcursionRepository } from './../../shared/repositories/excursion.repository';
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
@@ -50,6 +51,7 @@ export class InvoiceService {
     private readonly _excursionRepository: ExcursionRepository,
     private readonly _eventEmitter: EventEmitter2,
     private readonly _ordersGateway: OrdersGateway,
+    private readonly _recipeService: RecipeService,
   ) {}
 
   private toDateOnly(dateString: string): Date {
@@ -609,12 +611,38 @@ export class InvoiceService {
         },
       });
 
+      const productIds: number[] = [];
+      const recipeProductIdsToRestore: { id: number; amount: number }[] = [];
+
       for (const detail of invoice.invoiceDetails) {
         if (detail.product) {
           hasProducts = true;
-          const product = await queryRunner.manager.findOneOrFail(Product, {
-            where: { productId: detail.product.productId },
-          });
+          productIds.push(detail.product.productId);
+        }
+      }
+
+      const productsMap = new Map<number, Product>();
+      if (productIds.length > 0) {
+        const allProducts = await queryRunner.manager.find(Product, {
+          where: { productId: In(productIds) },
+          relations: ['categoryType'],
+        });
+        for (const p of allProducts) {
+          productsMap.set(p.productId, p);
+        }
+      }
+
+      const changedProducts: Product[] = [];
+      const changedAccommodations = [];
+
+      for (const detail of invoice.invoiceDetails) {
+        if (detail.product) {
+          const product = productsMap.get(detail.product.productId);
+          if (!product) {
+            throw new Error(
+              `Producto ${detail.product.productId} no encontrado`,
+            );
+          }
 
           const currentAmount = Number(product.amount ?? 0);
           const detailAmount = Number(detail.amount ?? 0);
@@ -625,20 +653,59 @@ export class InvoiceService {
             );
           }
 
+          const categoryCode = product.categoryType?.code?.toUpperCase();
+          const isRecipeProduct = ['RES'].includes(categoryCode);
+
+          let productChanged = false;
+
           if (isCompra) {
             product.amount = currentAmount - detailAmount;
+            productChanged = true;
           } else if (isVenta) {
-            product.amount = currentAmount + detailAmount;
+            if (isRecipeProduct) {
+              recipeProductIdsToRestore.push({
+                id: product.productId,
+                amount: detailAmount,
+              });
+            } else {
+              product.amount = currentAmount + detailAmount;
+              productChanged = true;
+            }
+          } else {
+            productChanged = true;
           }
 
-          await queryRunner.manager.save(product);
+          if (productChanged) {
+            changedProducts.push(product);
+          }
         }
 
         if (detail.accommodation && disponibleState) {
           detail.accommodation.stateType = disponibleState;
-          await queryRunner.manager.save(detail.accommodation);
+          changedAccommodations.push(detail.accommodation);
         }
       }
+
+      const saveOps: Promise<any>[] = [];
+
+      if (changedProducts.length > 0) {
+        saveOps.push(queryRunner.manager.save(changedProducts));
+      }
+      if (changedAccommodations.length > 0) {
+        saveOps.push(queryRunner.manager.save(changedAccommodations));
+      }
+
+      for (const recipe of recipeProductIdsToRestore) {
+        saveOps.push(
+          this._recipeService.restoreIngredients(
+            recipe.id,
+            recipe.amount,
+            new Set(),
+          ),
+        );
+      }
+
+      await Promise.all(saveOps);
 
       await queryRunner.manager.delete(InvoiceDetaill, {
         invoice: { invoiceId },

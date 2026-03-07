@@ -5,10 +5,7 @@ import { SharedModule } from '../shared/shared.module';
 import { PassportModule } from '@nestjs/passport';
 
 @Module({
-  imports: [
-    SharedModule,
-    PassportModule.register({ defaultStrategy: 'jwt' }),
-  ],
+  imports: [SharedModule, PassportModule.register({ defaultStrategy: 'jwt' })],
   controllers: [NotificationsController],
   providers: [NotificationsService],
   exports: [NotificationsService],

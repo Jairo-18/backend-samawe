@@ -16,9 +16,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { In } from 'typeorm';
+import { In, EntityManager } from 'typeorm';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
+import { Product } from './../../shared/entities/product.entity';
 
 @Injectable()
 export class RecipeService {
@@ -475,37 +476,37 @@ export class RecipeService {
       .leftJoinAndSelect('recipe.product', 'product')
       .leftJoinAndSelect('recipe.ingredient', 'ingredient')
       .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
+      .leftJoinAndSelect('ingredient.categoryType', 'categoryType')
       .where('product.productId = :productId', { productId })
       .getMany();
 
-    for (const recipe of recipes) {
-      const quantityToReduce = Number(recipe.quantity) * portions;
-      const ingredient = recipe.ingredient;
+    await Promise.all(
+      recipes.map(async (recipe) => {
+        const quantityToReduce = Number(recipe.quantity) * portions;
+        const ingredient = recipe.ingredient;
 
-      const subRecipeCount = await this._recipeRepository.count({
-        where: { product: { productId: ingredient.productId } },
-      });
+        const categoryCode = ingredient.categoryType?.code?.toUpperCase();
+        const isRecipeProduct = ['RES'].includes(categoryCode);
 
-      if (subRecipeCount > 0) {
-        await this.consumeIngredients(
-          ingredient.productId,
-          quantityToReduce,
-          visited,
-        );
-      } else {
-        const ingredientFresh = await this._productRepository.findOne({
-          where: { productId: ingredient.productId },
-          relations: ['unitOfMeasure'],
-        });
+        if (isRecipeProduct) {
+          await this.consumeIngredients(
+            ingredient.productId,
+            quantityToReduce,
+            visited,
+          );
+        } else {
+          const ingredientFresh = await this._productRepository.findOne({
+            where: { productId: ingredient.productId },
+          });
 
-        if (!ingredientFresh) continue;
+          if (!ingredientFresh) return;
 
-        ingredientFresh.amount =
-          Number(ingredientFresh.amount) - quantityToReduce;
-
-        await this._productRepository.save(ingredientFresh);
-      }
-    }
+          ingredientFresh.amount =
+            Number(ingredientFresh.amount) - quantityToReduce;
+          await this._productRepository.save(ingredientFresh);
+        }
+      }),
+    );
   }
 
   /**
@@ -519,6 +520,7 @@ export class RecipeService {
     productId: number,
     portions: number = 1,
     visited: Set<number> = new Set(),
+    manager?: EntityManager,
   ): Promise<void> {
     if (visited.has(productId)) {
       return;
@@ -530,6 +532,7 @@ export class RecipeService {
       .leftJoinAndSelect('recipe.product', 'product')
       .leftJoinAndSelect('recipe.ingredient', 'ingredient')
       .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
+      .leftJoinAndSelect('ingredient.categoryType', 'categoryType')
       .where('product.productId = :productId', { productId })
       .getMany();
 
@@ -537,34 +540,43 @@ export class RecipeService {
       return;
     }
 
-    for (const recipe of recipes) {
-      const quantityToRestore = Number(recipe.quantity) * portions;
-      const ingredient = recipe.ingredient;
+    await Promise.all(
+      recipes.map(async (recipe) => {
+        const quantityToRestore = Number(recipe.quantity) * portions;
+        const ingredient = recipe.ingredient;
 
-      const subRecipeCount = await this._recipeRepository.count({
-        where: { product: { productId: ingredient.productId } },
-      });
+        const categoryCode = ingredient.categoryType?.code?.toUpperCase();
+        const isRecipeProduct = ['RES'].includes(categoryCode);
 
-      if (subRecipeCount > 0) {
-        await this.restoreIngredients(
-          ingredient.productId,
-          quantityToRestore,
-          visited,
-        );
-      } else {
-        const ingredientFresh = await this._productRepository.findOne({
-          where: { productId: ingredient.productId },
-          relations: ['unitOfMeasure'],
-        });
+        if (isRecipeProduct) {
+          await this.restoreIngredients(
+            ingredient.productId,
+            quantityToRestore,
+            visited,
+            manager,
+          );
+        } else {
+          const ingredientFresh = manager
+            ? await manager.findOne(Product, {
+                where: { productId: ingredient.productId },
+              })
+            : await this._productRepository.findOne({
+                where: { productId: ingredient.productId },
+              });
 
-        if (!ingredientFresh) continue;
+          if (!ingredientFresh) return;
 
-        ingredientFresh.amount =
-          Number(ingredientFresh.amount) + quantityToRestore;
+          ingredientFresh.amount =
+            Number(ingredientFresh.amount) + quantityToRestore;
 
-        await this._productRepository.save(ingredientFresh);
-      }
-    }
+          if (manager) {
+            await manager.save(Product, ingredientFresh);
+          } else {
+            await this._productRepository.save(ingredientFresh);
+          }
+        }
+      }),
+    );
   }
 
   /**

@@ -28,7 +28,7 @@ export class Product {
   @Column('varchar', { length: 500, nullable: true })
   description?: string;
 
-  @Column('decimal', { precision: 10, scale: 2 })
+  @Column('decimal', { precision: 10, scale: 3 })
   amount?: number;
 
   @Column('decimal', { precision: 10, scale: 2 })

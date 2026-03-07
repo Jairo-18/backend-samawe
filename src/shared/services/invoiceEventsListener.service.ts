@@ -54,15 +54,23 @@ export class InvoiceEventsListener {
         this.processInvoiceDetail(payload);
 
       this.processingMutex.set(invoiceId, processingPromise);
-      await processingPromise;
+
+      processingPromise
+        .catch((err) => {
+          console.error(
+            `Error processing invoice detail event for invoice ${invoiceId} in background:`,
+            err,
+          );
+        })
+        .finally(() => {
+          this.processingMutex.delete(invoiceId);
+        });
     } catch (err) {
       console.error(
-        `Error processing invoice detail event for invoice ${invoiceId}:`,
+        `Error starting invoice detail event for invoice ${invoiceId}:`,
         err,
       );
       throw err;
-    } finally {
-      this.processingMutex.delete(invoiceId);
     }
   }
 

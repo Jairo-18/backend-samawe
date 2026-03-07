@@ -50,6 +50,7 @@ export class InvoiceDetailService {
   async create(
     invoiceId: number,
     createInvoiceDetailDto: CreateInvoiceDetailDto,
+    skipTotalUpdate: boolean = false,
   ) {
     try {
       const [invoice, taxeType] = await Promise.all([
@@ -287,12 +288,17 @@ export class InvoiceDetailService {
         !isQuote &&
         !(isSale && isRecipeProduct2 && product?.productId > 0);
 
-      const savePromises = [
+      const savePromises: Promise<any>[] = [
         shouldSaveProduct
           ? this._productRepository.save(product)
           : Promise.resolve(),
-        this._generalInvoiceDetaillService.updateInvoiceTotal(invoiceId),
       ];
+
+      if (!skipTotalUpdate) {
+        savePromises.push(
+          this._generalInvoiceDetaillService.updateInvoiceTotal(invoiceId),
+        );
+      }
 
       if (isProduct && isRecipeProduct2 && !invoice.orderTime) {
         savePromises.push(
@@ -346,11 +352,12 @@ export class InvoiceDetailService {
     invoiceId: number,
     dtos: CreateInvoiceDetailDto[],
   ): Promise<any[]> {
-    const results = [];
-    for (const dto of dtos) {
-      const result = await this.create(invoiceId, dto);
-      results.push(result);
-    }
+    const results = await Promise.all(
+      dtos.map((dto) => this.create(invoiceId, dto, true)),
+    );
+
+    await this._generalInvoiceDetaillService.updateInvoiceTotal(invoiceId);
+
     return results;
   }
 
@@ -361,13 +368,7 @@ export class InvoiceDetailService {
   async delete(invoiceDetailId: number) {
     const detail = await this._invoiceDetaillRepository.findOne({
       where: { invoiceDetailId },
-      relations: [
-        'invoice',
-        'product',
-        'invoice.invoiceType',
-        'accommodation',
-        'accommodation.stateType',
-      ],
+      relations: ['invoice', 'product', 'invoice.invoiceType', 'accommodation'],
     });
 
     if (!detail) {

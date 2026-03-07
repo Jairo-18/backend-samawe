@@ -67,23 +67,22 @@ export class LocalStorageService {
 
     const isLargeFile = file.buffer.length > 2 * 1024 * 1024;
 
-    try {
-      if (isLargeFile) {
-        await sharp(file.buffer)
-          .webp({ quality: 80, effort: 6 })
-          .resize({ width: 1920, withoutEnlargement: true })
-          .toFile(filePath);
-      } else {
-        await sharp(file.buffer)
-          .webp({ quality: 80, effort: 6 })
-          .resize({ width: 1200, withoutEnlargement: true })
-          .toFile(filePath);
-      }
-    } catch (error) {
-      console.error('Error optimizando o guardando imagen en disco:', error);
-      throw new InternalServerErrorException(
-        'Error al optimizar y guardar la imagen',
-      );
+    if (isLargeFile) {
+      sharp(file.buffer)
+        .webp({ quality: 80, effort: 6 })
+        .resize({ width: 1920, withoutEnlargement: true })
+        .toFile(filePath)
+        .catch((err) =>
+          console.error('Error optimizando imagen (background):', err),
+        );
+    } else {
+      sharp(file.buffer)
+        .webp({ quality: 80, effort: 6 })
+        .resize({ width: 1200, withoutEnlargement: true })
+        .toFile(filePath)
+        .catch((err) =>
+          console.error('Error optimizando imagen (background):', err),
+        );
     }
 
     const publicId = `${folder}/${filename}`;
