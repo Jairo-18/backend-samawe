@@ -494,7 +494,7 @@ export class InvoiceService {
         if (stateCode === 'ENC') {
           invoice.orderTime = now;
         } else if (stateCode === 'ENT') {
-          invoice.servedTime = now;
+          invoice.readyTime = now;
         }
       }
 
