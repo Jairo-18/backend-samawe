@@ -4,8 +4,8 @@ import { ParamsPaginationDto } from '../../shared/dtos/pagination.dto';
 
 export class PaginatedNotificationParamsDto extends ParamsPaginationDto {
   @ApiPropertyOptional({
-    description: 'Filtrar por código de estado (ej: PEN, ENC, ENT, CAN, LIS)',
-    example: 'PEN',
+    description: 'Filtrar por código de estado (ej: ENC, ENT)',
+    example: 'ENC',
   })
   @IsOptional()
   @IsString()

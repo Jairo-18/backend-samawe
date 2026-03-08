@@ -81,6 +81,23 @@ export class CrudProductService {
       }
     }
 
+    if (params.excludeCategoryTypeCode) {
+      const excludeCodes = params.excludeCategoryTypeCode
+        .split(',')
+        .map((c) => c.trim());
+      if (excludeCodes.length > 1) {
+        query.andWhere(
+          '(categoryType.code IS NULL OR categoryType.code NOT IN (:...excludeCodes))',
+          { excludeCodes },
+        );
+      } else {
+        query.andWhere(
+          '(categoryType.code IS NULL OR categoryType.code != :excludeCode)',
+          { excludeCode: excludeCodes[0] },
+        );
+      }
+    }
+
     if (
       params.excludeWithRecipe === true ||
       params.excludeWithRecipe?.toString() === 'true'

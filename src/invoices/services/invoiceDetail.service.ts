@@ -315,6 +315,13 @@ export class InvoiceDetailService {
         isProduct,
       });
 
+      if (isProduct && isRecipeProduct2 && !isQuote && product) {
+        this._eventEmitter.emit('invoice.recipe_item.added', {
+          invoiceId: invoice.invoiceId,
+          productName: product.name,
+        });
+      }
+
       let stockInfo = null;
       if (isProduct && product) {
         const previousStock =

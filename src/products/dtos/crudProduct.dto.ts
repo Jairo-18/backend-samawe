@@ -22,6 +22,15 @@ export class PaginatedListProductsParamsDto extends ParamsPaginationDto {
   categoryTypeCode?: string;
 
   @ApiProperty({
+    example: 'RES',
+    description: 'Código del tipo de categoría a excluir (ej: RES)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  excludeCategoryTypeCode?: string;
+
+  @ApiProperty({
     example: 'CC-12',
     description: 'Código de producto',
     required: false,

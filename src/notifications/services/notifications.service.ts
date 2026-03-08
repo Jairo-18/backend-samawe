@@ -51,7 +51,7 @@ export class NotificationsService {
     notifications: Record<string, ResponsePaginationDto<Notification>>;
     unreadCount: number;
   }> {
-    const states = ['PEN', 'ENC', 'LIS', 'ENT', 'CAN'];
+    const states = ['ENC', 'ENT'];
     const promises = states.map((stateCode) =>
       this.getUserNotifications(userId, {
         page: 1,

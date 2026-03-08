@@ -33,8 +33,8 @@ import {
   GetInvoiceWithDetailsDto,
   UpdateInvoiceDto,
 } from '../dtos/invoice.dto';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { In } from 'typeorm';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
+import { In, EntityManager } from 'typeorm';
 
 @Injectable()
 export class InvoiceService {
@@ -491,10 +491,8 @@ export class InvoiceService {
         const now = new Date();
         const stateCode = stateType.code?.toUpperCase();
 
-        if (stateCode === 'PEN') {
+        if (stateCode === 'ENC') {
           invoice.orderTime = now;
-        } else if (stateCode === 'LIS') {
-          invoice.readyTime = now;
         } else if (stateCode === 'ENT') {
           invoice.servedTime = now;
         }
@@ -503,68 +501,20 @@ export class InvoiceService {
       await queryRunner.manager.save(invoice);
 
       if (updateInvoiceDto.stateTypeId !== undefined) {
-        const notificationStates = ['PEN', 'ENC', 'CAN', 'ENT', 'LIS'];
+        const notificationStates = ['ENC', 'ENT'];
 
         if (
           invoice.stateType?.code &&
           notificationStates.includes(invoice.stateType.code.toUpperCase())
         ) {
-          const roleNames = [
-            'ADMINISTRADOR',
-            'Administrador',
-            'MESERO',
-            'Mesero',
-            'CHEF',
-            'Chef',
-            'RECEPCIONISTA',
-            'Recepcionista',
-          ];
-          const usersToNotify = await queryRunner.manager.find(User, {
-            where: {
-              roleType: {
-                name: In(roleNames),
-              },
-            },
-            relations: ['roleType'],
-          });
-
-          if (usersToNotify.length > 0) {
-            const notificationsToInsert = usersToNotify.map((user) => {
-              const notif = new Notification();
-              notif.title = `Actualización de Orden`;
-              notif.message = `La orden de la mesa ${invoice.tableNumber || 'N/A'} (Factura ${invoice.code}) cambió a ${invoice.stateType.name}.`;
-              notif.type = NotificationType.ORDER_STATE_CHANGED;
-              notif.user = user;
-              notif.metadata = {
-                invoiceId: invoice.invoiceId,
-                code: invoice.code,
-                tableNumber: invoice.tableNumber,
-                state: invoice.stateType.name,
-                stateCode: invoice.stateType.code,
-                orderTime: invoice.orderTime,
-                readyTime: invoice.readyTime,
-                servedTime: invoice.servedTime,
-              };
-              return notif;
-            });
-
-            await queryRunner.manager.save(Notification, notificationsToInsert);
-
-            for (const notif of notificationsToInsert) {
-              this._ordersGateway.emitToUser(notif.user.userId, {
-                notificationId: notif.notificationId,
-                invoiceId: invoice.invoiceId,
-                code: invoice.code,
-                state: invoice.stateType.name,
-                stateCode: invoice.stateType.code,
-                tableNumber: invoice.tableNumber,
-                updatedAt: new Date(),
-                orderTime: invoice.orderTime,
-                readyTime: invoice.readyTime,
-                servedTime: invoice.servedTime,
-              });
-            }
-          }
+          const title = `Actualización de Orden`;
+          const message = `La orden de la mesa ${invoice.tableNumber || 'N/A'} (Factura ${invoice.code}) cambió a ${invoice.stateType.name}.`;
+          await this._sendOrderNotification(
+            queryRunner.manager,
+            invoice,
+            title,
+            message,
+          );
         }
       }
 
@@ -722,5 +672,88 @@ export class InvoiceService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async _sendOrderNotification(
+    manager: EntityManager,
+    invoice: Invoice,
+    title: string,
+    message: string,
+  ) {
+    const roleNames = [
+      'ADMINISTRADOR',
+      'Administrador',
+      'MESERO',
+      'Mesero',
+      'CHEF',
+      'Chef',
+      'RECEPCIONISTA',
+      'Recepcionista',
+    ];
+    const usersToNotify = await manager.find(User, {
+      where: {
+        roleType: {
+          name: In(roleNames),
+        },
+      },
+      relations: ['roleType'],
+    });
+
+    if (usersToNotify.length > 0) {
+      const notificationsToInsert = usersToNotify.map((user) => {
+        const notif = new Notification();
+        notif.title = title;
+        notif.message = message;
+        notif.type = NotificationType.ORDER_STATE_CHANGED;
+        notif.user = user;
+        notif.metadata = {
+          invoiceId: invoice.invoiceId,
+          code: invoice.code,
+          tableNumber: invoice.tableNumber,
+          state: invoice.stateType.name,
+          stateCode: invoice.stateType.code,
+          orderTime: invoice.orderTime,
+          readyTime: invoice.readyTime,
+          servedTime: invoice.servedTime,
+        };
+        return notif;
+      });
+
+      await manager.save(Notification, notificationsToInsert);
+
+      for (const notif of notificationsToInsert) {
+        this._ordersGateway.emitToUser(notif.user.userId, {
+          notificationId: notif.notificationId,
+          invoiceId: invoice.invoiceId,
+          code: invoice.code,
+          state: invoice.stateType.name,
+          stateCode: invoice.stateType.code,
+          tableNumber: invoice.tableNumber,
+          updatedAt: new Date(),
+          orderTime: invoice.orderTime,
+          readyTime: invoice.readyTime,
+          servedTime: invoice.servedTime,
+        });
+      }
+    }
+  }
+
+  @OnEvent('invoice.recipe_item.added', { async: true })
+  async handleRecipeItemAdded(payload: {
+    invoiceId: number;
+    productName: string;
+  }) {
+    await this._invoiceRepository.manager.transaction(async (manager) => {
+      const invoice = await manager.findOne(Invoice, {
+        where: { invoiceId: payload.invoiceId },
+        relations: ['stateType'],
+      });
+
+      if (invoice && invoice.stateType?.code === 'ENC') {
+        const title = `Plato añadido a la orden`;
+        const message = `Mesa ${invoice.tableNumber || 'N/A'}: Se agegó un(a) ${payload.productName}.`;
+        await this._sendOrderNotification(manager, invoice, title, message);
+      }
+    });
   }
 }
