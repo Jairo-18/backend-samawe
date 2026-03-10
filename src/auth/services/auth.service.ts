@@ -18,6 +18,7 @@ import { ConfigService } from '@nestjs/config';
 import { AccessSessionsService } from './accessSessions.service';
 import { v4 as uuidv4 } from 'uuid';
 import { UNAUTHORIZED_MESSAGE } from '../../shared/constants/messages.constant';
+import { INVALID_ACCESS_DATA_MESSAGE } from '../constants/messages.constants';
 
 @Injectable()
 export class AuthService {
@@ -36,7 +37,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      throw new UnauthorizedException(INVALID_ACCESS_DATA_MESSAGE);
     }
 
     const passwordMatch = await bcrypt.compare(
@@ -45,7 +46,7 @@ export class AuthService {
     );
 
     if (!passwordMatch) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      throw new UnauthorizedException(INVALID_ACCESS_DATA_MESSAGE);
     }
 
     const payload = { email: user.email, sub: user.userId, id: user.userId };
