@@ -190,12 +190,16 @@ export class AuthService {
     const token: string = await this._userService.generateResetToken(
       user.userId,
     );
+    const frontendUrl =
+      this._configService.get<string>('APP_FRONTEND_URL') ||
+      'https://samawe.netlify.app';
+
     if (user) {
       await this._mailService.sendEmail({
         to: user.email,
         subject: 'Recuperación de contraseña',
         body: this._mailTemplateService.recoveryPasswordTemplate(
-          `https://samawe.netlify.app/auth/${user.userId}/change-password`,
+          `${frontendUrl}/auth/${user.userId}/change-password`,
           user.firstName,
           token,
         ),

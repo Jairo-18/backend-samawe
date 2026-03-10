@@ -1,13 +1,18 @@
 import { Module } from '@nestjs/common';
-import { NotificationsService } from './services/notifications.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { NotificationsController } from './controllers/notifications.controller';
-import { SharedModule } from '../shared/shared.module';
+import { NotificationsService } from './services/notifications.service';
+import { Notification } from '../shared/entities/notification.entity';
 import { PassportModule } from '@nestjs/passport';
+import { NotificationUC } from './useCases/notificationUC.uc';
 
 @Module({
-  imports: [SharedModule, PassportModule.register({ defaultStrategy: 'jwt' })],
+  imports: [
+    TypeOrmModule.forFeature([Notification]),
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+  ],
   controllers: [NotificationsController],
-  providers: [NotificationsService],
-  exports: [NotificationsService],
+  providers: [NotificationsService, NotificationUC],
+  exports: [NotificationsService, NotificationUC],
 })
 export class NotificationsModule {}

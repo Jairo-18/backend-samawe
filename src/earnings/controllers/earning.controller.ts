@@ -1,10 +1,8 @@
 ﻿import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
-import { InventoryService } from './../services/inventory.service';
 import {
   InventoryLowParamsDto,
   LowAmountProductDto,
 } from './../dtos/inventoryAmount.dto';
-import { StatisticsService } from './../services/statistics.service';
 import { Controller, Get, UseGuards, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
@@ -13,9 +11,9 @@ import {
   InvoiceChartListDto,
   ProductStockCountDto,
 } from '../dtos/earning.dto';
-import { EarningService } from '../services/earning.service';
 import { AuthGuard } from '@nestjs/passport';
 import { GeneralStatisticsDto } from '../dtos/generalStatistics.dto';
+import { EarningUC } from '../useCases/earningUC.uc';
 import {
   GetGeneralStatisticsDocs,
   GetProductSummaryDocs,
@@ -29,40 +27,36 @@ import {
 @ApiTags('Ganancias / Reportes')
 @UseGuards(AuthGuard())
 export class EarningController {
-  constructor(
-    private readonly _balanceSummaryService: EarningService,
-    private readonly _statisticsService: StatisticsService,
-    private readonly _inventoryService: InventoryService,
-  ) {}
+  constructor(private readonly _earningUC: EarningUC) {}
 
   @Get('general')
   @GetGeneralStatisticsDocs()
   async getGeneralStatistics(): Promise<GeneralStatisticsDto> {
-    return this._statisticsService.getGeneralStatistics();
+    return await this._earningUC.getGeneralStatistics();
   }
 
   @Get('product-summary')
   @GetProductSummaryDocs()
-  getProductSummary(): Promise<BalanceProductSummaryDto> {
-    return this._balanceSummaryService.getProductSummary();
+  async getProductSummary(): Promise<BalanceProductSummaryDto> {
+    return await this._earningUC.getProductSummary();
   }
 
   @Get('invoice-summary')
   @GetInvoiceSummaryDocs()
-  getInvoiceSummary(): Promise<AllInvoiceSummariesDto> {
-    return this._balanceSummaryService.getAllInvoiceSummaries();
+  async getInvoiceSummary(): Promise<AllInvoiceSummariesDto> {
+    return await this._earningUC.getAllInvoiceSummaries();
   }
 
   @Get('total-stock')
   @GetTotalStockDocs()
-  getTotalStock(): Promise<ProductStockCountDto> {
-    return this._balanceSummaryService.getTotalStock();
+  async getTotalStock(): Promise<ProductStockCountDto> {
+    return await this._earningUC.getTotalStock();
   }
 
   @Get('invoice-chart-list')
   @GetInvoiceChartListDocs()
-  getInvoiceChartList(): Promise<InvoiceChartListDto> {
-    return this._balanceSummaryService.getInvoiceChartList();
+  async getInvoiceChartList(): Promise<InvoiceChartListDto> {
+    return await this._earningUC.getInvoiceChartList();
   }
 
   @Get('paginated-list-inventory-low')
@@ -70,6 +64,6 @@ export class EarningController {
   async getInventoryAmount(
     @Query() params: InventoryLowParamsDto,
   ): Promise<ResponsePaginationDto<LowAmountProductDto>> {
-    return this._inventoryService.paginatedList(params);
+    return await this._earningUC.getInventoryAmount(params);
   }
 }

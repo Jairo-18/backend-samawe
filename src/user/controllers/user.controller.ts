@@ -1,7 +1,7 @@
 ﻿import { PaginatedCodePhoneUser } from './../dtos/crudUser.dto';
 import { PhoneCode } from './../../shared/entities/phoneCode.entity';
 import { CrudUserUC } from './../useCases/crudUserUC';
-import { UPDATED_MESSAGE } from './../../shared/constants/messages.constant';
+import { PASSWORD_CHANGED_MESSAGE } from './../../shared/constants/messages.constant';
 import { User } from 'src/shared/entities/user.entity';
 import {
   PaginatedListUsersParamsDto,
@@ -53,7 +53,6 @@ import { ResponsePaginationDto } from 'src/shared/dtos/pagination.dto';
 
 @Controller('user')
 @ApiTags('Usuarios')
-@UseGuards(AuthGuard())
 export class UserController {
   constructor(
     private readonly _userUC: UserUC,
@@ -61,6 +60,7 @@ export class UserController {
   ) {}
 
   @Get('paginated-partial')
+  @UseGuards(AuthGuard())
   @GetPaginatedPartialDocs()
   async getPaginatedPartial(
     @Query() params: PaginatedUserSelectParamsDto,
@@ -69,6 +69,7 @@ export class UserController {
   }
 
   @Get('paginated-phone-code')
+  @UseGuards(AuthGuard())
   @PaginatedPhoneCodeSelectDocs()
   async paginatedPhoneCodeSelect(
     @Query() params: PaginatedCodePhoneUser,
@@ -77,6 +78,7 @@ export class UserController {
   }
 
   @Get('paginated-list')
+  @UseGuards(AuthGuard())
   @GetPaginatedListDocs()
   async getPaginatedList(
     @Query() params: PaginatedListUsersParamsDto,
@@ -85,6 +87,7 @@ export class UserController {
   }
 
   @Post()
+  @UseGuards(AuthGuard())
   @CreateUserDocs()
   async create(@Body() user: CreateUserDto): Promise<CreatedRecordResponseDto> {
     const rowId = await this._userUC.create(user);
@@ -115,12 +118,13 @@ export class UserController {
   ): Promise<UpdateRecordResponseDto> {
     await this._userUC.recoveryPassword(body);
     return {
-      message: UPDATED_MESSAGE,
+      message: PASSWORD_CHANGED_MESSAGE,
       statusCode: HttpStatus.OK,
     };
   }
 
   @Post('change-password')
+  @UseGuards(AuthGuard())
   @ChangePasswordDocs()
   async changePassword(
     @Body() body: ChangePasswordDto,
@@ -128,12 +132,13 @@ export class UserController {
   ): Promise<UpdateRecordResponseDto> {
     await this._userUC.changePassword(body, req.user.id);
     return {
-      message: UPDATED_MESSAGE,
+      message: PASSWORD_CHANGED_MESSAGE,
       statusCode: HttpStatus.OK,
     };
   }
 
   @Get(':id')
+  @UseGuards(AuthGuard())
   @FindOneUserDocs()
   async findOne(@Param('id') id: string): Promise<GetUserResponseDto> {
     const user = await this._userUC.findOne(id);
@@ -144,6 +149,7 @@ export class UserController {
   }
 
   @Patch(':id')
+  @UseGuards(AuthGuard())
   @UpdateUserDocs()
   async update(
     @Param('id') id: string,
@@ -158,6 +164,7 @@ export class UserController {
   }
 
   @Delete(':id')
+  @UseGuards(AuthGuard())
   @DeleteUserDocs()
   async delete(@Param('id') id: string): Promise<DeleteReCordResponseDto> {
     await this._userUC.delete(id);

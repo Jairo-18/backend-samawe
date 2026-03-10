@@ -21,7 +21,7 @@ import {
   DeleteIngredientDocs,
 } from '../decorators/recipe.decorators';
 import { AuthGuard } from '@nestjs/passport';
-import { RecipeService } from '../services/recipe.service';
+import { RecipeUC } from '../useCases/recipeUC.uc';
 import {
   CreateRecipeDto,
   UpdateRecipeDto,
@@ -34,12 +34,12 @@ import {
 @ApiTags('Recetas')
 @UseGuards(AuthGuard())
 export class RecipeController {
-  constructor(private readonly _recipeService: RecipeService) {}
+  constructor(private readonly _recipeUC: RecipeUC) {}
 
   @Post()
   @CreateRecipeDocs()
   async create(@Body() createDto: CreateRecipeDto) {
-    const recipes = await this._recipeService.create(createDto);
+    const recipes = await this._recipeUC.create(createDto);
     return {
       message: 'Receta creada exitosamente',
       statusCode: HttpStatus.CREATED,
@@ -53,7 +53,7 @@ export class RecipeController {
     @Param('productId') productId: string,
     @Body() updateDto: UpdateRecipeDto,
   ) {
-    const recipes = await this._recipeService.update(
+    const recipes = await this._recipeUC.updateByProduct(
       parseInt(productId),
       updateDto,
     );
@@ -70,7 +70,7 @@ export class RecipeController {
     @Param('recipeId') recipeId: string,
     @Body() updateDto: UpdateRecipeIngredientDto,
   ) {
-    const recipe = await this._recipeService.updateIngredient(
+    const recipe = await this._recipeUC.updateIngredient(
       parseInt(recipeId),
       updateDto,
     );
@@ -83,13 +83,13 @@ export class RecipeController {
 
   @Get('paginated')
   async findAllPaginated(@Query() params: PaginatedRecipesParamsDto) {
-    return await this._recipeService.findAllPaginated(params);
+    return await this._recipeUC.findAllPaginated(params);
   }
 
   @Get('product/:productId')
   @FindByProductDocs()
   async findByProduct(@Param('productId') productId: string) {
-    const recipe = await this._recipeService.findByProduct(parseInt(productId));
+    const recipe = await this._recipeUC.findByProduct(parseInt(productId));
     return {
       statusCode: HttpStatus.OK,
       data: recipe,
@@ -99,7 +99,7 @@ export class RecipeController {
   @Post('check-availability')
   @CheckAvailabilityDocs()
   async checkAvailability(@Body() checkDto: CheckIngredientsAvailabilityDto) {
-    const availability = await this._recipeService.checkAvailability(checkDto);
+    const availability = await this._recipeUC.checkAvailability(checkDto);
     return {
       statusCode: HttpStatus.OK,
       data: availability,
@@ -109,7 +109,7 @@ export class RecipeController {
   @Delete('product/:productId')
   @DeleteByProductDocs()
   async deleteByProduct(@Param('productId') productId: string) {
-    await this._recipeService.deleteByProduct(parseInt(productId));
+    await this._recipeUC.deleteByProduct(parseInt(productId));
     return {
       message: 'Receta eliminada exitosamente',
       statusCode: HttpStatus.OK,
@@ -119,7 +119,7 @@ export class RecipeController {
   @Delete(':recipeId')
   @DeleteIngredientDocs()
   async deleteIngredient(@Param('recipeId') recipeId: string) {
-    await this._recipeService.deleteIngredient(parseInt(recipeId));
+    await this._recipeUC.deleteIngredient(parseInt(recipeId));
     return {
       message: 'Ingrediente eliminado de la receta',
       statusCode: HttpStatus.OK,

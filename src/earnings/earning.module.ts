@@ -1,4 +1,6 @@
-﻿import { ReportController } from './controllers/report.controller';
+﻿import { ReportUC } from './useCases/reportUC.uc';
+import { EarningUC } from './useCases/earningUC.uc';
+import { ReportController } from './controllers/report.controller';
 import { ReportService } from './services/report.service';
 import { InventoryService } from './services/inventory.service';
 import { StatisticsService } from './services/statistics.service';
@@ -16,6 +18,16 @@ import { EarningService } from './services/earning.service';
     EarningService,
     InventoryService,
     ReportService,
+    EarningUC,
+    ReportUC,
+  ],
+  exports: [
+    StatisticsService,
+    EarningService,
+    InventoryService,
+    ReportService,
+    EarningUC,
+    ReportUC,
   ],
 })
 export class EarningModule {}

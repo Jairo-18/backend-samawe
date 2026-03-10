@@ -417,7 +417,7 @@ export class UserService {
   async generateResetToken(userId: string): Promise<string> {
     const token = crypto.randomBytes(32).toString('hex');
     const expiryDate = new Date();
-    expiryDate.setHours(expiryDate.getHours() + 1);
+    expiryDate.setMinutes(expiryDate.getMinutes() + 30);
 
     await this._userRepository.update(userId, {
       resetToken: token,

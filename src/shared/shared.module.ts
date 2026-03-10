@@ -170,8 +170,8 @@ export class SharedModule {
           useFactory: (configService: ConfigService) => ({
             transport: {
               host: configService.get<string>('MAIL_HOST'),
-              port: configService.get<number>('MAIL_PORT'),
-              secure: configService.get<boolean>('MAIL_SECURE') || false,
+              port: parseInt(configService.get('MAIL_PORT'), 10) || 587,
+              secure: configService.get('MAIL_SECURE') === 'true',
               auth: {
                 user: configService.get<string>('MAIL_USER'),
                 pass: configService.get<string>('MAIL_PASSWORD'),

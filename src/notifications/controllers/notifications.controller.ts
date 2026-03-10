@@ -8,10 +8,9 @@ import {
   UseGuards,
   Query,
 } from '@nestjs/common';
-import { NotificationsService } from '../services/notifications.service';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-
+import { NotificationUC } from '../useCases/notificationUC.uc';
 import { PaginatedNotificationParamsDto } from '../dtos/notification.dto';
 
 @ApiTags('notifications')
@@ -19,7 +18,7 @@ import { PaginatedNotificationParamsDto } from '../dtos/notification.dto';
 @UseGuards(AuthGuard('jwt'))
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(private readonly _notificationUC: NotificationUC) {}
 
   @Get()
   @ApiOperation({
@@ -31,7 +30,7 @@ export class NotificationsController {
     @Query() params: PaginatedNotificationParamsDto,
   ) {
     const userId = req.user.userId;
-    return await this.notificationsService.getUserNotifications(userId, params);
+    return await this._notificationUC.getUserNotifications(userId, params);
   }
 
   @Get('unread-count')
@@ -41,7 +40,7 @@ export class NotificationsController {
   })
   async getUnreadCount(@Request() req) {
     const userId = req.user.userId;
-    const count = await this.notificationsService.getUnreadCount(userId);
+    const count = await this._notificationUC.getUnreadCount(userId);
     return {
       statusCode: 200,
       message: 'Contador obtenido',
@@ -56,8 +55,7 @@ export class NotificationsController {
   })
   async getInitialNotifications(@Request() req) {
     const userId = req.user.userId;
-    const result =
-      await this.notificationsService.getInitialNotifications(userId);
+    const result = await this._notificationUC.getInitialNotifications(userId);
     return {
       statusCode: 200,
       message: 'Carga inicial obtenida',
@@ -71,7 +69,7 @@ export class NotificationsController {
   })
   async markAllAsRead(@Request() req) {
     const userId = req.user.userId;
-    const result = await this.notificationsService.markAllAsRead(userId);
+    const result = await this._notificationUC.markAllAsRead(userId);
     return {
       statusCode: 200,
       message: 'Notificaciones marcadas como leídas',
@@ -85,7 +83,7 @@ export class NotificationsController {
   })
   async markAllAsUnread(@Request() req) {
     const userId = req.user.userId;
-    const result = await this.notificationsService.markAllAsUnread(userId);
+    const result = await this._notificationUC.markAllAsUnread(userId);
     return {
       statusCode: 200,
       message: 'Notificaciones marcadas como no leídas',
@@ -99,7 +97,7 @@ export class NotificationsController {
   })
   async toggleRead(@Param('id') id: string, @Request() req) {
     const userId = req.user.userId;
-    const notification = await this.notificationsService.toggleRead(id, userId);
+    const notification = await this._notificationUC.toggleRead(id, userId);
     return {
       statusCode: 200,
       message: notification.read
@@ -113,8 +111,7 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Eliminar TODAS las notificaciones del usuario' })
   async deleteAll(@Request() req) {
     const userId = req.user.userId;
-    const result =
-      await this.notificationsService.deleteAllNotifications(userId);
+    const result = await this._notificationUC.deleteAllNotifications(userId);
     return {
       statusCode: 200,
       message: 'Todas las notificaciones han sido eliminadas',
@@ -126,10 +123,7 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Eliminar una notificación especifica' })
   async deleteNotification(@Param('id') id: string, @Request() req) {
     const userId = req.user.userId;
-    const result = await this.notificationsService.deleteNotification(
-      id,
-      userId,
-    );
+    const result = await this._notificationUC.deleteNotification(id, userId);
     return {
       statusCode: 200,
       message: 'Notificación eliminada',

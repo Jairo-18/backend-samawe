@@ -13,3 +13,4 @@ export const UPLOADED_MESSAGE = 'Archivo subido correctamente';
 export const PASSWORDS_NOT_MATCH = 'Las contraseñas no coinciden';
 export const UNAUTHORIZED_PASSWORD_MESSAGE =
   'No tienes acceso para modificar las contraseñas de otro usuario.';
+export const PASSWORD_CHANGED_MESSAGE = 'Contraseña cambiada correctamente';

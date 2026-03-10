@@ -2,9 +2,9 @@
 import { Controller, Get, Res, UseGuards, Param } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiTags } from '@nestjs/swagger';
-import { ReportService } from './../services/report.service';
 import { CategoryReportDto, PaymentTypeReportDto } from './../dtos/report.dto';
 import { CategoryDetailReport } from '../interfaces/report.interface';
+import { ReportUC } from '../useCases/reportUC.uc';
 import {
   GetAllPaymentTypesReportDocs,
   GetSalesByCategoryReportDocs,
@@ -21,7 +21,7 @@ import * as ExcelJS from 'exceljs';
 @ApiTags('Reportes de Facturas')
 @UseGuards(AuthGuard())
 export class ReportController {
-  constructor(private readonly _reportService: ReportService) {}
+  constructor(private readonly _reportUC: ReportUC) {}
 
   private styleHeader(row: ExcelJS.Row) {
     row.eachCell((cell) => {
@@ -77,19 +77,19 @@ export class ReportController {
   @Get('payment-types')
   @GetAllPaymentTypesReportDocs()
   async getAllPaymentTypesReport(): Promise<PaymentTypeReportDto[]> {
-    return this._reportService.generateAllPaymentTypesReport();
+    return (await this._reportUC.generateAllPaymentTypesReport()) as any;
   }
 
   @Get('sales-by-category')
   @GetSalesByCategoryReportDocs()
   async getSalesByCategoryReport(): Promise<CategoryReportDto[]> {
-    return this._reportService.generateSalesByCategoryReport();
+    return await this._reportUC.generateSalesByCategoryReport();
   }
 
   @Get('sales-by-category/with-details')
   @GetSalesByCategoryWithDetailsDocs()
   async getSalesByCategoryWithDetails(): Promise<CategoryDetailReport[]> {
-    return this._reportService.generateSalesByCategoryWithDetails();
+    return await this._reportUC.generateSalesByCategoryWithDetails();
   }
 
   @Get('sales-by-category/:category/details/:period')
@@ -98,13 +98,13 @@ export class ReportController {
     @Param('category') category: string,
     @Param('period') period: 'daily' | 'weekly' | 'monthly' | 'yearly',
   ) {
-    return this._reportService.getCategoryDetailsForPeriod(category, period);
+    return await this._reportUC.getCategoryDetailsForPeriod(category, period);
   }
 
   @Get('payment-types/excel')
   @ExportPaymentTypesExcelDocs()
   async exportPaymentTypesExcel(@Res() res: Response) {
-    const reports = await this._reportService.generateAllPaymentTypesReport();
+    const reports = await this._reportUC.generateAllPaymentTypesReport();
     const workbook = new ExcelJS.Workbook();
     const ws = workbook.addWorksheet('Reporte de Pagos');
 
@@ -159,7 +159,7 @@ export class ReportController {
   @Get('sales-by-category/excel')
   @ExportSalesByCategoryExcelDocs()
   async exportSalesByCategoryExcel(@Res() res: Response) {
-    const reports = await this._reportService.generateSalesByCategoryReport();
+    const reports = await this._reportUC.generateSalesByCategoryReport();
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Ventas por Categoría');
@@ -205,8 +205,7 @@ export class ReportController {
   @Get('sales-by-category/with-details/excel')
   @ExportSalesByCategoryWithDetailsExcelDocs()
   async exportSalesByCategoryWithDetailsExcel(@Res() res: Response) {
-    const reports =
-      await this._reportService.generateSalesByCategoryWithDetails();
+    const reports = await this._reportUC.generateSalesByCategoryWithDetails();
     const workbook = new ExcelJS.Workbook();
 
     const summary = workbook.addWorksheet('Resumen por Categoría');

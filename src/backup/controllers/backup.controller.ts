@@ -1,27 +1,34 @@
-import { Controller, Get, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Res, UseGuards, HttpStatus } from '@nestjs/common';
 import { Response } from 'express';
-import { BackupService } from '../services/backup.service';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { BackupUC } from '../useCases/backup.uc';
 
-@ApiTags('Backup')
 @Controller('backup')
+@ApiTags('Backup')
 export class BackupController {
-  constructor(private readonly backupService: BackupService) {}
+  constructor(private readonly _backupUC: BackupUC) {}
 
-  @Get('export')
+  @Get('generate')
   @UseGuards(AuthGuard())
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary:
-      'Exporta toda la base de datos en SQL y las imágenes en un archivo ZIP',
-  })
-  async exportBackup(@Res() res: Response) {
-    try {
-      await this.backupService.generateBackup(res);
-    } catch (error) {
-      console.error('Error generating backup:', error);
-      res.status(500).json({ message: 'Error generating backup zip' });
-    }
+  @ApiOperation({ summary: 'Generar y descargar un backup completo' })
+  async generateBackup(@Res() res: Response) {
+    const { archive, filename } = await this._backupUC.generateManualBackup();
+
+    res.attachment(filename);
+    archive.pipe(res);
+    await archive.finalize();
+  }
+
+  @Get('test-upload')
+  @UseGuards(AuthGuard())
+  @ApiOperation({ summary: 'Probar subida manual a Google Drive' })
+  async testUpload() {
+    const fileId = await this._backupUC.performBackupAndUpload();
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Backup manual subido exitosamente',
+      data: { fileId },
+    };
   }
 }

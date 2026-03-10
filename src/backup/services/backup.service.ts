@@ -4,40 +4,24 @@ import archiver from 'archiver';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Response } from 'express';
+import { GoogleDriveService } from './google-drive.service';
+import { PassThrough } from 'stream';
 
 @Injectable()
 export class BackupService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly googleDriveService: GoogleDriveService,
+  ) {}
 
   async generateBackup(res: Response) {
     try {
-      const sqlDump = await this.generateSqlDump();
-
-      const archive = archiver('zip', {
-        zlib: { level: 9 },
-      });
+      const { archive, filename } = await this.createBackupStream();
 
       res.setHeader('Content-Type', 'application/zip');
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename=samawe-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.zip`,
-      );
+      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
 
       archive.pipe(res);
-
-      archive.append(sqlDump, { name: 'data.sql' });
-
-      const uploadsDir =
-        process.platform === 'win32'
-          ? path.join(process.cwd(), 'uploads')
-          : '/app/uploads';
-
-      if (fs.existsSync(uploadsDir)) {
-        archive.directory(uploadsDir, 'uploads');
-      } else {
-        console.warn(`Uploads directory not found at: ${uploadsDir}`);
-      }
-
       await archive.finalize();
     } catch (error) {
       console.error('Backup creation failed:', error);
@@ -45,6 +29,49 @@ export class BackupService {
         res.status(500).send('Failed to generate backup');
       }
     }
+  }
+
+  async createBackupStream(): Promise<{
+    archive: archiver.Archiver;
+    filename: string;
+  }> {
+    const sqlDump = await this.generateSqlDump();
+
+    const archive = archiver('zip', {
+      zlib: { level: 9 },
+    });
+
+    const filename = `samawe-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
+
+    archive.append(sqlDump, { name: 'data.sql' });
+
+    const uploadsDir =
+      process.platform === 'win32'
+        ? path.join(process.cwd(), 'uploads')
+        : '/app/uploads';
+
+    if (fs.existsSync(uploadsDir)) {
+      archive.directory(uploadsDir, 'uploads');
+    } else {
+      console.warn(`Uploads directory not found at: ${uploadsDir}`);
+    }
+
+    return { archive, filename };
+  }
+
+  async executeFullBackupAndUpload(): Promise<string> {
+    const { archive, filename } = await this.createBackupStream();
+
+    const passThrough = new PassThrough();
+    archive.pipe(passThrough);
+
+    const uploadPromise = this.googleDriveService.uploadFile(
+      passThrough,
+      filename,
+    );
+
+    await archive.finalize();
+    return uploadPromise;
   }
 
   private async generateSqlDump(): Promise<string> {
