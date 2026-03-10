@@ -248,6 +248,11 @@ export class InvoiceDetailService {
 
       if (excursion) detail.excursion = excursion;
 
+      const updatedExcursion =
+        isBuy && excursion
+          ? Object.assign(excursion, { priceBuy: priceWithoutTax })
+          : null;
+
       const savedDetail = await this._invoiceDetaillRepository.save(detail);
 
       if (isProduct) {
@@ -273,6 +278,7 @@ export class InvoiceDetailService {
           }
         } else if (isBuy) {
           product.amount = currentAmount + amount;
+          product.priceBuy = priceWithoutTax;
         } else if (isQuote) {
           this._eventEmitter.emit('invoice.detail.cotizacion', {
             invoice,
@@ -291,6 +297,9 @@ export class InvoiceDetailService {
       const savePromises: Promise<any>[] = [
         shouldSaveProduct
           ? this._productRepository.save(product)
+          : Promise.resolve(),
+        updatedExcursion
+          ? this._excursionRepository.save(updatedExcursion)
           : Promise.resolve(),
       ];
 
