@@ -4,7 +4,7 @@ export const DELETED_MESSAGE = 'Registro eliminado con éxito';
 export const DUPLICATED_MESSAGE = 'Registro duplicado';
 export const VALIDATION_MESSAGE = 'Error de validación';
 export const NOT_FOUND_MESSAGE = 'Registro no encontrado';
-export const UNAUTHORIZED_MESSAGE = 'Acceso no autorizado';
+export const UNAUTHORIZED_MESSAGE = 'Tu sesión caducó';
 export const SERVICE_ERROR_MESSAGE = 'Error de servicio';
 export const DELETE_RELATED_MESSAGE =
   'No es posible eliminar el registro, debido a que se encuentra en uso';

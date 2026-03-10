@@ -17,6 +17,7 @@ import * as bcrypt from 'bcryptjs';
 import { ConfigService } from '@nestjs/config';
 import { AccessSessionsService } from './accessSessions.service';
 import { v4 as uuidv4 } from 'uuid';
+import { UNAUTHORIZED_MESSAGE } from '../../shared/constants/messages.constant';
 
 @Injectable()
 export class AuthService {
@@ -87,11 +88,11 @@ export class AuthService {
       });
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_e) {
-      throw new UnauthorizedException('No autorizado');
+      throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
     }
 
     if (!user) {
-      throw new UnauthorizedException('No autorizado');
+      throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
     }
 
     return user;
@@ -123,7 +124,7 @@ export class AuthService {
       });
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_e) {
-      throw new UnauthorizedException('No autorizado');
+      throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
     }
 
     const user = await this.validateSession({
@@ -132,7 +133,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('No autorizado');
+      throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
     }
 
     const tokens = this.generateTokens({
