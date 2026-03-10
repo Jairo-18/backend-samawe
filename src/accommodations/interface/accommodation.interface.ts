@@ -26,3 +26,24 @@ export interface AccommodationInterfacePaginatedList {
   categoryType: CategoryTypeClean;
   images: AccommodationImage[];
 }
+
+export interface AccommodationComplete {
+  accommodationId: number;
+  code?: string;
+  name?: string;
+  description?: string;
+  amountPerson?: number;
+  jacuzzi?: boolean;
+  amountRoom?: number;
+  amountBathroom?: number;
+  priceBuy?: number;
+  priceSale?: number;
+  taxe?: number;
+  categoryType?: CategoryTypeClean;
+  bedType?: BedTypeClean;
+  stateType?: StateTypeClean;
+  updatedAt?: Date;
+  createdAt?: Date;
+  deletedAt?: Date;
+  images?: AccommodationImage[];
+}

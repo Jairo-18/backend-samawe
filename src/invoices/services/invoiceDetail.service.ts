@@ -14,6 +14,7 @@ import { InvoiceRepository } from './../../shared/repositories/invoice.repositor
 import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { RecipeService } from './../../recipes/services/recipe.service';
 import { RecipeRepository } from './../../shared/repositories/recipe.repository';
+import { OrdersGateway } from 'src/socket/gateways/orders.gateway';
 
 import {
   CreateInvoiceDetailDto,
@@ -45,6 +46,7 @@ export class InvoiceDetailService {
     private readonly _generalInvoiceDetaillService: GeneralInvoiceDetaillService,
     private readonly _recipeService: RecipeService,
     private readonly _recipeRepository: RecipeRepository,
+    private readonly _ordersGateway: OrdersGateway,
   ) {}
 
   async create(
@@ -348,6 +350,20 @@ export class InvoiceDetailService {
         };
       }
 
+      if (
+        !skipTotalUpdate &&
+        invoice.tableNumber &&
+        invoice.tableNumber !== '0' &&
+        invoice.tableNumber !== ''
+      ) {
+        this._ordersGateway.emitInvoiceItemAdded(invoice.invoiceId, {
+          detail: savedDetail,
+          total: invoice.total,
+          subtotalWithTax: invoice.subtotalWithTax,
+          subtotalWithoutTax: invoice.subtotalWithoutTax,
+        });
+      }
+
       return {
         ...savedDetail,
         stockInfo,
@@ -373,6 +389,24 @@ export class InvoiceDetailService {
     );
 
     await this._generalInvoiceDetaillService.updateInvoiceTotal(invoiceId);
+
+    const invoice = await this._invoiceRepository.findOne({
+      where: { invoiceId },
+    });
+
+    if (
+      invoice &&
+      invoice.tableNumber &&
+      invoice.tableNumber !== '0' &&
+      invoice.tableNumber !== ''
+    ) {
+      this._ordersGateway.emitInvoiceItemAdded(invoiceId, {
+        details: results,
+        total: invoice.total,
+        subtotalWithTax: invoice.subtotalWithTax,
+        subtotalWithoutTax: invoice.subtotalWithoutTax,
+      });
+    }
 
     return results;
   }

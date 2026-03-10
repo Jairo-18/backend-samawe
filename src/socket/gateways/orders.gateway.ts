@@ -1,3 +1,4 @@
+import { InvoiceItemAddedPayload } from './../../invoices/interfaces/invoiceDetail.interface';
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -36,6 +37,10 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   emitToUser(userId: string, orderData: OrderUpdate) {
     this.server.to(`user_${userId}`).emit('orderUpdated', orderData);
+  }
+
+  emitInvoiceItemAdded(invoiceId: number, payload: InvoiceItemAddedPayload) {
+    this.server.emit('invoiceItemAdded', { invoiceId, ...payload });
   }
 
   @SubscribeMessage('joinOrders')

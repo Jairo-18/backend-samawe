@@ -8,8 +8,8 @@ export interface ProductImageClean {
 
 export interface UnitOfMeasureClean {
   unitOfMeasureId: number;
-  code: string;
-  name: string;
+  code?: string;
+  name?: string;
 }
 
 export interface ProductInterfacePaginatedList {
@@ -24,4 +24,22 @@ export interface ProductInterfacePaginatedList {
   categoryType: CategoryTypeClean;
   unitOfMeasure?: UnitOfMeasureClean | null;
   images: ProductImageClean[];
+}
+
+export interface ProductComplete {
+  productId: number;
+  code?: string;
+  name?: string;
+  description?: string;
+  amount?: number;
+  taxe?: number;
+  priceBuy?: number;
+  priceSale?: number;
+  isActive?: boolean;
+  categoryType?: CategoryTypeClean;
+  unitOfMeasure?: UnitOfMeasureClean;
+  updatedAt?: Date;
+  createdAt?: Date;
+  deletedAt?: Date;
+  images?: ProductImageClean[];
 }

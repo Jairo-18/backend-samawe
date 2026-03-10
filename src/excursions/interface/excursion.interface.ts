@@ -20,3 +20,19 @@ export interface ExcursionInterfacePaginatedList {
   categoryType: CategoryTypeClean;
   images: ExcursionImage[];
 }
+
+export interface ExcursionComplete {
+  excursionId: number;
+  code?: string;
+  name?: string;
+  description?: string;
+  priceBuy?: number;
+  priceSale?: number;
+  taxe?: number;
+  stateType?: StateTypeClean;
+  categoryType?: CategoryTypeClean;
+  updatedAt?: Date;
+  createdAt?: Date;
+  deletedAt?: Date;
+  images?: ExcursionImage[];
+}
