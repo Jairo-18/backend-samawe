@@ -112,6 +112,15 @@ export class PaginatedListUsersParamsDto extends ParamsPaginationDto {
   @IsOptional()
   @IsString()
   personType?: string;
+
+  @ApiProperty({
+    example: 'uuid-de-organizacion',
+    description: 'Filtrar por ID de organización',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
 }
 
 export class PaginatedUserSelectParamsDto extends ParamsPaginationDto {

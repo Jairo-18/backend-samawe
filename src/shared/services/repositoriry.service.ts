@@ -1,4 +1,4 @@
-﻿import { DiscountTypeRepository } from './../repositories/discount.repository';
+import { DiscountTypeRepository } from './../repositories/discount.repository';
 import { AdditionalTypeRepository } from './../repositories/additionalType.repository';
 import { PayTypeRepository } from './../repositories/payType.repository';
 import { PaidTypeRepository } from './../repositories/paidType.repository';
@@ -13,6 +13,7 @@ import { IdentificationTypeRepository } from '../repositories/identificationType
 import { InvoiceTypeRepository } from '../repositories/invoiceType.repository';
 import { UnitOfMeasureRepository } from '../repositories/unitOfMeasure.repository';
 import { PersonTypeRepository } from '../repositories/personType.repository';
+import { OrganizationalRepository } from '../repositories/organizational.repository';
 
 @Injectable()
 export class RepositoryService {
@@ -31,6 +32,7 @@ export class RepositoryService {
     discountType: DiscountTypeRepository;
     unitOfMeasure: UnitOfMeasureRepository;
     personType: PersonTypeRepository;
+    organizational: OrganizationalRepository;
   };
 
   constructor(
@@ -48,6 +50,7 @@ export class RepositoryService {
     private readonly _discountTypeRepository: DiscountTypeRepository,
     private readonly _unitOfMeasureRepository: UnitOfMeasureRepository,
     private readonly _personTypeRepository: PersonTypeRepository,
+    private readonly _organizationalRepository: OrganizationalRepository,
   ) {
     this.repositories = {
       bedType: _bedTypeRepository,
@@ -64,6 +67,7 @@ export class RepositoryService {
       discountType: _discountTypeRepository,
       unitOfMeasure: _unitOfMeasureRepository,
       personType: _personTypeRepository,
+      organizational: _organizationalRepository,
     };
   }
 }

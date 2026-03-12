@@ -1,4 +1,4 @@
-﻿import { NOT_FOUND_MESSAGE } from './../../shared/constants/messages.constant';
+import { NOT_FOUND_MESSAGE } from './../../shared/constants/messages.constant';
 import { AccessSessions } from './../../shared/entities/accessSessions.entity';
 import { AccessSessionsRepository } from './../../shared/repositories/accessSessions.repository';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
@@ -15,8 +15,12 @@ export class AccessSessionsService {
 
   async generateSession(body: AccessSessionsModel): Promise<string> {
     const session = this._accessSessionsRepository.create({
-      ...body,
+      id: body.id,
+      accessToken: body.accessToken,
       user: { userId: body.userId },
+      organizational: body.organizationalId
+        ? { organizationalId: body.organizationalId }
+        : undefined,
     });
 
     const saved = await this._accessSessionsRepository.save(session);
@@ -30,6 +34,9 @@ export class AccessSessionsService {
       where: {
         id: params.id,
         user: params.userId ? { userId: params.userId } : undefined,
+        organizational: params.organizationalId
+          ? { organizationalId: params.organizationalId }
+          : undefined,
       },
     });
   }

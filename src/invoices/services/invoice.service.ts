@@ -1,10 +1,10 @@
-﻿import { User } from './../../shared/entities/user.entity';
+import { User } from './../../shared/entities/user.entity';
 import { StateType } from './../../shared/entities/stateType.entity';
 import { OrdersGateway } from './../../socket/gateways/orders.gateway';
-import { RecipeService } from './../../recipes/services/recipe.service';
 import { ExcursionRepository } from './../../shared/repositories/excursion.repository';
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
+import { OrganizationalRepository } from './../../shared/repositories/organizational.repository';
 import { CreateInvoiceDetailDto } from './../dtos/invoiceDetaill.dto';
 import { InvoiceDetaill } from './../../shared/entities/invoiceDetaill.entity';
 import { Product } from './../../shared/entities/product.entity';
@@ -12,6 +12,7 @@ import {
   Notification,
   NotificationType,
 } from './../../shared/entities/notification.entity';
+import { Organizational } from './../../shared/entities/organizational.entity';
 import {
   Injectable,
   BadRequestException,
@@ -35,6 +36,7 @@ import {
 } from '../dtos/invoice.dto';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { In, EntityManager } from 'typeorm';
+import { RecipeService } from '../../recipes/services/recipe.service';
 
 @Injectable()
 export class InvoiceService {
@@ -49,6 +51,7 @@ export class InvoiceService {
     private readonly _productRepository: ProductRepository,
     private readonly _accommodationRepository: AccommodationRepository,
     private readonly _excursionRepository: ExcursionRepository,
+    private readonly _organizationalRepository: OrganizationalRepository,
     private readonly _eventEmitter: EventEmitter2,
     private readonly _ordersGateway: OrdersGateway,
     private readonly _recipeService: RecipeService,
@@ -212,7 +215,7 @@ export class InvoiceService {
       throw new BadRequestException('Este usuario está inactivo');
     }
 
-    const [payType, paidType] = await Promise.all([
+    const [payType, paidType, organizational] = await Promise.all([
       createInvoiceDto.payTypeId
         ? this._payTypeRepository.findOne({
             where: { payTypeId: createInvoiceDto.payTypeId },
@@ -223,7 +226,16 @@ export class InvoiceService {
             where: { paidTypeId: createInvoiceDto.paidTypeId },
           })
         : null,
+      createInvoiceDto.organizationalId
+        ? this._organizationalRepository.findOne({
+            where: { organizationalId: createInvoiceDto.organizationalId },
+          })
+        : null,
     ]);
+
+    if (createInvoiceDto.organizationalId && !organizational) {
+      throw new BadRequestException('Organización no encontrada');
+    }
 
     const invoiceEntity = await this._invoiceRepository.manager.transaction(
       async (manager) => {
@@ -282,6 +294,7 @@ export class InvoiceService {
             ? ({ stateTypeId: createInvoiceDto.stateTypeId } as StateType)
             : undefined,
           tableNumber: createInvoiceDto.tableNumber,
+          ...(organizational && { organizational }),
         };
 
         const newInvoice = invoiceRepo.create(invoiceData);
@@ -495,6 +508,20 @@ export class InvoiceService {
           invoice.orderTime = now;
         } else if (stateCode === 'ENT') {
           invoice.readyTime = now;
+        }
+      }
+
+      if (updateInvoiceDto.organizationalId !== undefined) {
+        if (updateInvoiceDto.organizationalId === null) {
+          invoice.organizational = null;
+        } else {
+          const org = await queryRunner.manager.findOne(Organizational, {
+            where: { organizationalId: updateInvoiceDto.organizationalId },
+          });
+          if (!org) {
+            throw new BadRequestException('Organización no encontrada');
+          }
+          invoice.organizational = org;
         }
       }
 

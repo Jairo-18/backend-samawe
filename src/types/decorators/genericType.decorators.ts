@@ -74,3 +74,13 @@ export function DeleteTypeDocs() {
     ApiNotFoundResponse({ type: NotFoundResponseDto }),
   );
 }
+
+export function GetAllByTypeDocs() {
+  return applyDecorators(
+    ApiBearerAuth(),
+    ApiOperation({
+      summary: 'Obtiene todos los registros de un tipo específico',
+    }),
+    ApiOkResponse({ description: 'Lista completa de registros' }),
+  );
+}

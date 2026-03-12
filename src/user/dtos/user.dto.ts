@@ -118,6 +118,14 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   personType?: string;
+
+  @ApiPropertyOptional({
+    example: 'uuid-de-organizacion',
+    description: 'ID de la organización',
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
 }
 
 export interface GetAllUsersRespose {
@@ -215,6 +223,14 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   personType: string;
+
+  @ApiPropertyOptional({
+    example: 'uuid-de-organizacion',
+    description: 'ID de la organización',
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
 }
 
 export class ChangePasswordBaseDto {

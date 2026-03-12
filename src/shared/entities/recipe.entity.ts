@@ -9,6 +9,7 @@
   JoinColumn,
 } from 'typeorm';
 import { Product } from './product.entity';
+import { Organizational } from './organizational.entity';
 
 @Entity({ name: 'Recipe' })
 export class Recipe {
@@ -31,6 +32,13 @@ export class Recipe {
 
   @Column('varchar', { length: 500, nullable: true })
   notes?: string;
+
+  @ManyToOne(() => Organizational, { nullable: true })
+  @JoinColumn({ name: 'organizationalId' })
+  organizational?: Organizational;
+
+  @Column('uuid', { nullable: true })
+  organizationalId?: string;
 
   @CreateDateColumn()
   createdAt: Date;

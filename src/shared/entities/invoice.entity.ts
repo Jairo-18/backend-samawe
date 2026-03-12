@@ -16,6 +16,7 @@ import { PaidType } from './paidType.entity';
 import { InvoiceDetaill } from './invoiceDetaill.entity';
 import { InvoiceType } from './invoiceType.entity';
 import { StateType } from './stateType.entity';
+import { Organizational } from './organizational.entity';
 
 @Unique('UQ_invoice_code_per_type', ['code', 'invoiceType'])
 @Entity({ name: 'Invoice' })
@@ -132,6 +133,10 @@ export class Invoice {
     cascade: true,
   })
   invoiceDetails: InvoiceDetaill[];
+
+  @ManyToOne(() => Organizational, { nullable: true, eager: false })
+  @JoinColumn({ name: 'organizationalId' })
+  organizational?: Organizational;
 
   @CreateDateColumn()
   createdAt: Date;

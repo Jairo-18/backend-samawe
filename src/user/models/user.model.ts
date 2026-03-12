@@ -54,6 +54,7 @@ export interface UpdateUserModel {
   isActive: boolean;
   roleType: string;
   personType: string;
+  organizationalId?: string;
 }
 
 export interface IdentificationType {

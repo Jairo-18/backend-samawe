@@ -1,5 +1,6 @@
 ﻿import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { StateTypeRepository } from './../../shared/repositories/stateType.repository';
+import { OrganizationalRepository } from './../../shared/repositories/organizational.repository';
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
 import {
   CreateExcursionDto,
@@ -27,6 +28,7 @@ export class ExcursionService {
     private readonly _categoryTypeRepository: CategoryTypeRepository,
     private readonly _stateTypeRepository: StateTypeRepository,
     private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
+    private readonly _organizationalRepository: OrganizationalRepository,
   ) {}
 
   async create(createExcursionDto: CreateExcursionDto): Promise<Excursion> {
@@ -39,8 +41,12 @@ export class ExcursionService {
     }
 
     try {
-      const { categoryTypeId, stateTypeId, ...excursionData } =
-        createExcursionDto;
+      const {
+        categoryTypeId,
+        stateTypeId,
+        organizationalId,
+        ...excursionData
+      } = createExcursionDto;
 
       const categoryType = await this._categoryTypeRepository.findOne({
         where: { categoryTypeId },
@@ -48,6 +54,16 @@ export class ExcursionService {
 
       if (!categoryType) {
         throw new BadRequestException('Tipo de categoría no encontrado');
+      }
+
+      let organizational = null;
+      if (organizationalId) {
+        organizational = await this._organizationalRepository.findOne({
+          where: { organizationalId },
+        });
+        if (!organizational) {
+          throw new BadRequestException('Organización no encontrada');
+        }
       }
 
       const stateType = await this._stateTypeRepository.findOne({
@@ -62,6 +78,7 @@ export class ExcursionService {
         ...excursionData,
         categoryType,
         stateType,
+        ...(organizational && { organizational }),
       });
 
       return await this._excursionRepository.save(newExcursion);
@@ -111,6 +128,20 @@ export class ExcursionService {
 
       excursion.stateType = state;
       delete updateExcursionDto.stateTypeId;
+    }
+
+    if (updateExcursionDto.organizationalId !== undefined) {
+      if (updateExcursionDto.organizationalId === null) {
+        excursion.organizational = null;
+      } else {
+        const org = await this._organizationalRepository.findOne({
+          where: { organizationalId: updateExcursionDto.organizationalId },
+        });
+        if (!org) {
+          throw new NotFoundException('Organización no encontrada');
+        }
+        excursion.organizational = org;
+      }
     }
 
     if (updateExcursionDto.categoryTypeId) {

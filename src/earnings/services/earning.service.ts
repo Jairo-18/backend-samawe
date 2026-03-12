@@ -1,4 +1,4 @@
-﻿import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
+import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   BalanceProductSummaryDto,
@@ -12,6 +12,7 @@ import { BalanceRepository } from './../../shared/repositories/balance.repositor
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { BalanceType } from './../../shared/constants/balanceType.constants';
 import { Balance } from './../../shared/entities/balance.entity';
+import { IsNull } from 'typeorm';
 
 @Injectable()
 export class EarningService {
@@ -21,9 +22,12 @@ export class EarningService {
     private readonly _invoiceRepository: InvoiceRepository,
   ) {}
 
-  async getLatestDailyBalance(): Promise<Balance> {
+  async getLatestDailyBalance(organizationalId?: string): Promise<Balance> {
     const daily = await this._balanceRepository.findOne({
-      where: { type: BalanceType.DAILY },
+      where: {
+        type: BalanceType.DAILY,
+        organizational: organizationalId ? { organizationalId } : IsNull(),
+      },
       order: { periodDate: 'DESC' },
     });
     if (!daily) throw new NotFoundException('No hay un balance diario aún');
@@ -32,15 +36,25 @@ export class EarningService {
 
   private async getLatestBalanceByType(
     type: BalanceType,
+    organizationalId?: string,
   ): Promise<Balance | null> {
     return await this._balanceRepository.findOne({
-      where: { type },
+      where: {
+        type,
+        organizational: organizationalId ? { organizationalId } : IsNull(),
+      },
       order: { periodDate: 'DESC' },
     });
   }
 
-  async getProductSummary(): Promise<BalanceProductSummaryDto> {
-    const products = await this._productRepository.find();
+  async getProductSummary(
+    organizationalId?: string,
+  ): Promise<BalanceProductSummaryDto> {
+    const products = await this._productRepository.find({
+      where: {
+        organizational: organizationalId ? { organizationalId } : IsNull(),
+      },
+    });
 
     let totalProductPriceSale = 0;
     let totalProductPriceBuy = 0;
@@ -63,8 +77,9 @@ export class EarningService {
 
   async getInvoiceSummary(
     type: BalanceType,
+    organizationalId?: string,
   ): Promise<BalanceInvoiceSummaryDto> {
-    const balance = await this.getLatestBalanceByType(type);
+    const balance = await this.getLatestBalanceByType(type, organizationalId);
     if (!balance) {
       return {
         totalInvoiceSale: 0,
@@ -86,7 +101,9 @@ export class EarningService {
     };
   }
 
-  async getAllInvoiceSummaries(): Promise<AllInvoiceSummariesDto> {
+  async getAllInvoiceSummaries(
+    organizationalId?: string,
+  ): Promise<AllInvoiceSummariesDto> {
     const types = [
       BalanceType.DAILY,
       BalanceType.WEEKLY,
@@ -97,7 +114,7 @@ export class EarningService {
     const results = await Promise.all(
       types.map(async (type) => {
         try {
-          return await this.getInvoiceSummary(type);
+          return await this.getInvoiceSummary(type, organizationalId);
         } catch {
           return null;
         }
@@ -112,15 +129,26 @@ export class EarningService {
     };
   }
 
-  async getTotalStock(): Promise<ProductStockCountDto> {
-    const { sum } = await this._productRepository
-      .createQueryBuilder('p')
-      .select('SUM(p.amount)', 'sum')
-      .getRawOne();
+  async getTotalStock(
+    organizationalId?: string,
+  ): Promise<ProductStockCountDto> {
+    const query = this._productRepository.createQueryBuilder('p');
+
+    if (organizationalId) {
+      query.where('p.organizationalId = :organizationalId', {
+        organizationalId,
+      });
+    } else {
+      query.where('p.organizationalId IS NULL');
+    }
+
+    const { sum } = await query.select('SUM(p.amount)', 'sum').getRawOne();
     return { totalStock: Number(sum || 0) };
   }
 
-  async getInvoiceChartList(): Promise<InvoiceChartListDto> {
+  async getInvoiceChartList(
+    organizationalId?: string,
+  ): Promise<InvoiceChartListDto> {
     const now = new Date();
 
     const getRange = (type: 'daily' | 'weekly' | 'monthly' | 'yearly') => {
@@ -176,7 +204,7 @@ export class EarningService {
       types.map(async (type) => {
         const { start, end } = getRange(type);
 
-        const invoices = await this._invoiceRepository
+        const query = this._invoiceRepository
           .createQueryBuilder('invoice')
           .leftJoinAndSelect('invoice.invoiceType', 'invoiceType')
           .where('invoice.createdAt BETWEEN :start AND :end', {
@@ -184,7 +212,17 @@ export class EarningService {
             end: end.toISOString(),
           })
           .andWhere('invoice.deletedAt IS NULL')
-          .andWhere('invoiceType.deletedAt IS NULL')
+          .andWhere('invoiceType.deletedAt IS NULL');
+
+        if (organizationalId) {
+          query.andWhere('invoice.organizationalId = :organizationalId', {
+            organizationalId,
+          });
+        } else {
+          query.andWhere('invoice.organizationalId IS NULL');
+        }
+
+        const invoices = await query
           .select([
             'invoice.code AS code',
             'invoice.total AS total',

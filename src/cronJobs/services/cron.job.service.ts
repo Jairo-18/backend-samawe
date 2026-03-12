@@ -2,6 +2,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { BackupUC } from '../../backup/useCases/backup.uc';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class CronJobService {
@@ -10,6 +11,7 @@ export class CronJobService {
   constructor(
     private readonly _invoiceDetaillService: InvoiceDetailService,
     private readonly _backupUC: BackupUC,
+    private readonly _configService: ConfigService,
   ) {}
 
   @Cron('0 */2 * * *')
@@ -19,6 +21,15 @@ export class CronJobService {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleDailyBackup() {
+    const appEnv = this._configService.get<string>('app.env');
+
+    if (appEnv !== 'production') {
+      this.logger.log(
+        `Skipping daily automated backup (Environment: ${appEnv})`,
+      );
+      return;
+    }
+
     this.logger.log('Executing daily automated backup...');
     try {
       await this._backupUC.performBackupAndUpload();

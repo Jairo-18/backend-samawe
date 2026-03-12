@@ -102,6 +102,15 @@ export class PaginatedListProductsParamsDto extends ParamsPaginationDto {
   @IsOptional()
   @IsString()
   excludeWithRecipe?: boolean;
+
+  @ApiProperty({
+    example: 'uuid-de-organizacion',
+    description: 'Filtrar por ID de organización',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
 }
 
 export class PaginatedProductSelectParamsDto extends ParamsPaginationDto {

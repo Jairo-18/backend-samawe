@@ -53,6 +53,7 @@ export class AuthController {
             roleTypeId: data.user.role.roleId,
             name: data.user.role.name,
           },
+          organizationalId: data.user.organizationalId ?? null,
         },
       },
     };

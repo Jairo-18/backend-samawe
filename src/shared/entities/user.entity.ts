@@ -13,6 +13,7 @@ import { IdentificationType } from './identificationType.entity';
 import { RoleType } from './roleType.entity';
 import { Invoice } from './invoice.entity';
 import { PersonType } from './personType.entity';
+import { Organizational } from './organizational.entity';
 
 @Entity({ name: 'User' })
 export class User {
@@ -76,6 +77,10 @@ export class User {
 
   @OneToMany(() => Invoice, (invoice) => invoice.user)
   invoices: Invoice[];
+
+  @ManyToOne(() => Organizational, { nullable: true, eager: false })
+  @JoinColumn({ name: 'organizationalId' })
+  organizational?: Organizational;
 
   @Column({ type: 'varchar', length: 200, nullable: true })
   resetToken?: string;

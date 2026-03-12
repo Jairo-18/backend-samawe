@@ -6,6 +6,8 @@
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from './user.entity';
+import { JoinColumn } from 'typeorm';
+import { Organizational } from './organizational.entity';
 
 export enum NotificationType {
   LOW_PRODUCT = 'LOW_PRODUCT',
@@ -38,4 +40,8 @@ export class Notification {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @ManyToOne(() => Organizational, { nullable: true, eager: false })
+  @JoinColumn({ name: 'organizationalId' })
+  organizational?: Organizational;
 }

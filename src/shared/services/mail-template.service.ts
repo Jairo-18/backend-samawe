@@ -6,8 +6,17 @@ export class MailTemplateService {
     resetLink: string,
     fistName: string,
     resetToken: string,
+    organizationName: string = 'Samawe',
+    primaryColor: string = '#06a606',
+    logoUrl: string = '',
   ) {
-    const brandColor = '#06a606';
+    const brandColor = primaryColor || '#06a606';
+    const orgName = organizationName || 'Samawe';
+
+    const logoHtml = logoUrl
+      ? `<img src="${logoUrl}" alt="${orgName} Logo" style="max-height: 50px; display: block; margin: 0 auto; margin-bottom: 20px;">`
+      : `<h2 style="color: #111827; margin: 0; font-size: 24px; font-weight: 700;">${orgName}</h2>`;
+
     const template = `
       <div style="margin: 0; padding: 0; background-color: #f9fafb; font-family: 'Inter', 'Roboto', 'Helvetica', Arial, sans-serif; width: 100%; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f9fafb; padding: 40px 10px;">
@@ -24,7 +33,8 @@ export class MailTemplateService {
                   <td style="padding: 40px 30px;">
                     <!-- Branding placeholder or Welcome -->
                     <div style="text-align: center; margin-bottom: 30px;">
-                      <h2 style="color: #111827; margin: 0; font-size: 24px; font-weight: 700;">Recuperar Contraseña</h2>
+                      ${logoHtml}
+                      <h2 style="color: #111827; margin: 0; font-size: 20px; font-weight: 600; margin-top: 15px;">Recuperar Contraseña</h2>
                     </div>
 
                     <p style="color: #4b5563; font-size: 16px; line-height: 24px; margin-bottom: 20px;">
@@ -32,7 +42,7 @@ export class MailTemplateService {
                     </p>
                     
                     <p style="color: #4b5563; font-size: 16px; line-height: 24px; margin-bottom: 25px;">
-                      Hemos recibido una solicitud para restablecer tu contraseña en <strong>Samawe</strong>. Si fuiste tú, haz clic en el botón de abajo para continuar.
+                      Hemos recibido una solicitud para restablecer tu contraseña en <strong>${orgName}</strong>. Si fuiste tú, haz clic en el botón de abajo para continuar.
                     </p>
                     
                     <!-- Action Button -->
@@ -63,13 +73,13 @@ export class MailTemplateService {
                 <tr>
                   <td style="padding-bottom: 30px; padding-left: 30px; padding-right: 30px; text-align: center;">
                     <p style="color: #D1D5DB; margin: 0; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 500;">
-                      © ${new Date().getFullYear()} Samawe • Eco Hotel Samawé Putumayo
+                      © ${new Date().getFullYear()} ${orgName}
                     </p>
                   </td>
                 </tr>
               </table>
               <div style="margin-top: 20px; text-align: center;">
-                <p style="color: #9ca3af; font-size: 12px;">Desarrollado con pasión para Samawe.</p>
+                <p style="color: #9ca3af; font-size: 12px;">Desarrollado con pasión para ${orgName}.</p>
               </div>
             </td>
           </tr>

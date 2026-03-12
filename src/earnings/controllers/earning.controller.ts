@@ -1,9 +1,9 @@
-﻿import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
+import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import {
   InventoryLowParamsDto,
   LowAmountProductDto,
 } from './../dtos/inventoryAmount.dto';
-import { Controller, Get, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, UseGuards, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
   AllInvoiceSummariesDto,
@@ -31,39 +31,46 @@ export class EarningController {
 
   @Get('general')
   @GetGeneralStatisticsDocs()
-  async getGeneralStatistics(): Promise<GeneralStatisticsDto> {
-    return await this._earningUC.getGeneralStatistics();
+  async getGeneralStatistics(@Req() req: any): Promise<GeneralStatisticsDto> {
+    const organizationalId = req.user?.organizationalId;
+    return await this._earningUC.getGeneralStatistics(organizationalId);
   }
 
   @Get('product-summary')
   @GetProductSummaryDocs()
-  async getProductSummary(): Promise<BalanceProductSummaryDto> {
-    return await this._earningUC.getProductSummary();
+  async getProductSummary(@Req() req: any): Promise<BalanceProductSummaryDto> {
+    const organizationalId = req.user?.organizationalId;
+    return await this._earningUC.getProductSummary(organizationalId);
   }
 
   @Get('invoice-summary')
   @GetInvoiceSummaryDocs()
-  async getInvoiceSummary(): Promise<AllInvoiceSummariesDto> {
-    return await this._earningUC.getAllInvoiceSummaries();
+  async getInvoiceSummary(@Req() req: any): Promise<AllInvoiceSummariesDto> {
+    const organizationalId = req.user?.organizationalId;
+    return await this._earningUC.getAllInvoiceSummaries(organizationalId);
   }
 
   @Get('total-stock')
   @GetTotalStockDocs()
-  async getTotalStock(): Promise<ProductStockCountDto> {
-    return await this._earningUC.getTotalStock();
+  async getTotalStock(@Req() req: any): Promise<ProductStockCountDto> {
+    const organizationalId = req.user?.organizationalId;
+    return await this._earningUC.getTotalStock(organizationalId);
   }
 
   @Get('invoice-chart-list')
   @GetInvoiceChartListDocs()
-  async getInvoiceChartList(): Promise<InvoiceChartListDto> {
-    return await this._earningUC.getInvoiceChartList();
+  async getInvoiceChartList(@Req() req: any): Promise<InvoiceChartListDto> {
+    const organizationalId = req.user?.organizationalId;
+    return await this._earningUC.getInvoiceChartList(organizationalId);
   }
 
   @Get('paginated-list-inventory-low')
   @GetInventoryAmountDocs()
   async getInventoryAmount(
     @Query() params: InventoryLowParamsDto,
+    @Req() req: any,
   ): Promise<ResponsePaginationDto<LowAmountProductDto>> {
+    params.organizationalId = req.user?.organizationalId;
     return await this._earningUC.getInventoryAmount(params);
   }
 }

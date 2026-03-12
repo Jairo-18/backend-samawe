@@ -1,9 +1,9 @@
-﻿import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
+import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { InventoryLowParamsDto } from './../dtos/inventoryAmount.dto';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { Injectable } from '@nestjs/common';
-import { LessThan, Like } from 'typeorm';
+import { IsNull, LessThan, Like } from 'typeorm';
 import { LowAmountProductDto } from '../dtos/inventoryAmount.dto';
 
 @Injectable()
@@ -19,7 +19,7 @@ export class InventoryService {
     params: InventoryLowParamsDto,
   ): Promise<ResponsePaginationDto<LowAmountProductDto>> {
     try {
-      const { page, perPage, search, order, amount } = params;
+      const { page, perPage, search, order, amount, organizationalId } = params;
       const skip = (page - 1) * perPage;
 
       const where: any = {};
@@ -33,6 +33,8 @@ export class InventoryService {
       if (search && search.trim()) {
         where.name = Like(`%${search.trim()}%`);
       }
+
+      where.organizational = organizationalId ? { organizationalId } : IsNull();
 
       const [products, total] = await this.productRepository.findAndCount({
         where,

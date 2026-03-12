@@ -1,7 +1,7 @@
 ﻿import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { Recipe } from './../../shared/entities/recipe.entity';
 import { HttpStatus } from '@nestjs/common';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsNotEmpty,
   IsString,
@@ -62,6 +62,14 @@ export class CreateRecipeDto {
   @IsNotEmpty({ message: 'El ID del producto es requerido' })
   productId: number;
 
+  @ApiPropertyOptional({
+    example: 'uuid-de-organizacion',
+    description: 'ID de la organización asociada',
+  })
+  @IsString()
+  @IsOptional()
+  organizationalId?: string;
+
   @ApiProperty({
     type: [RecipeIngredientDto],
     description: 'Lista de ingredientes con sus cantidades',
@@ -88,6 +96,14 @@ export class UpdateRecipeDto {
   @ValidateNested({ each: true })
   @Type(() => RecipeIngredientDto)
   ingredients: RecipeIngredientDto[];
+
+  @ApiPropertyOptional({
+    example: 'uuid-de-organizacion',
+    description: 'ID de la organización asociada',
+  })
+  @IsString()
+  @IsOptional()
+  organizationalId?: string;
 }
 
 /**
@@ -115,7 +131,15 @@ export class UpdateRecipeIngredientDto {
 /**
  * DTO para paginar y filtrar la lista de recetas
  */
-export class PaginatedRecipesParamsDto extends ParamsPaginationDto {}
+export class PaginatedRecipesParamsDto extends ParamsPaginationDto {
+  @ApiPropertyOptional({
+    example: 'uuid-de-organizacion',
+    description: 'Filtrar por ID de organización',
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
+}
 
 /**
  * Respuesta con información de la receta completa

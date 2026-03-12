@@ -1,13 +1,16 @@
-﻿import {
+import {
   Column,
   CreateDateColumn,
   Entity,
   PrimaryGeneratedColumn,
   Index,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { BalanceType } from '../constants/balanceType.constants';
+import { Organizational } from './organizational.entity';
 
-@Index(['type', 'periodDate'], { unique: true })
+@Index(['type', 'periodDate', 'organizational'], { unique: true })
 @Entity('Balance')
 export class Balance {
   @PrimaryGeneratedColumn()
@@ -39,6 +42,13 @@ export class Balance {
 
   @Column('decimal', { precision: 12, scale: 2, default: 0 })
   balanceProduct: number;
+
+  @ManyToOne(() => Organizational, {
+    nullable: true,
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'organizationalId' })
+  organizational: Organizational;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -67,7 +67,7 @@ export interface RoleType {
 
 export interface SignInResponse {
   tokens: { accessToken: string; refreshToken: string };
-  user: { userId: string; roleType: RoleType };
+  user: { userId: string; roleType: RoleType; organizationalId: string | null };
 }
 
 export class SignInResponseDto implements BaseResponseDto {
@@ -123,6 +123,7 @@ export class AuthTokenResponseDto {
       roleTypeId: string;
       name: string;
     };
+    organizationalId: string | null;
   };
 
   @ApiProperty({

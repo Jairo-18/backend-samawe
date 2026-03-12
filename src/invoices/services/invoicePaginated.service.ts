@@ -1,4 +1,4 @@
-﻿import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
+import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { Invoice } from './../../shared/entities/invoice.entity';
 import { PaginatedListInvoicesParamsDto } from '../dtos/paginatedInvoice.dto';
@@ -174,6 +174,12 @@ export class InvoicedPaginatedService {
       }
 
       query.andWhere(`(${conditions.join(' OR ')})`, { searchStr });
+    }
+
+    if (params.organizationalId) {
+      query.andWhere('invoice.organizational = :organizationalId', {
+        organizationalId: params.organizationalId,
+      });
     }
 
     query

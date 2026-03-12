@@ -1,5 +1,6 @@
 ﻿import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
+import { OrganizationalRepository } from './../../shared/repositories/organizational.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { Product } from './../../shared/entities/product.entity';
 import { CreateProductDto, UpdateProductDto } from './../dtos/product.dto';
@@ -23,6 +24,7 @@ export class ProductService {
     private readonly _categoryTypeRepository: CategoryTypeRepository,
     private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
     private readonly _unitOfMeasureRepository: UnitOfMeasureRepository,
+    private readonly _organizationalRepository: OrganizationalRepository,
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
@@ -35,8 +37,12 @@ export class ProductService {
     }
 
     try {
-      const { categoryTypeId, unitOfMeasureId, ...productData } =
-        createProductDto;
+      const {
+        categoryTypeId,
+        unitOfMeasureId,
+        organizationalId,
+        ...productData
+      } = createProductDto;
 
       const categoryType = await this._categoryTypeRepository.findOne({
         where: { categoryTypeId: categoryTypeId },
@@ -44,6 +50,16 @@ export class ProductService {
 
       if (!categoryType) {
         throw new BadRequestException('Tipo de categoría no encontrado');
+      }
+
+      let organizational = null;
+      if (organizationalId) {
+        organizational = await this._organizationalRepository.findOne({
+          where: { organizationalId },
+        });
+        if (!organizational) {
+          throw new BadRequestException('Organización no encontrada');
+        }
       }
 
       let unitOfMeasure = null;
@@ -60,6 +76,7 @@ export class ProductService {
         ...productData,
         categoryType,
         ...(unitOfMeasure && { unitOfMeasure }),
+        ...(organizational && { organizational }),
       });
 
       return await this._productRepository.save(newProduct);
@@ -107,6 +124,20 @@ export class ProductService {
         throw new NotFoundException('Categoría no encontrada');
       }
       product.categoryType = category;
+    }
+
+    if (updateProductDto.organizationalId !== undefined) {
+      if (updateProductDto.organizationalId === null) {
+        product.organizational = null;
+      } else {
+        const org = await this._organizationalRepository.findOne({
+          where: { organizationalId: updateProductDto.organizationalId },
+        });
+        if (!org) {
+          throw new NotFoundException('Organización no encontrada');
+        }
+        product.organizational = org;
+      }
     }
 
     if (updateProductDto.unitOfMeasureId !== undefined) {

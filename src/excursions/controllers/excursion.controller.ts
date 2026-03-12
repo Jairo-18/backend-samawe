@@ -1,4 +1,4 @@
-﻿import {
+import {
   PaginatedExcursionSelectParamsDto,
   PaginatedListExcursionsParamsDto,
   PartialExcursionDto,
@@ -46,7 +46,7 @@ import {
   UploadImageDocs,
   GetImagesDocs,
   DeleteImageDocs,
-} from '../decorators/excursion.decorators';
+} from './../decorators/excursion.decorators';
 
 @Controller('excursion')
 @ApiTags('Pasadías')

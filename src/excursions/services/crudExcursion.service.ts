@@ -1,4 +1,4 @@
-﻿import { Excursion } from './../../shared/entities/excursion.entity';
+import { Excursion } from './../../shared/entities/excursion.entity';
 import {
   PaginatedExcursionSelectParamsDto,
   PaginatedListExcursionsParamsDto,
@@ -54,6 +54,12 @@ export class CrudExcursionService {
       };
     }
 
+    if (params.organizationalId) {
+      baseConditions.organizational = {
+        organizationalId: params.organizationalId,
+      };
+    }
+
     if (params.search) {
       const search = params.search.trim();
       const searchConditions: FindOptionsWhere<Excursion>[] = [
@@ -71,10 +77,21 @@ export class CrudExcursionService {
       }
 
       searchConditions.forEach((condition) => {
-        where.push({ ...baseConditions, ...condition });
+        where.push({
+          ...baseConditions,
+          ...condition,
+          ...(params.organizationalId && {
+            organizational: { organizationalId: params.organizationalId },
+          }),
+        });
       });
     } else {
-      where.push(baseConditions);
+      where.push({
+        ...baseConditions,
+        ...(params.organizationalId && {
+          organizational: { organizationalId: params.organizationalId },
+        }),
+      });
     }
 
     const [entities, itemCount] = await this._excursionRepository.findAndCount({
@@ -130,9 +147,18 @@ export class CrudExcursionService {
 
     if (params.search) {
       const search = params.search.trim();
-      where.push({ name: ILike(`%${search}%`) });
+      where.push({
+        name: ILike(`%${search}%`),
+        ...(params.organizationalId && {
+          organizational: { organizationalId: params.organizationalId },
+        }),
+      });
     } else {
-      where.push({});
+      where.push({
+        ...(params.organizationalId && {
+          organizational: { organizationalId: params.organizationalId },
+        }),
+      });
     }
 
     const [entities, itemCount] = await this._excursionRepository.findAndCount({

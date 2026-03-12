@@ -44,4 +44,12 @@ export class InventoryLowParamsDto extends ParamsPaginationDto {
   @IsOptional()
   @IsString()
   amount?: number;
+
+  @ApiPropertyOptional({
+    description: 'Filtrar por ID de organización',
+    example: 'uuid-de-organizacion',
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
 }

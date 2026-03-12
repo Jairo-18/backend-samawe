@@ -106,6 +106,15 @@ export class CreateAccommodationDto {
   @IsNumber()
   @IsNotEmpty({ message: 'El estado es requerido' })
   stateTypeId: number;
+
+  @ApiProperty({
+    example: 'uuid-de-organizacion',
+    description: 'ID de la organización',
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  organizationalId?: string;
 }
 
 export class UpdateAccommodationDto {
@@ -192,6 +201,15 @@ export class UpdateAccommodationDto {
   @IsNumber()
   @IsOptional()
   stateTypeId?: number;
+
+  @ApiProperty({
+    example: 'uuid-de-organizacion',
+    description: 'ID de la organización',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
 }
 
 export class GetAcommodationDto implements BaseResponseDto {

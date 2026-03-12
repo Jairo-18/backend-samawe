@@ -1,5 +1,5 @@
 ﻿import { ParamsPaginationDto } from './../../shared/dtos/pagination.dto';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString } from 'class-validator';
 
 export class PaginatedListExcursionsParamsDto extends ParamsPaginationDto {
@@ -65,6 +65,15 @@ export class PaginatedListExcursionsParamsDto extends ParamsPaginationDto {
   @IsOptional()
   @IsString()
   categoryType?: number;
+
+  @ApiProperty({
+    example: 'uuid-de-organizacion',
+    description: 'Filtrar por ID de organización',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
 }
 
 export class PaginatedExcursionSelectParamsDto extends ParamsPaginationDto {
@@ -133,4 +142,10 @@ export class ExcursionWithImagesDto {
 
   @ApiProperty({ type: [ExcursionImageDto] })
   images: ExcursionImageDto[];
+
+  @ApiPropertyOptional({
+    example: 'uuid-de-organizacion',
+    description: 'ID de la organización',
+  })
+  organizationalId?: string;
 }

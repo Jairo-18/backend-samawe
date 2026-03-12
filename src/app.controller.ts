@@ -1,7 +1,6 @@
-﻿import { Controller, Get, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, HttpStatus } from '@nestjs/common';
 import { AppService } from './app.service';
 import { ApiTags } from '@nestjs/swagger';
-import { AuthGuard } from '@nestjs/passport';
 import {
   HealthDocs,
   GetServerInfoDocs,
@@ -31,7 +30,6 @@ export class AppController {
   }
 
   @Get('app/related-data')
-  @UseGuards(AuthGuard())
   @GetRelatedDataDocs()
   async getRelatedData() {
     const data = await this.appService.getRelatedData();

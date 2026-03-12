@@ -1,4 +1,4 @@
-﻿import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Between, IsNull } from 'typeorm';
 import { ProductRepository } from './../repositories/product.repository';
 import { BalanceRepository } from './../repositories/balance.repository';
@@ -96,53 +96,95 @@ export class BalanceService {
           createdAt: Between(periodDate, periodEndDate),
           deletedAt: IsNull(),
         },
-        relations: ['invoiceType'],
+        relations: ['invoiceType', 'organizational'],
       });
 
-      let totalInvoiceSale = 0;
-      let totalInvoiceBuy = 0;
+      const totalsByOrg = new Map<
+        string,
+        { totalInvoiceSale: number; totalInvoiceBuy: number }
+      >();
 
       for (const invoice of invoices) {
+        const orgId = invoice.organizational?.organizationalId || 'global';
         const amount = Number(invoice.total) || 0;
         const invoiceTypeCode = invoice.invoiceType?.code;
 
+        if (!totalsByOrg.has(orgId)) {
+          totalsByOrg.set(orgId, { totalInvoiceSale: 0, totalInvoiceBuy: 0 });
+        }
+        const orgTotals = totalsByOrg.get(orgId)!;
+
         if (invoiceTypeCode === 'FV') {
-          totalInvoiceSale += amount;
+          orgTotals.totalInvoiceSale += amount;
         } else if (invoiceTypeCode === 'FC') {
-          totalInvoiceBuy += amount;
+          orgTotals.totalInvoiceBuy += amount;
         }
       }
-
-      let balance = await manager.findOne(Balance, {
-        where: { type, periodDate },
-        lock: { mode: 'pessimistic_write' },
-      });
-
-      if (!balance) {
-        balance = manager.create(Balance, {
-          type,
-          periodDate,
-        });
-      }
-
-      balance.totalInvoiceSale = totalInvoiceSale;
-      balance.totalInvoiceBuy = totalInvoiceBuy;
-      balance.balanceInvoice = totalInvoiceSale - totalInvoiceBuy;
 
       const today = this.getTodayDate();
       const isCurrentPeriod =
         this.getPeriodDateFromDate(type, today).getTime() ===
         periodDate.getTime();
 
+      let productTotalsByOrg: Map<
+        string,
+        { totalProductPriceSale: number; totalProductPriceBuy: number }
+      > | null = null;
+
       if (isCurrentPeriod) {
-        const { totalProductPriceSale, totalProductPriceBuy } =
-          await this.getProductTotals();
-        balance.totalProductPriceSale = totalProductPriceSale;
-        balance.totalProductPriceBuy = totalProductPriceBuy;
-        balance.balanceProduct = totalProductPriceSale - totalProductPriceBuy;
+        productTotalsByOrg = await this.getProductTotals();
       }
 
-      await manager.save(balance);
+      const allOrgIds = new Set<string>([...totalsByOrg.keys()]);
+      if (productTotalsByOrg) {
+        for (const orgId of productTotalsByOrg.keys()) {
+          allOrgIds.add(orgId);
+        }
+      }
+
+      for (const orgId of allOrgIds) {
+        let balance = await manager.findOne(Balance, {
+          where: {
+            type,
+            periodDate,
+            organizational:
+              orgId === 'global' ? IsNull() : { organizationalId: orgId },
+          },
+          lock: { mode: 'pessimistic_write' },
+        });
+
+        if (!balance) {
+          balance = manager.create(Balance, {
+            type,
+            periodDate,
+            organizational:
+              orgId === 'global' ? undefined : { organizationalId: orgId },
+          });
+        }
+
+        const invoiceTotals = totalsByOrg.get(orgId) || {
+          totalInvoiceSale: 0,
+          totalInvoiceBuy: 0,
+        };
+        balance.totalInvoiceSale = invoiceTotals.totalInvoiceSale;
+        balance.totalInvoiceBuy = invoiceTotals.totalInvoiceBuy;
+        balance.balanceInvoice =
+          invoiceTotals.totalInvoiceSale - invoiceTotals.totalInvoiceBuy;
+
+        if (isCurrentPeriod && productTotalsByOrg) {
+          const productTotals = productTotalsByOrg.get(orgId) || {
+            totalProductPriceSale: 0,
+            totalProductPriceBuy: 0,
+          };
+          balance.totalProductPriceSale = productTotals.totalProductPriceSale;
+          balance.totalProductPriceBuy = productTotals.totalProductPriceBuy;
+          balance.balanceProduct =
+            productTotals.totalProductPriceSale -
+            productTotals.totalProductPriceBuy;
+        }
+
+        await manager.save(balance);
+      }
     });
   }
 
@@ -172,63 +214,78 @@ export class BalanceService {
     }
   }
 
-  private async getProductTotals(): Promise<{
-    totalProductPriceSale: number;
-    totalProductPriceBuy: number;
-  }> {
-    const products = await this._productRepository.find();
-
-    let totalProductPriceSale = 0;
-    let totalProductPriceBuy = 0;
+  private async getProductTotals(): Promise<
+    Map<string, { totalProductPriceSale: number; totalProductPriceBuy: number }>
+  > {
+    const products = await this._productRepository.find({
+      relations: ['organizational'],
+    });
+    const totals = new Map<
+      string,
+      { totalProductPriceSale: number; totalProductPriceBuy: number }
+    >();
 
     for (const product of products) {
+      const orgId = product.organizational?.organizationalId || 'global';
       const amount = Number(product.amount ?? 0);
       const priceSale = Number(product.priceSale ?? 0);
       const priceBuy = Number(product.priceBuy ?? 0);
 
-      totalProductPriceSale += amount * priceSale;
-      totalProductPriceBuy += amount * priceBuy;
+      const sale = amount * priceSale;
+      const buy = amount * priceBuy;
+
+      if (!totals.has(orgId)) {
+        totals.set(orgId, {
+          totalProductPriceSale: 0,
+          totalProductPriceBuy: 0,
+        });
+      }
+
+      const orgTotals = totals.get(orgId)!;
+      orgTotals.totalProductPriceSale += sale;
+      orgTotals.totalProductPriceBuy += buy;
     }
 
-    return { totalProductPriceSale, totalProductPriceBuy };
+    return totals;
   }
 
   async updateBalanceWithCurrentProducts(): Promise<void> {
-    const products = await this._productRepository.find();
-
-    let totalProductPriceSale = 0;
-    let totalProductPriceBuy = 0;
-
-    for (const product of products) {
-      const amount = Number(product.amount ?? 0);
-      const priceSale = Number(product.priceSale ?? 0);
-      const priceBuy = Number(product.priceBuy ?? 0);
-
-      totalProductPriceSale += amount * priceSale;
-      totalProductPriceBuy += amount * priceBuy;
-    }
-
-    const balanceProduct = totalProductPriceSale - totalProductPriceBuy;
+    const productTotalsByOrg = await this.getProductTotals();
     const today = this.getTodayDate();
 
     for (const type of Object.values(BalanceType)) {
       const periodDate = this.getPeriodDateFromDate(type, today);
 
       await this._balanceRepository.manager.transaction(async (manager) => {
-        let balance = await manager.findOne(Balance, {
-          where: { type, periodDate },
-          lock: { mode: 'pessimistic_write' },
-        });
+        for (const [orgId, totals] of productTotalsByOrg.entries()) {
+          const balanceProduct =
+            totals.totalProductPriceSale - totals.totalProductPriceBuy;
 
-        if (!balance) {
-          balance = manager.create(Balance, { type, periodDate });
+          let balance = await manager.findOne(Balance, {
+            where: {
+              type,
+              periodDate,
+              organizational:
+                orgId === 'global' ? IsNull() : { organizationalId: orgId },
+            },
+            lock: { mode: 'pessimistic_write' },
+          });
+
+          if (!balance) {
+            balance = manager.create(Balance, {
+              type,
+              periodDate,
+              organizational:
+                orgId === 'global' ? undefined : { organizationalId: orgId },
+            });
+          }
+
+          balance.totalProductPriceSale = totals.totalProductPriceSale;
+          balance.totalProductPriceBuy = totals.totalProductPriceBuy;
+          balance.balanceProduct = balanceProduct;
+
+          await manager.save(balance);
         }
-
-        balance.totalProductPriceSale = totalProductPriceSale;
-        balance.totalProductPriceBuy = totalProductPriceBuy;
-        balance.balanceProduct = balanceProduct;
-
-        await manager.save(balance);
       });
     }
   }

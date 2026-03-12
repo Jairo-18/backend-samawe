@@ -1,6 +1,7 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RepositoryService } from './shared/services/repositoriry.service';
+import { OrganizationalService } from './organizational/services/organizational.service';
 import * as os from 'os';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class AppService {
   constructor(
     private readonly configService: ConfigService,
     private readonly _repositoryService: RepositoryService,
+    private readonly _organizationalService: OrganizationalService,
   ) {}
 
   getHello(): string {
@@ -26,7 +28,7 @@ export class AppService {
       }
     }
 
-    const port = this.configService.get<number>('app.port') || 3001;
+    const port = this.configService.get<number>('app.port') || 3000;
 
     return {
       port,
@@ -53,6 +55,7 @@ export class AppService {
       discountType,
       additionalType,
       personType,
+      organizational,
     ] = await Promise.all([
       this._repositoryService.repositories.identificationType.find({
         select: ['identificationTypeId', 'name', 'code'],
@@ -96,7 +99,36 @@ export class AppService {
       this._repositoryService.repositories.personType.find({
         select: ['personTypeId', 'name', 'code'],
       }),
+      this._organizationalService.findAllWithFullData(),
     ]);
+
+    const mappedOrganizational = organizational.map((org) => {
+      const rest = { ...org };
+      delete (rest as any).createdAt;
+      delete (rest as any).updatedAt;
+      delete (rest as any).deletedAt;
+
+      const cleanRel = (rel: any) => {
+        if (!rel) return rel;
+        const clean = { ...rel };
+        delete clean.createdAt;
+        delete clean.updatedAt;
+        delete clean.deletedAt;
+        return clean;
+      };
+
+      return {
+        ...rest,
+        identificationType: cleanRel(org.identificationType),
+        phoneCode: cleanRel(org.phoneCode),
+        personType: cleanRel(org.personType),
+        medias:
+          org.medias?.map((m) => ({
+            ...cleanRel(m),
+            mediaType: cleanRel(m.mediaType),
+          })) || [],
+      };
+    });
 
     return {
       identificationType,
@@ -113,6 +145,7 @@ export class AppService {
       discountType,
       additionalType,
       personType,
+      organizational: mappedOrganizational,
     };
   }
 }

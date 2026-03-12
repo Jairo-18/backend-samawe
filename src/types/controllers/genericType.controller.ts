@@ -1,4 +1,4 @@
-﻿import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
+import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import {
   CreatedRecordResponseDto,
   DeleteReCordResponseDto,
@@ -23,11 +23,10 @@ import { ApiTags } from '@nestjs/swagger';
 import {
   PaginatedListByTypeDocs,
   CreateTypeDocs,
-  GetAllAdditionalTypesDocs,
-  GetAllDiscountTypesDocs,
   FindOneByTypeAndIdDocs,
   UpdateTypeDocs,
   DeleteTypeDocs,
+  GetAllByTypeDocs,
 } from '../decorators/genericType.decorators';
 import {
   CreateTypeDto,
@@ -83,24 +82,13 @@ export class GenericTypeController {
     };
   }
 
-  @Get('additionalType/all')
-  @GetAllAdditionalTypesDocs()
-  async getAllAdditionalTypes() {
-    const result = await this.genericTypeUC.getAll('additionalType');
+  @Get(':type/all')
+  @GetAllByTypeDocs()
+  async getAllByType(@Param('type') type: string) {
+    this.validateTypeExists(type);
+    const result = await this.genericTypeUC.getAll(type);
     return {
       statusCode: HttpStatus.OK,
-
-      data: result,
-    };
-  }
-
-  @Get('discountType/all')
-  @GetAllDiscountTypesDocs()
-  async getAllDiscountTypes() {
-    const result = await this.genericTypeUC.getAll('discountType');
-    return {
-      statusCode: HttpStatus.OK,
-
       data: result,
     };
   }

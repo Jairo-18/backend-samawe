@@ -1,4 +1,4 @@
-﻿import { User } from './../../shared/entities/user.entity';
+import { User } from './../../shared/entities/user.entity';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { UserRepository } from './../../shared/repositories/user.repository';
@@ -83,10 +83,21 @@ export class CrudUserService {
       ];
 
       searchConditions.forEach((condition) => {
-        where.push({ ...baseConditions, ...condition });
+        where.push({
+          ...baseConditions,
+          ...condition,
+          ...(params.organizationalId && {
+            organizational: { organizationalId: params.organizationalId },
+          }),
+        });
       });
     } else {
-      where.push(baseConditions);
+      where.push({
+        ...baseConditions,
+        ...(params.organizationalId && {
+          organizational: { organizationalId: params.organizationalId },
+        }),
+      });
     }
 
     const [entities, itemCount] = await this._userRepository.findAndCount({
@@ -94,19 +105,36 @@ export class CrudUserService {
       skip,
       take: params.perPage,
       order: { firstName: 'ASC', lastName: 'ASC' },
-      relations: ['roleType', 'identificationType', 'phoneCode', 'personType'],
+      relations: [
+        'roleType',
+        'identificationType',
+        'phoneCode',
+        'personType',
+        'organizational',
+      ],
+      select: {
+        userId: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        identificationNumber: true,
+        phone: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     const users = entities.map((user) => {
-      const newUser = {
-        ...user,
+      const { organizational, ...rest } = user;
+      return {
+        ...rest,
         roleTypeId: user?.roleType?.roleTypeId,
         identificationTypeId: user?.identificationType?.identificationTypeId,
         phoneCodeId: user?.phoneCode?.phoneCodeId,
         personTypeId: user?.personType?.personTypeId,
+        organizationalId: organizational?.organizationalId,
       };
-
-      return newUser;
     });
 
     const pageMetaDto = new PageMetaDto({
@@ -124,12 +152,19 @@ export class CrudUserService {
 
     if (params.search) {
       const term = `%${params.search.trim()}%`;
+      const orgFilter = params.organizationalId
+        ? { organizational: { organizationalId: params.organizationalId } }
+        : {};
 
       where.push(
-        { firstName: ILike(term) },
-        { lastName: ILike(term) },
-        { identificationNumber: ILike(term) },
+        { firstName: ILike(term), ...orgFilter },
+        { lastName: ILike(term), ...orgFilter },
+        { identificationNumber: ILike(term), ...orgFilter },
       );
+    } else if (params.organizationalId) {
+      where.push({
+        organizational: { organizationalId: params.organizationalId },
+      });
     }
 
     const [users, itemCount] = await this._userRepository.findAndCount({
@@ -137,13 +172,22 @@ export class CrudUserService {
       skip,
       take: params.perPage,
       order: { firstName: 'ASC', lastName: 'ASC' },
-      select: [
-        'userId',
-        'firstName',
-        'lastName',
-        'identificationNumber',
-        'isActive',
-      ],
+      relations: ['organizational'],
+      select: {
+        userId: true,
+        firstName: true,
+        lastName: true,
+        identificationNumber: true,
+        isActive: true,
+      },
+    });
+
+    const mappedUsers = users.map((u) => {
+      const { organizational, ...rest } = u;
+      return {
+        ...rest,
+        organizationalId: organizational?.organizationalId,
+      };
     });
 
     const pageMetaDto = new PageMetaDto({
@@ -151,7 +195,7 @@ export class CrudUserService {
       pageOptionsDto: params,
     });
 
-    return new ResponsePaginationDto(users, pageMetaDto);
+    return new ResponsePaginationDto(mappedUsers, pageMetaDto);
   }
 
   async paginatedPhoneCodeSelect(params: PaginatedCodePhoneUser) {

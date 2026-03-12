@@ -1,5 +1,6 @@
 ﻿import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { StateTypeRepository } from './../../shared/repositories/stateType.repository';
+import { OrganizationalRepository } from './../../shared/repositories/organizational.repository';
 import { BedTypeRepository } from './../../shared/repositories/bedType.repository';
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
 import { Accommodation } from './../../shared/entities/accommodation.entity';
@@ -29,6 +30,7 @@ export class AccommodationService {
     private readonly _bedTypeRepository: BedTypeRepository,
     private readonly _stateTypeRepository: StateTypeRepository,
     private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
+    private readonly _organizationalRepository: OrganizationalRepository,
   ) {}
 
   async create(
@@ -43,8 +45,13 @@ export class AccommodationService {
     }
 
     try {
-      const { categoryTypeId, bedTypeId, stateTypeId, ...accommodationData } =
-        createAccommodationDto;
+      const {
+        categoryTypeId,
+        bedTypeId,
+        stateTypeId,
+        organizationalId,
+        ...accommodationData
+      } = createAccommodationDto;
 
       const categoryType = await this._categoryTypeRepository.findOne({
         where: { categoryTypeId },
@@ -52,6 +59,16 @@ export class AccommodationService {
 
       if (!categoryType) {
         throw new BadRequestException('Tipo de categoría no encontrado');
+      }
+
+      let organizational = null;
+      if (organizationalId) {
+        organizational = await this._organizationalRepository.findOne({
+          where: { organizationalId },
+        });
+        if (!organizational) {
+          throw new BadRequestException('Organización no encontrada');
+        }
       }
 
       const bedType = await this._bedTypeRepository.findOne({
@@ -75,6 +92,7 @@ export class AccommodationService {
         categoryType,
         bedType,
         stateType,
+        ...(organizational && { organizational }),
       });
 
       return await this._accommodationRepository.save(newAccommodation);
@@ -123,6 +141,20 @@ export class AccommodationService {
       }
 
       accommodation.categoryType = category;
+    }
+
+    if (updateAccommodationDto.organizationalId !== undefined) {
+      if (updateAccommodationDto.organizationalId === null) {
+        accommodation.organizational = null;
+      } else {
+        const org = await this._organizationalRepository.findOne({
+          where: { organizationalId: updateAccommodationDto.organizationalId },
+        });
+        if (!org) {
+          throw new NotFoundException('Organización no encontrada');
+        }
+        accommodation.organizational = org;
+      }
     }
 
     if (updateAccommodationDto.stateTypeId) {

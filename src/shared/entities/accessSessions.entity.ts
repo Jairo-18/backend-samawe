@@ -1,4 +1,4 @@
-﻿import {
+import {
   Column,
   CreateDateColumn,
   DeleteDateColumn,
@@ -9,6 +9,7 @@
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from './user.entity';
+import { Organizational } from './organizational.entity';
 
 @Entity({ name: 'AccessSessions' })
 export class AccessSessions {
@@ -21,6 +22,13 @@ export class AccessSessions {
   })
   @JoinColumn({ name: 'userId' })
   user: User;
+
+  @ManyToOne(() => Organizational, {
+    nullable: true,
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'organizationalId' })
+  organizational: Organizational;
 
   @Column('varchar', { length: 2000 })
   accessToken: string;

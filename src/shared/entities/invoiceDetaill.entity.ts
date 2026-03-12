@@ -13,6 +13,7 @@ import { TaxeType } from './taxeType.entity';
 import { Product } from './product.entity';
 import { Accommodation } from './accommodation.entity';
 import { Excursion } from './excursion.entity';
+import { Organizational } from './organizational.entity';
 
 @Entity({ name: 'InvoiceDetaill' })
 export class InvoiceDetaill {
@@ -74,4 +75,8 @@ export class InvoiceDetaill {
 
   @DeleteDateColumn({ nullable: true })
   deletedAt?: Date;
+
+  @ManyToOne(() => Organizational, { nullable: true, eager: false })
+  @JoinColumn({ name: 'organizationalId' })
+  organizational?: Organizational;
 }

@@ -1,4 +1,4 @@
-﻿import { MailsService } from './../../shared/services/mails.service';
+import { MailsService } from './../../shared/services/mails.service';
 import { MailTemplateService } from './../../shared/services/mail-template.service';
 import { NOT_FOUND_RESPONSE } from './../../shared/constants/response.constant';
 import { RecoveryPasswordBodyDto, RefreshTokenBodyDto } from '../dtos/auth.dto';
@@ -61,6 +61,7 @@ export class AuthService {
       userId: user.userId,
       accessToken: tokens.accessToken,
       id: uuidv4(),
+      organizationalId: user.organizational?.organizationalId ?? undefined,
     });
 
     return {
@@ -71,6 +72,7 @@ export class AuthService {
           roleTypeId: user.roleType.roleTypeId,
           name: user.roleType.name,
         },
+        organizationalId: user.organizational?.organizationalId ?? null,
       },
       session: {
         accessSessionId,
@@ -151,6 +153,7 @@ export class AuthService {
           roleId: user.roleType.roleTypeId,
           name: user.roleType.name,
         },
+        organizationalId: user.organizationalId ?? null,
       },
     };
   }
@@ -203,6 +206,9 @@ export class AuthService {
           `${frontendUrl}/auth/${user.userId}/change-password`,
           user.firstName,
           token,
+          user.organizational?.name,
+          user.organizational?.primaryColor || undefined,
+          undefined,
         ),
       });
     }

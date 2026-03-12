@@ -176,6 +176,14 @@ export class PaginatedListInvoicesParamsDto extends ParamsPaginationDto {
   @IsOptional()
   @IsString()
   stateTypeIds?: string;
+
+  @ApiPropertyOptional({
+    example: 'uuid-de-organizacion',
+    description: 'Filtrar por ID de organización',
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
 }
 
 export class PaginatedInvoiceResponseDto extends ResponsePaginationDto<GetInvoiceWithDetailsDto> {

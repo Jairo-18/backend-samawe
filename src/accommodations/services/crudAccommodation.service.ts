@@ -1,4 +1,4 @@
-﻿import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
+import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { Accommodation } from './../../shared/entities/accommodation.entity';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
@@ -67,6 +67,12 @@ export class CrudAccommodationService {
       };
     }
 
+    if (params.organizationalId) {
+      baseConditions.organizational = {
+        organizationalId: params.organizationalId,
+      };
+    }
+
     if (params.bedType) {
       baseConditions.bedType = {
         bedTypeId: params.bedType,
@@ -98,10 +104,21 @@ export class CrudAccommodationService {
       }
 
       searchConditions.forEach((condition) => {
-        where.push({ ...baseConditions, ...condition });
+        where.push({
+          ...baseConditions,
+          ...condition,
+          ...(params.organizationalId && {
+            organizational: { organizationalId: params.organizationalId },
+          }),
+        });
       });
     } else {
-      where.push(baseConditions);
+      where.push({
+        ...baseConditions,
+        ...(params.organizationalId && {
+          organizational: { organizationalId: params.organizationalId },
+        }),
+      });
     }
 
     const [entities, itemCount] =
@@ -171,9 +188,18 @@ export class CrudAccommodationService {
 
     if (params.search) {
       const search = params.search.trim();
-      where.push({ name: ILike(`%${search}%`) });
+      where.push({
+        name: ILike(`%${search}%`),
+        ...(params.organizationalId && {
+          organizational: { organizationalId: params.organizationalId },
+        }),
+      });
     } else {
-      where.push({});
+      where.push({
+        ...(params.organizationalId && {
+          organizational: { organizationalId: params.organizationalId },
+        }),
+      });
     }
 
     const [entities, itemCount] =

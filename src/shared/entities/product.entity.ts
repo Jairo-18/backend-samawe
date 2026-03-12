@@ -13,6 +13,7 @@ import { CategoryType } from './categoryType.entity';
 import { ProductImage } from './productImage.entity';
 import { UnitOfMeasure } from './unitOfMeasure.entity';
 import { Recipe } from './recipe.entity';
+import { Organizational } from './organizational.entity';
 
 @Entity({ name: 'Product' })
 export class Product {
@@ -62,6 +63,10 @@ export class Product {
 
   @Column({ nullable: true })
   unitOfMeasureId: number;
+
+  @ManyToOne(() => Organizational, { nullable: true, eager: false })
+  @JoinColumn({ name: 'organizationalId' })
+  organizational?: Organizational;
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt?: Date;

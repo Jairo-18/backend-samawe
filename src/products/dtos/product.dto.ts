@@ -104,6 +104,15 @@ export class CreateProductDto {
   @IsNumber()
   @IsOptional()
   unitOfMeasureId?: number;
+
+  @ApiProperty({
+    example: 'uuid-de-organizacion',
+    description: 'ID de la organización',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
 }
 
 export class UpdateProductDto {
@@ -185,6 +194,15 @@ export class UpdateProductDto {
   @IsNumber()
   @IsOptional()
   unitOfMeasureId?: number;
+
+  @ApiProperty({
+    example: 'uuid-de-organizacion',
+    description: 'ID de la organización',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
 }
 
 export interface GetAllProductsRespose {

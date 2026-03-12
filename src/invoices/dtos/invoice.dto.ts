@@ -129,6 +129,15 @@ export class CreateInvoiceDto {
 
   @ApiProperty()
   details?: CreateInvoiceDetailDto[];
+
+  @ApiProperty({
+    example: 'uuid-de-organizacion',
+    description: 'ID de la organización',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
 }
 
 @OnlyOneDefined(['productId', 'accommodationId', 'excursionId'], {
@@ -222,6 +231,15 @@ export class UpdateInvoiceDto {
   @IsOptional()
   @IsString()
   tableNumber?: string;
+
+  @ApiProperty({
+    example: 'uuid-de-organizacion',
+    description: 'ID de la organización',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
 }
 
 export class EmployeMiniDto {

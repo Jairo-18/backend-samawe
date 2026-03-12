@@ -20,6 +20,12 @@ export class AccommodationImageResponseDto {
     description: 'ID público ',
   })
   publicId: string;
+
+  @ApiPropertyOptional({
+    example: 'uuid-de-organizacion',
+    description: 'ID de la organización asociada',
+  })
+  organizationalId?: string;
 }
 
 export class UploadAccommodationImageResponseDto {
@@ -77,4 +83,12 @@ export class AccommodationImageParamsDto {
   @IsString()
   @IsNotEmpty()
   publicId?: string;
+
+  @ApiPropertyOptional({
+    example: 'uuid-de-organizacion',
+    description: 'ID de la organización',
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
 }

@@ -6,6 +6,7 @@
   JoinColumn,
 } from 'typeorm';
 import { Accommodation } from './accommodation.entity';
+import { Organizational } from './organizational.entity';
 
 @Entity('AccommodationImage')
 export class AccommodationImage {
@@ -23,4 +24,8 @@ export class AccommodationImage {
   })
   @JoinColumn({ name: 'accommodationId' })
   accommodation: Accommodation;
+
+  @ManyToOne(() => Organizational, { nullable: true, eager: false })
+  @JoinColumn({ name: 'organizationalId' })
+  organizational?: Organizational;
 }

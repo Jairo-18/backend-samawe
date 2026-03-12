@@ -21,6 +21,7 @@ import { join } from 'path';
 import { SocketModule } from './socket/socket.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { BackupModule } from './backup/backup.module';
+import { OrganizationalModule } from './organizational/organizational.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { BackupModule } from './backup/backup.module';
     UserModule,
     NotificationsModule,
     BackupModule,
+    OrganizationalModule,
   ],
   controllers: [AppController],
   providers: [AppService],

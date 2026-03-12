@@ -1,4 +1,4 @@
-﻿import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
+import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
 import { INVALID_ACCESS_DATA_MESSAGE } from './../../auth/constants/messages.constants';
 import {
   NOT_FOUND_MESSAGE,
@@ -11,11 +11,12 @@ import {
   CreateUserDto,
   ChangePasswordDto,
   RecoveryPasswordDto,
-} from '../dtos/user.dto';
+} from './../dtos/user.dto';
 import { IdentificationTypeRepository } from '../../shared/repositories/identificationType.repository';
 import { UserRepository } from '../../shared/repositories/user.repository';
 import { User } from '../../shared/entities/user.entity';
 import { PersonTypeRepository } from '../../shared/repositories/personType.repository';
+import { OrganizationalRepository } from '../../shared/repositories/organizational.repository';
 import {
   BadRequestException,
   HttpException,
@@ -42,6 +43,7 @@ export class UserService {
     private readonly _passwordService: PasswordService,
     private readonly _invoiceRepository: InvoiceRepository,
     private readonly _personTypeRepository: PersonTypeRepository,
+    private readonly _organizationalRepository: OrganizationalRepository,
   ) {}
 
   async create(user: CreateUserDto): Promise<{ rowId: string }> {
@@ -110,6 +112,16 @@ export class UserService {
 
     const hashedPassword = await bcrypt.hash(user.password, 10);
 
+    let organizational = null;
+    if (user.organizationalId) {
+      organizational = await this._organizationalRepository.findOne({
+        where: { organizationalId: user.organizationalId },
+      });
+      if (!organizational) {
+        throw new BadRequestException('La organización asignada no existe');
+      }
+    }
+
     const res = await this._userRepository.insert({
       ...user,
       password: hashedPassword,
@@ -117,6 +129,7 @@ export class UserService {
       identificationType,
       phoneCode,
       personType,
+      ...(organizational && { organizational }),
     });
 
     return { rowId: res.identifiers[0].id };
@@ -204,6 +217,16 @@ export class UserService {
         : (identificationType as any)?.identificationTypeId,
     );
 
+    let organizational = null;
+    if (user.organizationalId) {
+      organizational = await this._organizationalRepository.findOne({
+        where: { organizationalId: user.organizationalId },
+      });
+      if (!organizational) {
+        throw new BadRequestException('La organización asignada no existe');
+      }
+    }
+
     const userConfirm = {
       ...user,
       password: await bcrypt.hash(user.password, salt),
@@ -211,6 +234,7 @@ export class UserService {
       identificationType,
       phoneCode,
       personType,
+      ...(organizational && { organizational }),
     };
 
     const res = await this._userRepository.insert(userConfirm);
@@ -291,6 +315,14 @@ export class UserService {
           userData.identificationType ||
             userExist.identificationType.identificationTypeId,
         ),
+        ...(userData.organizationalId !== undefined && {
+          organizational:
+            userData.organizationalId === null
+              ? null
+              : await this._organizationalRepository.findOne({
+                  where: { organizationalId: userData.organizationalId },
+                }),
+        }),
       },
     );
   }
@@ -322,7 +354,13 @@ export class UserService {
   async findOne(userId: string): Promise<UserDetailDto> {
     const user = await this._userRepository.findOne({
       where: { userId },
-      relations: ['roleType', 'identificationType', 'phoneCode', 'personType'],
+      relations: [
+        'roleType',
+        'identificationType',
+        'phoneCode',
+        'personType',
+        'organizational',
+      ],
     });
 
     if (!user) {
@@ -335,7 +373,7 @@ export class UserService {
   async findByParams(params: Record<string, any>): Promise<User> {
     return await this._userRepository.findOne({
       where: [params],
-      relations: ['roleType'],
+      relations: ['roleType', 'organizational'],
     });
   }
 

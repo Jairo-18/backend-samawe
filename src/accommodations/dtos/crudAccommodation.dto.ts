@@ -1,6 +1,6 @@
 ﻿import { ParamsPaginationDto } from './../../shared/dtos/pagination.dto';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BedType } from './../../shared/entities/bedType.entity';
 import { CategoryType } from './../../shared/entities/categoryType.entity';
 import { StateType } from './../../shared/entities/stateType.entity';
@@ -138,6 +138,15 @@ export class PaginatedListAccommodationsParamsDto extends ParamsPaginationDto {
   @IsOptional()
   @IsString()
   stateType?: number;
+
+  @ApiProperty({
+    example: 'uuid-de-organizacion',
+    description: 'Filtrar por ID de organización',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
 }
 
 /**
@@ -224,4 +233,10 @@ export class AccommodationWithImagesDto {
 
   @ApiProperty({ type: [AccommodationImageDto] })
   images: AccommodationImageDto[];
+
+  @ApiPropertyOptional({
+    example: 'uuid-de-organizacion',
+    description: 'ID de la organización',
+  })
+  organizationalId?: string;
 }

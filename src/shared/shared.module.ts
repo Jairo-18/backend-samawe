@@ -67,6 +67,12 @@ import { AccommodationImageRepository } from './repositories/accommodationImage.
 import { ExcursionImageRepository } from './repositories/excursionImage.repository';
 import { PersonType } from './entities/personType.entity';
 import { PersonTypeRepository } from './repositories/personType.repository';
+import { Organizational } from './entities/organizational.entity';
+import { OrganizationalMedia } from './entities/organizationalMedia.entity';
+import { MediaType } from './entities/mediaType.entity';
+import { OrganizationalRepository } from './repositories/organizational.repository';
+import { OrganizationalMediaRepository } from './repositories/organizationalMedia.repository';
+import { MediaTypeRepository } from './repositories/mediaType.repository';
 
 @Module({})
 export class SharedModule {
@@ -149,6 +155,9 @@ export class SharedModule {
           ExcursionImage,
           DiscountType,
           UnitOfMeasure,
+          Organizational,
+          OrganizationalMedia,
+          MediaType,
         ]),
 
         JwtModule.registerAsync({
@@ -219,6 +228,9 @@ export class SharedModule {
         MailTemplateService,
         PasswordService,
         GeneralInvoiceDetaillService,
+        OrganizationalRepository,
+        OrganizationalMediaRepository,
+        MediaTypeRepository,
       ],
       exports: [
         TypeOrmModule,
@@ -256,6 +268,9 @@ export class SharedModule {
         PasswordService,
         GeneralInvoiceDetaillService,
         UnitOfMeasureRepository,
+        OrganizationalRepository,
+        OrganizationalMediaRepository,
+        MediaTypeRepository,
       ],
     };
   }

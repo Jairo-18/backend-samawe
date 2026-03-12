@@ -1,4 +1,4 @@
-﻿import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsArray, IsOptional } from 'class-validator';
 import { OrderConst } from '../constants/order.constants';
 import { PageMetaDto } from './pageMeta.dto';
@@ -33,6 +33,13 @@ export class ParamsPaginationDto {
   })
   @IsOptional()
   search?: string;
+  @ApiProperty({
+    type: String,
+    example: 'uuid-organizational',
+    required: false,
+  })
+  @IsOptional()
+  organizationalId?: string;
 }
 
 export class ResponsePaginationDto<T> {

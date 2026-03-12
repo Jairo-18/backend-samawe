@@ -21,6 +21,7 @@ export interface ProductDetailDto {
   categoryType: { categoryTypeId: number; code: string; name: string } | null;
   unitOfMeasure: { unitOfMeasureId: number; code: string; name: string } | null;
   images: { productImageId: number; imageUrl: string; publicId: string }[];
+  organizationalId: string | null;
 }
 
 export function mapProductDetail(product: Product): ProductDetailDto {
@@ -53,6 +54,7 @@ export function mapProductDetail(product: Product): ProductDetailDto {
         imageUrl: img.imageUrl,
         publicId: img.publicId,
       })) ?? [],
+    organizationalId: product.organizational?.organizationalId ?? null,
   };
 }
 
@@ -75,6 +77,7 @@ export interface AccommodationDetailDto {
     imageUrl: string;
     publicId: string;
   }[];
+  organizationalId: string | null;
 }
 
 export function mapAccommodationDetail(
@@ -118,6 +121,7 @@ export function mapAccommodationDetail(
         imageUrl: img.imageUrl,
         publicId: img.publicId,
       })) ?? [],
+    organizationalId: accommodation.organizational?.organizationalId ?? null,
   };
 }
 
@@ -131,6 +135,7 @@ export interface ExcursionDetailDto {
   categoryType: { categoryTypeId: number; code: string; name: string } | null;
   stateType: { stateTypeId: number; code: string; name: string } | null;
   images: { excursionImageId: number; imageUrl: string; publicId: string }[];
+  organizationalId: string | null;
 }
 
 export function mapExcursionDetail(excursion: Excursion): ExcursionDetailDto {
@@ -161,6 +166,7 @@ export function mapExcursionDetail(excursion: Excursion): ExcursionDetailDto {
         imageUrl: img.imageUrl,
         publicId: img.publicId,
       })) ?? [],
+    organizationalId: excursion.organizational?.organizationalId ?? null,
   };
 }
 
@@ -180,6 +186,7 @@ export interface UserDetailDto {
   } | null;
   phoneCode: { phoneCodeId: string; code: string; name: string } | null;
   personType: { personTypeId: number; code: string; name: string } | null;
+  organizationalId: string | null;
 }
 
 export function mapUserDetail(user: User): UserDetailDto {
@@ -219,5 +226,6 @@ export function mapUserDetail(user: User): UserDetailDto {
           name: user.personType.name,
         }
       : null,
+    organizationalId: user.organizational?.organizationalId ?? null,
   };
 }

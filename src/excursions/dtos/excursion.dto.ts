@@ -76,6 +76,15 @@ export class CreateExcursionDto {
   @IsNumber()
   @IsNotEmpty({ message: 'La categoría es requerida' })
   categoryTypeId: number;
+
+  @ApiProperty({
+    example: 'uuid-de-organizacion',
+    description: 'ID de la organización',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
 }
 
 export class UpdateExcursionDto {
@@ -143,6 +152,15 @@ export class UpdateExcursionDto {
   @IsOptional()
   @IsNumber()
   stateTypeId?: number;
+
+  @ApiProperty({
+    example: 'uuid-de-organizacion',
+    description: 'ID de la organización',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  organizationalId?: string;
 }
 
 export class GetExcursionDto implements BaseResponseDto {

@@ -1,4 +1,4 @@
-﻿import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
+import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { ExcursionRepository } from './../../shared/repositories/excursion.repository';
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
@@ -13,17 +13,26 @@ export class StatisticsService {
     private readonly _invoiceDetailRepository: InvoiceDetaillRepository,
   ) {}
 
-  async countActiveInactiveProducts() {
-    return await this._productRepository
+  async countActiveInactiveProducts(organizationalId?: string) {
+    const query = this._productRepository
       .createQueryBuilder('product')
       .select('product.isActive', 'isActive')
       .addSelect('COUNT(*)', 'count')
-      .groupBy('product.isActive')
-      .getRawMany();
+      .groupBy('product.isActive');
+
+    if (organizationalId) {
+      query.where('product.organizationalId = :organizationalId', {
+        organizationalId,
+      });
+    } else {
+      query.where('product.organizationalId IS NULL');
+    }
+
+    return await query.getRawMany();
   }
 
-  async countAccommodationsByState() {
-    return await this._accommodationRepository
+  async countAccommodationsByState(organizationalId?: string) {
+    const query = this._accommodationRepository
       .createQueryBuilder('accommodation')
       .leftJoin('accommodation.stateType', 'stateType')
       .select('stateType.name', 'state')
@@ -42,12 +51,21 @@ export class StatisticsService {
           'RESERVADO',
         ],
       })
-      .groupBy('stateType.name')
-      .getRawMany();
+      .groupBy('stateType.name');
+
+    if (organizationalId) {
+      query.andWhere('accommodation.organizationalId = :organizationalId', {
+        organizationalId,
+      });
+    } else {
+      query.andWhere('accommodation.organizationalId IS NULL');
+    }
+
+    return await query.getRawMany();
   }
 
-  async countExcursionsByState() {
-    return await this._excursionRepository
+  async countExcursionsByState(organizationalId?: string) {
+    const query = this._excursionRepository
       .createQueryBuilder('excursion')
       .leftJoin('excursion.stateType', 'stateType')
       .select('stateType.name', 'state')
@@ -62,12 +80,21 @@ export class StatisticsService {
           'FUERA DE SERVICIO',
         ],
       })
-      .groupBy('stateType.name')
-      .getRawMany();
+      .groupBy('stateType.name');
+
+    if (organizationalId) {
+      query.andWhere('excursion.organizationalId = :organizationalId', {
+        organizationalId,
+      });
+    } else {
+      query.andWhere('excursion.organizationalId IS NULL');
+    }
+
+    return await query.getRawMany();
   }
 
-  async getReservedAccommodationsWithInvoices() {
-    return await this._invoiceDetailRepository
+  async getReservedAccommodationsWithInvoices(organizationalId?: string) {
+    const query = this._invoiceDetailRepository
       .createQueryBuilder('detail')
       .leftJoin('detail.invoice', 'invoice')
       .leftJoin('invoice.paidType', 'paidType')
@@ -83,15 +110,24 @@ export class StatisticsService {
           'RESERVADO - PAGADO',
           'RESERVADO - PENDIENTE',
         ],
-      })
-      .getRawMany();
+      });
+
+    if (organizationalId) {
+      query.andWhere('invoice.organizationalId = :organizationalId', {
+        organizationalId,
+      });
+    } else {
+      query.andWhere('invoice.organizationalId IS NULL');
+    }
+
+    return await query.getRawMany();
   }
 
   /**
    * Obtiene estadísticas diarias de ventas (solo del día actual)
    * @returns Totales de productos, hospedajes y excursiones vendidos hoy
    */
-  async getDailySalesStatistics() {
+  async getDailySalesStatistics(organizationalId?: string) {
     const today = new Date();
     const startOfDay = new Date(
       today.getFullYear(),
@@ -104,7 +140,7 @@ export class StatisticsService {
       today.getDate() + 1,
     );
 
-    return await this._invoiceDetailRepository
+    const query = this._invoiceDetailRepository
       .createQueryBuilder('detail')
       .leftJoin('detail.invoice', 'invoice')
       .leftJoin('invoice.invoiceType', 'invoiceType')
@@ -124,8 +160,17 @@ export class StatisticsService {
         'COUNT(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code = \'FC\' THEN 1 END) AS "countProductsPurchased"',
       ])
       .where('invoice.createdAt >= :startOfDay', { startOfDay })
-      .andWhere('invoice.createdAt < :endOfDay', { endOfDay })
-      .getRawOne();
+      .andWhere('invoice.createdAt < :endOfDay', { endOfDay });
+
+    if (organizationalId) {
+      query.andWhere('invoice.organizationalId = :organizationalId', {
+        organizationalId,
+      });
+    } else {
+      query.andWhere('invoice.organizationalId IS NULL');
+    }
+
+    return await query.getRawOne();
   }
 
   /**
@@ -133,7 +178,10 @@ export class StatisticsService {
    * @param date Fecha específica (formato: YYYY-MM-DD o Date object)
    * @returns Totales de productos, hospedajes y excursiones vendidos/comprados en esa fecha
    */
-  async getDailySalesStatisticsByDate(date: string | Date) {
+  async getDailySalesStatisticsByDate(
+    date: string | Date,
+    organizationalId?: string,
+  ) {
     const targetDate = typeof date === 'string' ? new Date(date) : date;
     const startOfDay = new Date(
       targetDate.getFullYear(),
@@ -146,7 +194,7 @@ export class StatisticsService {
       targetDate.getDate() + 1,
     );
 
-    return await this._invoiceDetailRepository
+    const query = this._invoiceDetailRepository
       .createQueryBuilder('detail')
       .leftJoin('detail.invoice', 'invoice')
       .leftJoin('invoice.invoiceType', 'invoiceType')
@@ -166,11 +214,20 @@ export class StatisticsService {
         'COUNT(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code = \'FC\' THEN 1 END) AS "countProductsPurchased"',
       ])
       .where('invoice.createdAt >= :startOfDay', { startOfDay })
-      .andWhere('invoice.createdAt < :endOfDay', { endOfDay })
-      .getRawOne();
+      .andWhere('invoice.createdAt < :endOfDay', { endOfDay });
+
+    if (organizationalId) {
+      query.andWhere('invoice.organizationalId = :organizationalId', {
+        organizationalId,
+      });
+    } else {
+      query.andWhere('invoice.organizationalId IS NULL');
+    }
+
+    return await query.getRawOne();
   }
 
-  async getGeneralStatistics() {
+  async getGeneralStatistics(organizationalId?: string) {
     const [
       products,
       accommodations,
@@ -178,11 +235,11 @@ export class StatisticsService {
       reservedAccommodations,
       dailySales,
     ] = await Promise.all([
-      this.countActiveInactiveProducts(),
-      this.countAccommodationsByState(),
-      this.countExcursionsByState(),
-      this.getReservedAccommodationsWithInvoices(),
-      this.getDailySalesStatistics(),
+      this.countActiveInactiveProducts(organizationalId),
+      this.countAccommodationsByState(organizationalId),
+      this.countExcursionsByState(organizationalId),
+      this.getReservedAccommodationsWithInvoices(organizationalId),
+      this.getDailySalesStatistics(organizationalId),
     ]);
 
     return {

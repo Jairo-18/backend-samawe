@@ -13,6 +13,7 @@ import {
 import { CategoryType } from './categoryType.entity';
 import { BedType } from './bedType.entity';
 import { StateType } from './stateType.entity';
+import { Organizational } from './organizational.entity';
 
 @Entity({ name: 'Accommodation' })
 export class Accommodation {
@@ -72,6 +73,10 @@ export class Accommodation {
     eager: true,
   })
   images: AccommodationImage[];
+
+  @ManyToOne(() => Organizational, { nullable: true, eager: false })
+  @JoinColumn({ name: 'organizationalId' })
+  organizational?: Organizational;
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt?: Date;

@@ -1,5 +1,6 @@
 ﻿import { RecipeRepository } from './../../shared/repositories/recipe.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
+import { OrganizationalRepository } from './../../shared/repositories/organizational.repository';
 import { Recipe } from './../../shared/entities/recipe.entity';
 import {
   CreateRecipeDto,
@@ -26,6 +27,7 @@ export class RecipeService {
   constructor(
     private readonly _recipeRepository: RecipeRepository,
     private readonly _productRepository: ProductRepository,
+    private readonly _organizationalRepository: OrganizationalRepository,
   ) {}
 
   /**
@@ -202,7 +204,7 @@ export class RecipeService {
    * Crear una receta completa para un plato
    */
   async create(createRecipeDto: CreateRecipeDto): Promise<Recipe[]> {
-    const { productId, ingredients } = createRecipeDto;
+    const { productId, ingredients, organizationalId } = createRecipeDto;
 
     const product = await this._productRepository.findOne({
       where: { productId },
@@ -210,6 +212,16 @@ export class RecipeService {
 
     if (!product) {
       throw new NotFoundException(`Producto con ID ${productId} no encontrado`);
+    }
+
+    let organizational = null;
+    if (organizationalId) {
+      organizational = await this._organizationalRepository.findOne({
+        where: { organizationalId },
+      });
+      if (!organizational) {
+        throw new BadRequestException('Organización no encontrada');
+      }
     }
 
     const ingredientIds = ingredients.map((i) => i.ingredientProductId);
@@ -236,6 +248,7 @@ export class RecipeService {
         ingredient,
         quantity: ingredientDto.quantity,
         notes: ingredientDto.notes,
+        ...(organizational && { organizational }),
       });
 
       const savedRecipe = await this._recipeRepository.save(recipe);
@@ -255,6 +268,7 @@ export class RecipeService {
     return await this.create({
       productId,
       ingredients: updateRecipeDto.ingredients,
+      organizationalId: updateRecipeDto.organizationalId,
     });
   }
 

@@ -12,6 +12,7 @@ import {
 } from 'typeorm';
 import { CategoryType } from './categoryType.entity';
 import { StateType } from './stateType.entity';
+import { Organizational } from './organizational.entity';
 
 @Entity({ name: 'Excursion' })
 export class Excursion {
@@ -46,6 +47,10 @@ export class Excursion {
     eager: true,
   })
   images: ExcursionImage[];
+
+  @ManyToOne(() => Organizational, { nullable: true, eager: false })
+  @JoinColumn({ name: 'organizationalId' })
+  organizational?: Organizational;
 
   @CreateDateColumn({
     type: 'timestamp',

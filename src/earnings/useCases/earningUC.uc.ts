@@ -23,24 +23,34 @@ export class EarningUC {
     private readonly _inventoryService: InventoryService,
   ) {}
 
-  async getGeneralStatistics(): Promise<GeneralStatisticsDto> {
-    return await this._statisticsService.getGeneralStatistics();
+  async getGeneralStatistics(
+    organizationalId?: string,
+  ): Promise<GeneralStatisticsDto> {
+    return await this._statisticsService.getGeneralStatistics(organizationalId);
   }
 
-  async getProductSummary(): Promise<BalanceProductSummaryDto> {
-    return await this._earningService.getProductSummary();
+  async getProductSummary(
+    organizationalId?: string,
+  ): Promise<BalanceProductSummaryDto> {
+    return await this._earningService.getProductSummary(organizationalId);
   }
 
-  async getAllInvoiceSummaries(): Promise<AllInvoiceSummariesDto> {
-    return await this._earningService.getAllInvoiceSummaries();
+  async getAllInvoiceSummaries(
+    organizationalId?: string,
+  ): Promise<AllInvoiceSummariesDto> {
+    return await this._earningService.getAllInvoiceSummaries(organizationalId);
   }
 
-  async getTotalStock(): Promise<ProductStockCountDto> {
-    return await this._earningService.getTotalStock();
+  async getTotalStock(
+    organizationalId?: string,
+  ): Promise<ProductStockCountDto> {
+    return await this._earningService.getTotalStock(organizationalId);
   }
 
-  async getInvoiceChartList(): Promise<InvoiceChartListDto> {
-    return await this._earningService.getInvoiceChartList();
+  async getInvoiceChartList(
+    organizationalId?: string,
+  ): Promise<InvoiceChartListDto> {
+    return await this._earningService.getInvoiceChartList(organizationalId);
   }
 
   async getInventoryAmount(

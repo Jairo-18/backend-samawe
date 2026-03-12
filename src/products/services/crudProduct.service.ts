@@ -1,4 +1,4 @@
-﻿import { ProductRepository } from './../../shared/repositories/product.repository';
+import { ProductRepository } from './../../shared/repositories/product.repository';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import {
@@ -69,6 +69,12 @@ export class CrudProductService {
     if (params.categoryType) {
       query.andWhere('categoryType.categoryTypeId = :categoryTypeId', {
         categoryTypeId: params.categoryType,
+      });
+    }
+
+    if (params.organizationalId) {
+      query.andWhere('Product.organizationalId = :organizationalId', {
+        organizationalId: params.organizationalId,
       });
     }
 
@@ -254,9 +260,18 @@ export class CrudProductService {
 
     if (params.search) {
       const search = params.search.trim();
-      where.push({ name: ILike(`%${search}%`) });
+      where.push({
+        name: ILike(`%${search}%`),
+        ...(params.organizationalId && {
+          organizational: { organizationalId: params.organizationalId },
+        }),
+      });
     } else {
-      where.push({});
+      where.push({
+        ...(params.organizationalId && {
+          organizational: { organizationalId: params.organizationalId },
+        }),
+      });
     }
 
     const [entities, itemCount] = await this._productRepository.findAndCount({
