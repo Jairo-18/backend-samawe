@@ -1,4 +1,4 @@
-﻿export const config = async () => {
+export const config = async () => {
   const rawOrigin = process.env.APP_CORS_ORIGIN || '';
   const rawAllowedHeaders = process.env.APP_CORS_ALLOWED_HEADERS || '';
   const rawAllowedMethods = process.env.APP_CORS_ALLOWED_METHODS || '';
@@ -50,6 +50,11 @@
       password: process.env.MAIL_PASSWORD || '',
       sender: process.env.MAIL_SENDER || 'noreply@samawe.com',
       secure: process.env.MAIL_SECURE === 'true',
+    },
+    webPush: {
+      publicKey: process.env.VAPID_PUBLIC_KEY || '',
+      privateKey: process.env.VAPID_PRIVATE_KEY || '',
+      subject: process.env.VAPID_SUBJECT || 'mailto:admin@ecohotelsamawe.com',
     },
   };
 };

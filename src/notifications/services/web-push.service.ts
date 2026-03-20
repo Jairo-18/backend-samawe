@@ -16,10 +16,10 @@ export class WebPushService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    const publicKey = this.configService.get<string>('VAPID_PUBLIC_KEY');
-    const privateKey = this.configService.get<string>('VAPID_PRIVATE_KEY');
+    const publicKey = this.configService.get<string>('webPush.publicKey');
+    const privateKey = this.configService.get<string>('webPush.privateKey');
     const subject = this.configService.get<string>(
-      'VAPID_SUBJECT',
+      'webPush.subject',
       'mailto:admin@ecohotelsamawe.com',
     );
 
@@ -35,7 +35,7 @@ export class WebPushService implements OnModuleInit {
   }
 
   getVapidPublicKey(): string {
-    return this.configService.get<string>('VAPID_PUBLIC_KEY', '');
+    return this.configService.get<string>('webPush.publicKey', '');
   }
 
   async saveSubscription(
