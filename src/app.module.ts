@@ -1,4 +1,4 @@
-﻿import { CronJobModule } from './cronJobs/cronJob.module';
+import { CronJobModule } from './cronJobs/cronJob.module';
 import { GenericTypeModule } from './types/genericType.module';
 import { ExcursionModule } from './excursions/excursion.module';
 import { ProductModule } from './products/product.module';
@@ -16,6 +16,7 @@ import { InvoiceModule } from './invoices/invoice.module';
 import { EarningModule } from './earnings/earning.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { RecipeModule } from './recipes/recipe.module';
+import { MenuModule } from './menus/menu.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { SocketModule } from './socket/socket.module';
@@ -54,6 +55,7 @@ import { OrganizationalModule } from './organizational/organizational.module';
     InvoiceModule,
     ProductModule,
     RecipeModule,
+    MenuModule,
     UserModule,
     NotificationsModule,
     BackupModule,

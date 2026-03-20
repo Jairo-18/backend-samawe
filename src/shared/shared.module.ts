@@ -1,4 +1,4 @@
-﻿import { ScheduleModule } from '@nestjs/schedule';
+import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationRepository } from './repositories/notification.repository';
 import { PasswordService } from './../user/services/password.service';
 import { InvoiceEventsListener } from './services/invoiceEventsListener.service';
@@ -60,6 +60,8 @@ import { DiscountType } from './entities/discountType.entity';
 import { ProductImage } from './entities/productImage.entity';
 import { Recipe } from './entities/recipe.entity';
 import { RecipeRepository } from './repositories/recipe.repository';
+import { Menu } from './entities/menu.entity';
+import { MenuRepository } from './repositories/menu.repository';
 import { UnitOfMeasureRepository } from './repositories/unitOfMeasure.repository';
 import { UnitOfMeasure } from './entities/unitOfMeasure.entity';
 import { ProductImageRepository } from './repositories/productImage.repository';
@@ -146,6 +148,7 @@ export class SharedModule {
           PersonType,
           Product,
           Recipe,
+          Menu,
           RoleType,
           TaxeType,
           StateType,
@@ -213,6 +216,7 @@ export class SharedModule {
         PhoneCodeRepository,
         ProductRepository,
         RecipeRepository,
+        MenuRepository,
         UnitOfMeasureRepository,
         RoleTypeRepository,
         StateTypeRepository,
@@ -253,6 +257,7 @@ export class SharedModule {
         PhoneCodeRepository,
         ProductRepository,
         RecipeRepository,
+        MenuRepository,
         RoleTypeRepository,
         StateTypeRepository,
         TaxeTypeRepository,
