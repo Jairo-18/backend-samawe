@@ -69,7 +69,8 @@
     "socket.io": "^4.8.3",
     "swagger-ui-dist": "^5.20.1",
     "typeorm": "^0.3.21",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
@@ -82,6 +83,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^20.3.1",
     "@types/supertest": "^6.0.0",
+    "@types/web-push": "^3.6.4",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "cross-env": "^10.0.0",
