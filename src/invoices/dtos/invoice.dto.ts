@@ -1,4 +1,4 @@
-﻿import {
+import {
   IdentificationTypeDto,
   InvoiceTypeDto,
   PaidTypeDto,
@@ -240,6 +240,15 @@ export class UpdateInvoiceDto {
   @IsOptional()
   @IsString()
   organizationalId?: string;
+
+  @ApiProperty({
+    description: 'Fecha manual alocada a la orden',
+    example: '2025-05-27',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  startDate?: string;
 }
 
 export class EmployeMiniDto {
@@ -442,6 +451,20 @@ export class GetInvoiceWithDetailsDto {
     description: 'Descripción de la factura',
   })
   observations: string;
+
+  @ApiProperty({
+    example: '2025-05-27',
+    description: 'Fecha de inicio de la factura',
+    required: false,
+  })
+  startDate?: string;
+
+  @ApiProperty({
+    example: '2025-05-27',
+    description: 'Fecha final de la factura',
+    required: false,
+  })
+  endDate?: string;
 
   @ApiProperty({
     example: true,

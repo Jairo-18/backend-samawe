@@ -8,7 +8,6 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { OrderUpdate } from '../interfaces/order-socket.interface';
-import { WebPushService } from '../../notifications/services/web-push.service';
 
 @WebSocketGateway({
   cors: {
@@ -19,8 +18,6 @@ import { WebPushService } from '../../notifications/services/web-push.service';
 export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
-
-  constructor(private readonly _webPushService: WebPushService) {}
 
   handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
@@ -35,32 +32,10 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
    */
   emitOrderUpdate(orderData: OrderUpdate, targetUserIds?: string[]) {
     this.server.emit('orderUpdated', orderData);
-
-    // Enviar Web Push a los usuarios especificados
-    if (targetUserIds?.length) {
-      this._webPushService.sendToAllUsers(targetUserIds, {
-        title: `Orden ${orderData.code} actualizada`,
-        body: `Mesa ${orderData.tableNumber || 'N/A'} → ${orderData.state}`,
-        data: {
-          invoiceId: orderData.invoiceId,
-          url: '/recipes/restaurant-order',
-        },
-      });
-    }
   }
 
   emitToUser(userId: string, orderData: OrderUpdate) {
     this.server.to(`user_${userId}`).emit('orderUpdated', orderData);
-
-    // Enviar Web Push al usuario específico
-    this._webPushService.sendToUser(userId, {
-      title: `Orden ${orderData.code} actualizada`,
-      body: `Mesa ${orderData.tableNumber || 'N/A'} → ${orderData.state}`,
-      data: {
-        invoiceId: orderData.invoiceId,
-        url: '/recipes/restaurant-order',
-      },
-    });
   }
 
   emitInvoiceItemAdded(invoiceId: number, payload: InvoiceItemAddedPayload) {
@@ -81,4 +56,3 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 }
-

@@ -353,6 +353,12 @@ export class InvoiceService {
     return {
       invoiceId: invoice.invoiceId,
       code: invoice.code,
+      startDate: invoice.startDate
+        ? new Date(invoice.startDate).toISOString().split('T')[0]
+        : undefined,
+      endDate: invoice.endDate
+        ? new Date(invoice.endDate).toISOString().split('T')[0]
+        : undefined,
       observations: invoice.observations,
       invoiceElectronic: invoice.invoiceElectronic,
       subtotalWithoutTax: invoice.subtotalWithoutTax?.toString(),
@@ -485,6 +491,23 @@ export class InvoiceService {
 
       if (observations !== undefined) {
         invoice.observations = observations;
+      }
+
+      if (updateInvoiceDto.startDate !== undefined) {
+        const newDate = this.toDateOnly(updateInvoiceDto.startDate);
+        invoice.startDate = newDate;
+        invoice.endDate = newDate;
+
+        const details = await queryRunner.manager.find(InvoiceDetaill, {
+          where: { invoice: { invoiceId } },
+        });
+        if (details && details.length > 0) {
+          details.forEach((detail) => {
+            detail.startDate = newDate as any;
+            detail.endDate = newDate as any;
+          });
+          await queryRunner.manager.save(details);
+        }
       }
 
       if (updateInvoiceDto.cash !== undefined)
