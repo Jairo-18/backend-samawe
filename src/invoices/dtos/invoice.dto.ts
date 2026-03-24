@@ -7,7 +7,7 @@ import {
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { OnlyOneDefined } from '../../shared/validators/onlyOneDefined';
 import { HttpStatus } from '@nestjs/common';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsNotEmpty,
   IsNumber,
@@ -57,21 +57,24 @@ export class CreateInvoiceDto {
   @IsOptional()
   invoiceElectronic?: boolean;
 
-  @ApiProperty({ example: '2025-05-27', description: 'Fecha de inicio' })
+  @ApiPropertyOptional({
+    example: '2025-05-27',
+    description: 'Fecha de inicio',
+  })
   @IsDateString(
     {},
     { message: 'La fecha de inicio debe tener formato YYYY-MM-DD' },
   )
-  @IsNotEmpty({ message: 'La fecha de inicio es requerida' })
-  startDate: string;
+  @IsOptional()
+  startDate?: string;
 
-  @ApiProperty({ example: '2025-05-30', description: 'Fecha de fin' })
+  @ApiPropertyOptional({ example: '2025-05-30', description: 'Fecha de fin' })
   @IsDateString(
     {},
     { message: 'La fecha de fin debe tener formato YYYY-MM-DD' },
   )
-  @IsNotEmpty({ message: 'La fecha de fin es requerida' })
-  endDate: string;
+  @IsOptional()
+  endDate?: string;
 
   @ApiProperty({
     example: 1,

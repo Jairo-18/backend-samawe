@@ -276,8 +276,12 @@ export class InvoiceService {
           code,
           observations: createInvoiceDto.observations,
           invoiceElectronic: createInvoiceDto.invoiceElectronic,
-          startDate: this.toDateOnly(createInvoiceDto.startDate),
-          endDate: this.toDateOnly(createInvoiceDto.endDate),
+          startDate: createInvoiceDto.startDate
+            ? this.toDateOnly(createInvoiceDto.startDate)
+            : new Date(),
+          endDate: createInvoiceDto.endDate
+            ? this.toDateOnly(createInvoiceDto.endDate)
+            : new Date(),
 
           subtotalWithoutTax,
           subtotalWithTax,
