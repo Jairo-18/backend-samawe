@@ -296,31 +296,56 @@ export class UserService {
       throw new HttpException('El usuario no existe', HttpStatus.NOT_FOUND);
     }
 
+    const {
+      organizationalId,
+      roleType,
+      phoneCode,
+      identificationType,
+      personType,
+      password,
+      confirmPassword,
+      ...restUserData
+    } = userData;
+
+    if (password) {
+      if (password !== confirmPassword) {
+        throw new HttpException(
+          'Las contraseñas no coinciden',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
+    const hashedPassword = password
+      ? await bcrypt.hash(password, 10)
+      : undefined;
+
     return await this._userRepository.update(
       { userId },
       {
-        ...userData,
+        ...restUserData,
+        ...(hashedPassword && { password: hashedPassword }),
         phoneCode: {
-          phoneCodeId: userData.phoneCode || userExist.phoneCode.phoneCodeId,
+          phoneCodeId: phoneCode || userExist.phoneCode.phoneCodeId,
         },
         roleType: {
-          roleTypeId: userData.roleType || userExist.roleType.roleTypeId,
+          roleTypeId: roleType || userExist.roleType.roleTypeId,
         },
         identificationType: {
           identificationTypeId:
-            userData.identificationType ||
+            identificationType ||
             userExist.identificationType.identificationTypeId,
         },
         personType: await this.resolvePersonType(
-          userData.identificationType ||
+          identificationType ||
             userExist.identificationType.identificationTypeId,
         ),
-        ...(userData.organizationalId !== undefined && {
+        ...(organizationalId !== undefined && {
           organizational:
-            userData.organizationalId === null
+            organizationalId === null
               ? null
               : await this._organizationalRepository.findOne({
-                  where: { organizationalId: userData.organizationalId },
+                  where: { organizationalId },
                 }),
         }),
       },
@@ -501,5 +526,93 @@ export class UserService {
       .leftJoinAndSelect('user.roleType', 'roleType')
       .where('roleType.name IN (:...roleNames)', { roleNames })
       .getMany();
+  }
+
+  async findOrCreateGoogleUser(googleUser: {
+    googleId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    avatarUrl?: string;
+  }): Promise<User> {
+    let user = await this._userRepository.findOne({
+      where: { googleId: googleUser.googleId },
+      relations: ['roleType', 'organizational'],
+    });
+
+    if (!user && googleUser.email) {
+      user = await this._userRepository.findOne({
+        where: { email: googleUser.email },
+        relations: ['roleType', 'organizational'],
+      });
+
+      if (user) {
+        await this._userRepository.update(
+          { userId: user.userId },
+          {
+            googleId: googleUser.googleId,
+            avatarUrl: googleUser.avatarUrl || user.avatarUrl,
+          },
+        );
+        user.googleId = googleUser.googleId;
+        user.avatarUrl = googleUser.avatarUrl || user.avatarUrl;
+        return user;
+      }
+    }
+
+    if (user) {
+      if (googleUser.avatarUrl && user.avatarUrl !== googleUser.avatarUrl) {
+        await this._userRepository.update(
+          { userId: user.userId },
+          { avatarUrl: googleUser.avatarUrl },
+        );
+        user.avatarUrl = googleUser.avatarUrl;
+      }
+      return user;
+    }
+
+    const clienteRoleType = await this._roleTypeRepository.findOne({
+      where: { roleTypeId: '4a96be8d-308f-434f-9846-54e5db3e7d95' },
+    });
+
+    const identificationType = await this._identificationTypeRepository.findOne(
+      { where: {} },
+    );
+
+    const phoneCode = await this._phoneCodeRepository.findOne({
+      where: {},
+    });
+
+    const personType = await this._personTypeRepository.findOne({
+      where: { personTypeId: 1 },
+    });
+
+    const randomPassword = await bcrypt.hash(
+      crypto.randomBytes(32).toString('hex'),
+      10,
+    );
+
+    const newUser = this._userRepository.create({
+      googleId: googleUser.googleId,
+      email: googleUser.email,
+      firstName: googleUser.firstName,
+      lastName: googleUser.lastName,
+      avatarUrl: googleUser.avatarUrl,
+      password: randomPassword,
+      identificationNumber: `GOOGLE-${googleUser.googleId.substring(0, 10)}`,
+      phone: '0000000000',
+      roleType: clienteRoleType,
+      identificationType,
+      phoneCode,
+      personType,
+      isActive: true,
+    });
+
+    const savedUser = await this._userRepository.save(newUser);
+
+    return await this._userRepository.findOne({
+      where: { userId: savedUser.userId },
+      relations: ['roleType', 'organizational'],
+    });
   }
 }

@@ -158,7 +158,7 @@ export class UserController {
     await this._userUC.update(id, userData);
 
     return {
-      message: 'Usuario actualizado correctamente',
+      message: 'Información almacenada correctamente',
       statusCode: HttpStatus.OK,
     };
   }

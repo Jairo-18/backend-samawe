@@ -1,4 +1,4 @@
-﻿import { Product } from '../entities/product.entity';
+import { Product } from '../entities/product.entity';
 import { Accommodation } from '../entities/accommodation.entity';
 import { Excursion } from '../entities/excursion.entity';
 import { User } from '../entities/user.entity';
@@ -178,6 +178,7 @@ export interface UserDetailDto {
   phone: string;
   identificationNumber: string;
   isActive: boolean;
+  avatarUrl?: string;
   roleType: { roleTypeId: string; code: string; name: string } | null;
   identificationType: {
     identificationTypeId: string;
@@ -198,6 +199,7 @@ export function mapUserDetail(user: User): UserDetailDto {
     phone: user.phone,
     identificationNumber: user.identificationNumber,
     isActive: user.isActive,
+    avatarUrl: user.avatarUrl ?? undefined,
     roleType: user.roleType
       ? {
           roleTypeId: user.roleType.roleTypeId,

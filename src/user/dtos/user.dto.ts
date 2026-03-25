@@ -11,6 +11,7 @@ import {
   IsOptional,
   ValidateIf,
   IsBoolean,
+  MinLength,
 } from 'class-validator';
 import { HttpStatus } from '@nestjs/common';
 import { GET_ALL_USER_EXAMPLE } from '../constants/examples.conts';
@@ -231,6 +232,20 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   organizationalId?: string;
+
+  @ApiPropertyOptional({
+    example: 'MiContraseña123!',
+    description: 'Nueva contraseña (opcional, solo para usuarios Google)',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(6)
+  password?: string;
+
+  @ApiPropertyOptional({ example: 'MiContraseña123!' })
+  @IsOptional()
+  @IsString()
+  confirmPassword?: string;
 }
 
 export class ChangePasswordBaseDto {

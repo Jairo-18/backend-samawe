@@ -1,4 +1,4 @@
-﻿import { PhoneCode } from './phoneCode.entity';
+import { PhoneCode } from './phoneCode.entity';
 import {
   Column,
   CreateDateColumn,
@@ -52,9 +52,15 @@ export class User {
 
   @Column('varchar', {
     length: 255,
-    nullable: false,
+    nullable: true,
   })
   password: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true, unique: true })
+  googleId?: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  avatarUrl?: string;
 
   @ManyToOne(() => PhoneCode, (phoneCode) => phoneCode.user)
   @JoinColumn({ name: 'phoneCodeId' })

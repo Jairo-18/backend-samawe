@@ -213,4 +213,43 @@ export class AuthService {
       });
     }
   }
+
+  async googleSignIn(user: any) {
+    if (!user) {
+      throw new UnauthorizedException('No se pudo autenticar con Google');
+    }
+
+    const payload = {
+      email: user.email,
+      sub: user.userId,
+      id: user.userId,
+    };
+
+    const tokens = this.generateTokens(payload);
+
+    const accessSessionId = await this._accessSessionsService.generateSession({
+      userId: user.userId,
+      accessToken: tokens.accessToken,
+      id: uuidv4(),
+      organizationalId: user.organizational?.organizationalId ?? undefined,
+    });
+
+    return {
+      tokens,
+      user: {
+        userId: user.userId,
+        firstName: user.firstName ?? '',
+        lastName: user.lastName ?? '',
+        email: user.email ?? '',
+        isNewUser: user.identificationNumber?.startsWith('GOOGLE-') ?? false,
+        roleType: {
+          roleTypeId: user.roleType?.roleTypeId,
+          name: user.roleType?.name,
+        },
+        organizationalId: user.organizational?.organizationalId ?? null,
+        avatarUrl: user.avatarUrl ?? null,
+      },
+      session: { accessSessionId },
+    };
+  }
 }

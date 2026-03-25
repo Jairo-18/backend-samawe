@@ -1,4 +1,4 @@
-﻿import {
+import {
   LoginDto,
   RecoveryPasswordBodyDto,
   RefreshTokenBodyDto,
@@ -8,9 +8,20 @@
   RefreshTokenResponseDto,
 } from '../dtos/auth.dto';
 import { AuthUC } from '../useCases/auth.UC';
-import { Body, Controller, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { AuthService } from '../services/auth.service';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
 import {
   SignInDocs,
   RefreshTokenDocs,
@@ -20,7 +31,11 @@ import {
 @Controller('auth')
 @ApiTags('Autenticación')
 export class AuthController {
-  constructor(private readonly _authUC: AuthUC) {}
+  constructor(
+    private readonly _authUC: AuthUC,
+    private readonly _authService: AuthService,
+    private readonly _configService: ConfigService,
+  ) {}
 
   @Post('/sign-in')
   @SignInDocs()
@@ -80,5 +95,40 @@ export class AuthController {
       statusCode: HttpStatus.OK,
       message: 'Correo enviado correctamente',
     };
+  }
+
+  @Get('/google')
+  @UseGuards(AuthGuard('google'))
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async googleAuth(@Req() _req: any) {
+    // Passport redirige automáticamente a Google
+  }
+
+  @Get('/google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthCallback(@Req() req: any, @Res() res: any) {
+    const data = await this._authService.googleSignIn(req.user);
+    const frontendUrl =
+      this._configService.get<string>('APP_FRONTEND_URL') ||
+      'http://localhost:4200';
+
+    const params = new URLSearchParams({
+      accessToken: data.tokens.accessToken,
+      refreshToken: data.tokens.refreshToken,
+      userId: data.user.userId,
+      roleTypeId: data.user.roleType?.roleTypeId || '',
+      roleTypeName: data.user.roleType?.name || '',
+      accessSessionId: data.session.accessSessionId,
+      organizationalId: data.user.organizationalId || '',
+      avatarUrl: data.user.avatarUrl || '',
+      firstName: data.user.firstName || '',
+      lastName: data.user.lastName || '',
+      email: data.user.email || '',
+      isNewUser: data.user.isNewUser ? 'true' : 'false',
+    });
+
+    return res.redirect(
+      `${frontendUrl}/auth/google/callback?${params.toString()}`,
+    );
   }
 }

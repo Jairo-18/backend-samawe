@@ -55,6 +55,8 @@ export interface UpdateUserModel {
   roleType: string;
   personType: string;
   organizationalId?: string;
+  password?: string;
+  confirmPassword?: string;
 }
 
 export interface IdentificationType {

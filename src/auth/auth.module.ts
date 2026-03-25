@@ -1,4 +1,5 @@
-﻿import { JwtStrategy } from './../shared/strategies/jwt.strategy';
+import { JwtStrategy } from './../shared/strategies/jwt.strategy';
+import { GoogleStrategy } from './../shared/strategies/google.strategy';
 import { AccessSessionsService } from './services/accessSessions.service';
 import { UserService } from '../user/services/user.service';
 import { SharedModule } from './../shared/shared.module';
@@ -30,6 +31,8 @@ import { PassportModule } from '@nestjs/passport';
     UserService,
     AccessSessionsService,
     JwtStrategy,
+    GoogleStrategy,
+    ConfigService,
   ],
   exports: [JwtStrategy],
 })
