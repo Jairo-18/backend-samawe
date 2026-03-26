@@ -399,9 +399,10 @@ export class InvoiceDetailService {
     const hadOrderTime = !!invoiceBefore?.orderTime;
     const isQuote = invoiceBefore?.invoiceType?.code === 'CO';
 
-    const results = await Promise.all(
-      dtos.map((dto) => this.create(invoiceId, dto, true, true)),
-    );
+    const results: any[] = [];
+    for (const dto of dtos) {
+      results.push(await this.create(invoiceId, dto, true, true));
+    }
 
     await this._generalInvoiceDetaillService.updateInvoiceTotal(invoiceId);
 

@@ -494,33 +494,37 @@ export class RecipeService {
       .where('product.productId = :productId', { productId })
       .getMany();
 
-    await Promise.all(
-      recipes.map(async (recipe) => {
-        const quantityToReduce = Number(recipe.quantity) * portions;
-        const ingredient = recipe.ingredient;
+    const ingredientIds = recipes.map((r) => r.ingredient.productId);
+    const subRecipeRows = await this._recipeRepository
+      .createQueryBuilder('r')
+      .select('r.productProductId', 'productId')
+      .where('r.productProductId IN (:...ids)', { ids: ingredientIds })
+      .distinct(true)
+      .getRawMany<{ productId: number }>();
+    const subRecipeSet = new Set(subRecipeRows.map((r) => r.productId));
 
-        const categoryCode = ingredient.categoryType?.code?.toUpperCase();
-        const isRecipeProduct = ['RES'].includes(categoryCode);
+    for (const recipe of recipes) {
+      const quantityToReduce = Number(recipe.quantity) * portions;
+      const ingredient = recipe.ingredient;
 
-        if (isRecipeProduct) {
-          await this.consumeIngredients(
-            ingredient.productId,
-            quantityToReduce,
-            visited,
-          );
-        } else {
-          const ingredientFresh = await this._productRepository.findOne({
-            where: { productId: ingredient.productId },
-          });
+      if (subRecipeSet.has(ingredient.productId)) {
+        await this.consumeIngredients(
+          ingredient.productId,
+          quantityToReduce,
+          visited,
+        );
+      } else {
+        const ingredientFresh = await this._productRepository.findOne({
+          where: { productId: ingredient.productId },
+        });
 
-          if (!ingredientFresh) return;
+        if (!ingredientFresh) continue;
 
-          ingredientFresh.amount =
-            Number(ingredientFresh.amount) - quantityToReduce;
-          await this._productRepository.save(ingredientFresh);
-        }
-      }),
-    );
+        ingredientFresh.amount =
+          Number(ingredientFresh.amount) - quantityToReduce;
+        await this._productRepository.save(ingredientFresh);
+      }
+    }
   }
 
   /**
@@ -554,43 +558,47 @@ export class RecipeService {
       return;
     }
 
-    await Promise.all(
-      recipes.map(async (recipe) => {
-        const quantityToRestore = Number(recipe.quantity) * portions;
-        const ingredient = recipe.ingredient;
+    const ingredientIds = recipes.map((r) => r.ingredient.productId);
+    const subRecipeRows = await this._recipeRepository
+      .createQueryBuilder('r')
+      .select('r.productProductId', 'productId')
+      .where('r.productProductId IN (:...ids)', { ids: ingredientIds })
+      .distinct(true)
+      .getRawMany<{ productId: number }>();
+    const subRecipeSet = new Set(subRecipeRows.map((r) => r.productId));
 
-        const categoryCode = ingredient.categoryType?.code?.toUpperCase();
-        const isRecipeProduct = ['RES'].includes(categoryCode);
+    for (const recipe of recipes) {
+      const quantityToRestore = Number(recipe.quantity) * portions;
+      const ingredient = recipe.ingredient;
 
-        if (isRecipeProduct) {
-          await this.restoreIngredients(
-            ingredient.productId,
-            quantityToRestore,
-            visited,
-            manager,
-          );
+      if (subRecipeSet.has(ingredient.productId)) {
+        await this.restoreIngredients(
+          ingredient.productId,
+          quantityToRestore,
+          visited,
+          manager,
+        );
+      } else {
+        const ingredientFresh = manager
+          ? await manager.findOne(Product, {
+              where: { productId: ingredient.productId },
+            })
+          : await this._productRepository.findOne({
+              where: { productId: ingredient.productId },
+            });
+
+        if (!ingredientFresh) continue;
+
+        ingredientFresh.amount =
+          Number(ingredientFresh.amount) + quantityToRestore;
+
+        if (manager) {
+          await manager.save(Product, ingredientFresh);
         } else {
-          const ingredientFresh = manager
-            ? await manager.findOne(Product, {
-                where: { productId: ingredient.productId },
-              })
-            : await this._productRepository.findOne({
-                where: { productId: ingredient.productId },
-              });
-
-          if (!ingredientFresh) return;
-
-          ingredientFresh.amount =
-            Number(ingredientFresh.amount) + quantityToRestore;
-
-          if (manager) {
-            await manager.save(Product, ingredientFresh);
-          } else {
-            await this._productRepository.save(ingredientFresh);
-          }
+          await this._productRepository.save(ingredientFresh);
         }
-      }),
-    );
+      }
+    }
   }
 
   /**
