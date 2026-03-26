@@ -218,6 +218,7 @@ export class BalanceService {
     Map<string, { totalProductPriceSale: number; totalProductPriceBuy: number }>
   > {
     const products = await this._productRepository.find({
+      where: { isActive: true },
       relations: ['organizational'],
     });
     const totals = new Map<
@@ -230,6 +231,8 @@ export class BalanceService {
       const amount = Number(product.amount ?? 0);
       const priceSale = Number(product.priceSale ?? 0);
       const priceBuy = Number(product.priceBuy ?? 0);
+
+      if (amount <= 0 || priceSale <= 0 || priceBuy <= 0) continue;
 
       const sale = amount * priceSale;
       const buy = amount * priceBuy;
