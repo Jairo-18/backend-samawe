@@ -9,4 +9,5 @@ export interface OrderUpdate {
   orderTime?: Date | string;
   readyTime?: Date | string;
   servedTime?: Date | string;
+  message?: string;
 }

@@ -562,7 +562,11 @@ export class InvoiceService {
           notificationStates.includes(invoice.stateType.code.toUpperCase())
         ) {
           const title = `Actualización de Orden`;
-          const message = `La orden de la mesa ${invoice.tableNumber || 'N/A'} (Factura ${invoice.code}) cambió a ${invoice.stateType.name}.`;
+          const stateCodeUpper = invoice.stateType.code?.toUpperCase();
+          const message =
+            stateCodeUpper === 'ENT'
+              ? `Orden de la mesa ${invoice.tableNumber || 'N/A'} (Factura #${invoice.code}) entregada completamente.`
+              : `La orden de la mesa ${invoice.tableNumber || 'N/A'} (Factura #${invoice.code}) cambió a ${invoice.stateType.name}.`;
           await this._sendOrderNotification(
             queryRunner.manager,
             invoice,
@@ -787,6 +791,7 @@ export class InvoiceService {
           orderTime: invoice.orderTime,
           readyTime: invoice.readyTime,
           servedTime: invoice.servedTime,
+          message,
         });
       }
     }
@@ -800,12 +805,28 @@ export class InvoiceService {
     await this._invoiceRepository.manager.transaction(async (manager) => {
       const invoice = await manager.findOne(Invoice, {
         where: { invoiceId: payload.invoiceId },
-        relations: ['stateType'],
+        relations: [
+          'stateType',
+          'invoiceDetails',
+          'invoiceDetails.product',
+          'invoiceDetails.product.categoryType',
+        ],
       });
 
       if (invoice && invoice.stateType?.code === 'ENC') {
-        const title = `Plato añadido a la orden`;
-        const message = `Mesa ${invoice.tableNumber || 'N/A'}: Se agegó un(a) ${payload.productName}.`;
+        const resDetails = (invoice.invoiceDetails ?? []).filter(
+          (d) => d.product?.categoryType?.code?.toUpperCase() === 'RES',
+        );
+
+        const itemList =
+          resDetails.length > 0
+            ? resDetails
+                .map((d) => `${d.product!.name} (x${Number(d.amount)})`)
+                .join(', ')
+            : payload.productName;
+
+        const title = `Nueva orden`;
+        const message = `Mesa ${invoice.tableNumber || 'N/A'} · Platos: ${itemList}.`;
         await this._sendOrderNotification(manager, invoice, title, message);
       }
     });

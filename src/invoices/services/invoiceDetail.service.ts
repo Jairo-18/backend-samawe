@@ -53,6 +53,7 @@ export class InvoiceDetailService {
     invoiceId: number,
     createInvoiceDetailDto: CreateInvoiceDetailDto,
     skipTotalUpdate: boolean = false,
+    skipEvent: boolean = false,
   ) {
     try {
       const [invoice, taxeType] = await Promise.all([
@@ -326,7 +327,14 @@ export class InvoiceDetailService {
         isProduct,
       });
 
-      if (isProduct && isRecipeProduct2 && !isQuote && product) {
+      if (
+        isProduct &&
+        isRecipeProduct2 &&
+        !isQuote &&
+        product &&
+        !invoice.orderTime &&
+        !skipEvent
+      ) {
         this._eventEmitter.emit('invoice.recipe_item.added', {
           invoiceId: invoice.invoiceId,
           productName: product.name,
@@ -384,8 +392,15 @@ export class InvoiceDetailService {
     invoiceId: number,
     dtos: CreateInvoiceDetailDto[],
   ): Promise<any[]> {
+    const invoiceBefore = await this._invoiceRepository.findOne({
+      where: { invoiceId },
+      relations: ['invoiceType'],
+    });
+    const hadOrderTime = !!invoiceBefore?.orderTime;
+    const isQuote = invoiceBefore?.invoiceType?.code === 'CO';
+
     const results = await Promise.all(
-      dtos.map((dto) => this.create(invoiceId, dto, true)),
+      dtos.map((dto) => this.create(invoiceId, dto, true, true)),
     );
 
     await this._generalInvoiceDetaillService.updateInvoiceTotal(invoiceId);
@@ -406,6 +421,26 @@ export class InvoiceDetailService {
         subtotalWithTax: invoice.subtotalWithTax,
         subtotalWithoutTax: invoice.subtotalWithoutTax,
       });
+    }
+
+    if (!hadOrderTime && !isQuote) {
+      const productIds = dtos
+        .filter((dto) => dto.productId)
+        .map((dto) => Number(dto.productId));
+
+      if (productIds.length > 0) {
+        const firstResProduct = await this._productRepository.findOne({
+          where: { productId: In(productIds), categoryType: { code: 'RES' } },
+          relations: ['categoryType'],
+        });
+
+        if (firstResProduct) {
+          this._eventEmitter.emit('invoice.recipe_item.added', {
+            invoiceId,
+            productName: firstResProduct.name,
+          });
+        }
+      }
     }
 
     return results;
