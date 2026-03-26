@@ -818,10 +818,16 @@ export class InvoiceService {
           (d) => d.product?.categoryType?.code?.toUpperCase() === 'RES',
         );
 
+        const grouped = resDetails.reduce<Record<string, number>>((acc, d) => {
+          const name = d.product!.name;
+          acc[name] = (acc[name] ?? 0) + Number(d.amount);
+          return acc;
+        }, {});
+
         const itemList =
-          resDetails.length > 0
-            ? resDetails
-                .map((d) => `${d.product!.name} (x${Number(d.amount)})`)
+          Object.keys(grouped).length > 0
+            ? Object.entries(grouped)
+                .map(([name, qty]) => `${name} (x${qty})`)
                 .join(', ')
             : payload.productName;
 
