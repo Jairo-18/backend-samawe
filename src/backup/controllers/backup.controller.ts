@@ -1,9 +1,10 @@
 import { Controller, Get, Res, UseGuards, HttpStatus } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BackupUC } from '../useCases/backup.uc';
 
+@ApiBearerAuth()
 @Controller('backup')
 @ApiTags('Backup')
 export class BackupController {
