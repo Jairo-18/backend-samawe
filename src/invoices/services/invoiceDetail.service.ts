@@ -59,7 +59,7 @@ export class InvoiceDetailService {
       const [invoice, taxeType] = await Promise.all([
         this._invoiceRepository.findOne({
           where: { invoiceId },
-          relations: ['invoiceType', 'paidType'],
+          relations: ['invoiceType', 'paidType', 'organizational'],
         }),
         createInvoiceDetailDto.taxeTypeId
           ? this._taxeTypeRepository.findOne({
@@ -142,6 +142,7 @@ export class InvoiceDetailService {
         invoice,
         startDate: createInvoiceDetailDto.startDate,
         endDate: createInvoiceDetailDto.endDate,
+        ...(invoice.organizational && { organizational: invoice.organizational }),
       });
 
       if (product) detail.product = product;
