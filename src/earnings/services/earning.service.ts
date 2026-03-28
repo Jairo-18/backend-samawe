@@ -52,6 +52,7 @@ export class EarningService {
   ): Promise<BalanceProductSummaryDto> {
     const products = await this._productRepository.find({
       where: {
+        isActive: true,
         organizational: organizationalId ? { organizationalId } : IsNull(),
       },
     });
@@ -63,6 +64,8 @@ export class EarningService {
       const amount = Number(product.amount ?? 0);
       const priceSale = Number(product.priceSale ?? 0);
       const priceBuy = Number(product.priceBuy ?? 0);
+
+      if (amount <= 0 || priceSale <= 0 || priceBuy <= 0) continue;
 
       totalProductPriceSale += amount * priceSale;
       totalProductPriceBuy += amount * priceBuy;
@@ -135,11 +138,11 @@ export class EarningService {
     const query = this._productRepository.createQueryBuilder('p');
 
     if (organizationalId) {
-      query.where('p.organizationalId = :organizationalId', {
-        organizationalId,
-      });
+      query
+        .where('p.organizationalId = :organizationalId', { organizationalId })
+        .andWhere('p.isActive = true');
     } else {
-      query.where('p.organizationalId IS NULL');
+      query.where('p.organizationalId IS NULL').andWhere('p.isActive = true');
     }
 
     const { sum } = await query.select('SUM(p.amount)', 'sum').getRawOne();

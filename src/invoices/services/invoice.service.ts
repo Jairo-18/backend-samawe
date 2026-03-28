@@ -703,17 +703,15 @@ export class InvoiceService {
         saveOps.push(queryRunner.manager.save(changedAccommodations));
       }
 
+      await Promise.all(saveOps);
+
       for (const recipe of recipeProductIdsToRestore) {
-        saveOps.push(
-          this._recipeService.restoreIngredients(
-            recipe.id,
-            recipe.amount,
-            new Set(),
-          ),
+        await this._recipeService.restoreIngredients(
+          recipe.id,
+          recipe.amount,
+          new Set(),
         );
       }
-
-      await Promise.all(saveOps);
 
       await queryRunner.manager.delete(InvoiceDetaill, {
         invoice: { invoiceId },

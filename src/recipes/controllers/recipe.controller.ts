@@ -8,6 +8,7 @@
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -38,7 +39,8 @@ export class RecipeController {
 
   @Post()
   @CreateRecipeDocs()
-  async create(@Body() createDto: CreateRecipeDto) {
+  async create(@Body() createDto: CreateRecipeDto, @Req() req: any) {
+    createDto.organizationalId = req.user?.organizationalId ?? createDto.organizationalId;
     const recipes = await this._recipeUC.create(createDto);
     return {
       message: 'Receta creada exitosamente',
@@ -52,7 +54,9 @@ export class RecipeController {
   async updateByProduct(
     @Param('productId') productId: string,
     @Body() updateDto: UpdateRecipeDto,
+    @Req() req: any,
   ) {
+    updateDto.organizationalId = req.user?.organizationalId ?? updateDto.organizationalId;
     const recipes = await this._recipeUC.updateByProduct(
       parseInt(productId),
       updateDto,
