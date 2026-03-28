@@ -5,6 +5,7 @@ import { ProductRepository } from './../../shared/repositories/product.repositor
 import { TaxeTypeRepository } from './../../shared/repositories/taxeType.repository';
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
   InternalServerErrorException,
@@ -24,6 +25,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GeneralInvoiceDetaillService } from 'src/shared/services/generalInvoiceDetaill.service';
 import { In } from 'typeorm';
+import { Invoice } from './../../shared/entities/invoice.entity';
 
 /**
  * Códigos de categoría que activan el flujo de recetas al ser vendidos.
@@ -34,6 +36,8 @@ const RECIPE_CATEGORY_CODES = ['RES'];
 
 @Injectable()
 export class InvoiceDetailService {
+  private readonly logger = new Logger(InvoiceDetailService.name);
+
   constructor(
     private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
     private readonly _invoiceRepository: InvoiceRepository,
@@ -54,13 +58,16 @@ export class InvoiceDetailService {
     createInvoiceDetailDto: CreateInvoiceDetailDto,
     skipTotalUpdate: boolean = false,
     skipEvent: boolean = false,
+    preloadedInvoice?: Invoice,
   ) {
     try {
       const [invoice, taxeType] = await Promise.all([
-        this._invoiceRepository.findOne({
-          where: { invoiceId },
-          relations: ['invoiceType', 'paidType', 'organizational'],
-        }),
+        preloadedInvoice
+          ? Promise.resolve(preloadedInvoice)
+          : this._invoiceRepository.findOne({
+              where: { invoiceId },
+              relations: ['invoiceType', 'paidType', 'organizational'],
+            }),
         createInvoiceDetailDto.taxeTypeId
           ? this._taxeTypeRepository.findOne({
               where: { taxeTypeId: createInvoiceDetailDto.taxeTypeId },
@@ -142,7 +149,9 @@ export class InvoiceDetailService {
         invoice,
         startDate: createInvoiceDetailDto.startDate,
         endDate: createInvoiceDetailDto.endDate,
-        ...(invoice.organizational && { organizational: invoice.organizational }),
+        ...(invoice.organizational && {
+          organizational: invoice.organizational,
+        }),
       });
 
       if (product) detail.product = product;
@@ -393,59 +402,349 @@ export class InvoiceDetailService {
     invoiceId: number,
     dtos: CreateInvoiceDetailDto[],
   ): Promise<any[]> {
-    const invoiceBefore = await this._invoiceRepository.findOne({
-      where: { invoiceId },
-      relations: ['invoiceType'],
-    });
-    const hadOrderTime = !!invoiceBefore?.orderTime;
-    const isQuote = invoiceBefore?.invoiceType?.code === 'CO';
+    if (!dtos.length) return [];
 
-    const results: any[] = [];
+    const taxeTypeIds = [
+      ...new Set(dtos.filter((d) => d.taxeTypeId).map((d) => d.taxeTypeId)),
+    ];
+    const productIds = [
+      ...new Set(
+        dtos.filter((d) => d.productId).map((d) => Number(d.productId)),
+      ),
+    ];
+    const excursionIds = [
+      ...new Set(
+        dtos.filter((d) => d.excursionId).map((d) => Number(d.excursionId)),
+      ),
+    ];
+    const accommodationIds = [
+      ...new Set(
+        dtos
+          .filter((d) => d.accommodationId)
+          .map((d) => Number(d.accommodationId)),
+      ),
+    ];
+
+    const [invoice, taxeTypes, products, excursions, accommodations] =
+      await Promise.all([
+        this._invoiceRepository.findOne({
+          where: { invoiceId },
+          relations: ['invoiceType', 'paidType', 'organizational'],
+        }),
+        taxeTypeIds.length
+          ? this._taxeTypeRepository.find({
+              where: { taxeTypeId: In(taxeTypeIds) },
+            })
+          : Promise.resolve([]),
+        productIds.length
+          ? this._productRepository.find({
+              where: { productId: In(productIds) },
+              relations: ['categoryType'],
+            })
+          : Promise.resolve([]),
+        excursionIds.length
+          ? this._excursionRepository.find({
+              where: { excursionId: In(excursionIds) },
+            })
+          : Promise.resolve([]),
+        accommodationIds.length
+          ? this._accommodationRepository.find({
+              where: { accommodationId: In(accommodationIds) },
+              relations: ['stateType'],
+            })
+          : Promise.resolve([]),
+      ]);
+
+    if (!invoice)
+      throw new NotFoundException(`Factura con ID ${invoiceId} no encontrada`);
+
+    const taxeTypeMap = new Map(taxeTypes.map((t) => [t.taxeTypeId, t]));
+    const productMap = new Map(products.map((p) => [p.productId, p]));
+    const excursionMap = new Map(excursions.map((e) => [e.excursionId, e]));
+    const accommodationMap = new Map(
+      accommodations.map((a) => [a.accommodationId, a]),
+    );
+
+    const hadOrderTime = !!invoice.orderTime;
+    const isQuote = invoice.invoiceType?.code === 'CO';
+    const isSale = invoice.invoiceType?.code === 'FV';
+    const isBuy = invoice.invoiceType?.code === 'FC';
+
+    const resProductIds = products
+      .filter((p) =>
+        RECIPE_CATEGORY_CODES.includes(p.categoryType?.code?.toUpperCase()),
+      )
+      .map((p) => p.productId);
+
+    const accommodationsWithDate = dtos.filter(
+      (d) => d.accommodationId && d.startDate && d.endDate,
+    );
+
+    const [recipeRows, ocupadoState] = await Promise.all([
+      resProductIds.length
+        ? this._recipeRepository
+            .createQueryBuilder('r')
+            .select('"r"."productId"', 'productId')
+            .where('"r"."productId" IN (:...ids)', { ids: resProductIds })
+            .distinct(true)
+            .getRawMany<{ productId: number }>()
+        : Promise.resolve([]),
+      accommodationIds.length
+        ? this._stateTypeRepository.findOne({
+            where: { name: In(['Ocupado', 'OCUPADO']) },
+          })
+        : Promise.resolve(null),
+
+      Promise.all(
+        accommodationsWithDate.map((dto) =>
+          this._invoiceDetaillRepository
+            .createQueryBuilder('detail')
+            .leftJoinAndSelect('detail.invoice', 'inv')
+            .leftJoinAndSelect('inv.paidType', 'paidType')
+            .where('detail.accommodation = :id', { id: dto.accommodationId })
+            .andWhere('detail.startDate < :end AND detail.endDate > :start', {
+              start: dto.startDate,
+              end: dto.endDate,
+            })
+            .getOne()
+            .then((ov) => {
+              if (
+                ov?.invoice?.paidType?.name &&
+                [
+                  'Reservado - Pagado',
+                  'Reservado - Pendiente',
+                  'RESERVADO - PAGADO',
+                  'RESERVADO - PENDIENTE',
+                ].includes(ov.invoice.paidType.name.trim())
+              ) {
+                throw new BadRequestException(
+                  `El hospedaje ya está reservado entre ${dto.startDate} y ${dto.endDate}`,
+                );
+              }
+            }),
+        ),
+      ),
+    ]);
+
+    const recipeProductSet = new Set(
+      recipeRows.map((r) => Number(r.productId)),
+    );
+
+    const detailEntities: any[] = [];
+    const stockOps: Promise<any>[] = [];
+    const recipeConsumeItems: { productId: number; amount: number }[] = [];
+    const accommodationOps: Promise<any>[] = [];
+    const excursionOps: Promise<any>[] = [];
+    let hasResProduct = false;
+    let firstResProductName: string | null = null;
+
     for (const dto of dtos) {
-      results.push(await this.create(invoiceId, dto, true, true));
-    }
+      const taxeType = dto.taxeTypeId ? taxeTypeMap.get(dto.taxeTypeId) : null;
+      if (dto.taxeTypeId && !taxeType)
+        throw new NotFoundException('Tipo de impuesto no encontrado');
 
-    await this._generalInvoiceDetaillService.updateInvoiceTotal(invoiceId);
+      const taxRate = taxeType?.percentage
+        ? taxeType.percentage > 1
+          ? taxeType.percentage / 100
+          : taxeType.percentage
+        : 0;
 
-    const invoice = await this._invoiceRepository.findOne({
-      where: { invoiceId },
-    });
+      const amount = Number(dto.amount);
+      if (isNaN(amount) || amount <= 0)
+        throw new BadRequestException('La cantidad debe ser mayor a cero');
 
-    if (
-      invoice &&
-      invoice.tableNumber &&
-      invoice.tableNumber !== '0' &&
-      invoice.tableNumber !== ''
-    ) {
-      this._ordersGateway.emitInvoiceItemAdded(invoiceId, {
-        details: results,
-        total: invoice.total,
-        subtotalWithTax: invoice.subtotalWithTax,
-        subtotalWithoutTax: invoice.subtotalWithoutTax,
+      let priceBuy = 0;
+      let priceWithoutTax = 0;
+      let product: any = null;
+      let isProduct = false;
+
+      if (dto.productId) {
+        product = productMap.get(Number(dto.productId));
+        if (!product) throw new NotFoundException('Producto no encontrado');
+        if (!product.isActive)
+          throw new BadRequestException('Este producto está inactivo');
+        const prices = this._generalInvoiceDetaillService.getHistoricalPrices(
+          product,
+          dto,
+        );
+        priceBuy = prices.priceBuy;
+        priceWithoutTax = prices.priceWithoutTax;
+        isProduct = true;
+      } else {
+        priceBuy = Number(dto.priceBuy) || 0;
+        priceWithoutTax = Number(dto.priceWithoutTax) || 0;
+      }
+
+      if (isNaN(priceWithoutTax) || priceWithoutTax < 0)
+        throw new BadRequestException('El precio sin impuesto no es válido');
+
+      const priceWithTax = Number((priceWithoutTax * (1 + taxRate)).toFixed(2));
+      const taxe = Number((priceWithTax - priceWithoutTax).toFixed(2));
+      const subtotal = Number((amount * priceWithTax).toFixed(2));
+
+      const detail = this._invoiceDetaillRepository.create({
+        amount,
+        priceBuy,
+        priceWithoutTax,
+        priceWithTax,
+        taxe,
+        subtotal,
+        taxeType,
+        invoice,
+        startDate: dto.startDate,
+        endDate: dto.endDate,
+        ...(invoice.organizational && {
+          organizational: invoice.organizational,
+        }),
       });
-    }
 
-    if (!hadOrderTime && !isQuote) {
-      const productIds = dtos
-        .filter((dto) => dto.productId)
-        .map((dto) => Number(dto.productId));
+      if (product) detail.product = product;
 
-      if (productIds.length > 0) {
-        const firstResProduct = await this._productRepository.findOne({
-          where: { productId: In(productIds), categoryType: { code: 'RES' } },
-          relations: ['categoryType'],
-        });
+      if (dto.accommodationId) {
+        const accommodation = accommodationMap.get(Number(dto.accommodationId));
+        if (!accommodation)
+          throw new NotFoundException('Hospedaje no encontrado');
+        if (!accommodation.stateType)
+          throw new BadRequestException(
+            'El alojamiento no tiene un estado definido',
+          );
+        const stateName = accommodation.stateType.name?.toString().trim();
+        if (!stateName)
+          throw new BadRequestException(
+            'El nombre del estado no está definido',
+          );
+        if (stateName !== 'Disponible' && stateName !== 'DISPONIBLE')
+          throw new BadRequestException(
+            `El hospedaje no está disponible (estado actual: ${stateName})`,
+          );
 
-        if (firstResProduct) {
-          this._eventEmitter.emit('invoice.recipe_item.added', {
-            invoiceId,
-            productName: firstResProduct.name,
+        detail.accommodation = accommodation;
+
+        if (!isQuote && dto.startDate) {
+          const diffDays = Math.ceil(
+            (new Date(dto.startDate).getTime() - new Date().getTime()) /
+              (1000 * 60 * 60 * 24),
+          );
+          if (diffDays <= 2 && ocupadoState) {
+            accommodation.stateType = ocupadoState;
+            accommodationOps.push(
+              this._accommodationRepository.save(accommodation),
+            );
+          }
+        }
+      }
+
+      if (dto.excursionId) {
+        const excursion = excursionMap.get(Number(dto.excursionId));
+        if (!excursion) throw new NotFoundException('Excursión no encontrada');
+        detail.excursion = excursion;
+        if (isBuy) {
+          excursionOps.push(
+            this._excursionRepository.save(
+              Object.assign(excursion, { priceBuy: priceWithoutTax }),
+            ),
+          );
+        }
+      }
+
+      detailEntities.push(detail);
+
+      if (isProduct) {
+        const categoryCode = product.categoryType?.code?.toUpperCase();
+        const isRecipeProduct = RECIPE_CATEGORY_CODES.includes(categoryCode);
+        const hasRecipe =
+          isRecipeProduct && recipeProductSet.has(product.productId);
+
+        if (isQuote) {
+          this._eventEmitter.emit('invoice.detail.cotizacion', {
+            invoice,
+            product,
           });
+        } else if (isSale) {
+          if (hasRecipe) {
+            hasResProduct = true;
+            if (!firstResProductName) firstResProductName = product.name;
+            recipeConsumeItems.push({ productId: product.productId, amount });
+          } else {
+            stockOps.push(
+              this._productRepository.decrement(
+                { productId: product.productId },
+                'amount',
+                amount,
+              ),
+            );
+          }
+        } else if (isBuy) {
+          stockOps.push(
+            Promise.all([
+              this._productRepository.increment(
+                { productId: product.productId },
+                'amount',
+                amount,
+              ),
+              this._productRepository.update(
+                { productId: product.productId },
+                { priceBuy: priceWithoutTax },
+              ),
+            ]),
+          );
         }
       }
     }
 
-    return results;
+    const batchOps: Promise<any>[] = [
+      this._invoiceDetaillRepository.save(detailEntities),
+      ...stockOps,
+      ...accommodationOps,
+      ...excursionOps,
+    ];
+
+    if (recipeConsumeItems.length) {
+      batchOps.push(
+        this._recipeService.consumeIngredientsBatch(recipeConsumeItems),
+      );
+    }
+    if (hasResProduct && !invoice.orderTime) {
+      batchOps.push(
+        this._invoiceRepository.update(invoiceId, {
+          orderTime: new Date(),
+        }) as Promise<any>,
+      );
+    }
+
+    const [savedDetails] = await Promise.all(batchOps);
+
+    await this._generalInvoiceDetaillService.updateInvoiceTotal(invoiceId);
+
+    if (
+      invoice.tableNumber &&
+      invoice.tableNumber !== '0' &&
+      invoice.tableNumber !== ''
+    ) {
+      const updatedInvoice = await this._invoiceRepository.findOne({
+        where: { invoiceId },
+      });
+      this._ordersGateway.emitInvoiceItemAdded(invoiceId, {
+        details: Array.isArray(savedDetails) ? savedDetails : [savedDetails],
+        total: updatedInvoice?.total,
+        subtotalWithTax: updatedInvoice?.subtotalWithTax,
+        subtotalWithoutTax: updatedInvoice?.subtotalWithoutTax,
+      });
+    }
+
+    this._eventEmitter.emit('invoice.detail.created', {
+      invoice,
+      isProduct: dtos.some((d) => d.productId),
+    });
+
+    if (!hadOrderTime && !isQuote && hasResProduct && firstResProductName) {
+      this._eventEmitter.emit('invoice.recipe_item.added', {
+        invoiceId,
+        productName: firstResProductName,
+      });
+    }
+
+    return Array.isArray(savedDetails) ? savedDetails : [savedDetails];
   }
 
   /**

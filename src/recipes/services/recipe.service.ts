@@ -15,15 +15,17 @@ import {
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { In, EntityManager } from 'typeorm';
+import { In } from 'typeorm';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
-import { Product } from './../../shared/entities/product.entity';
 
 @Injectable()
 export class RecipeService {
+  private readonly logger = new Logger(RecipeService.name);
+
   constructor(
     private readonly _recipeRepository: RecipeRepository,
     private readonly _productRepository: ProductRepository,
@@ -489,42 +491,29 @@ export class RecipeService {
       .createQueryBuilder('recipe')
       .leftJoinAndSelect('recipe.product', 'product')
       .leftJoinAndSelect('recipe.ingredient', 'ingredient')
-      .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
-      .leftJoinAndSelect('ingredient.categoryType', 'categoryType')
       .where('product.productId = :productId', { productId })
       .getMany();
 
     const ingredientIds = recipes.map((r) => r.ingredient.productId);
     const subRecipeRows = await this._recipeRepository
       .createQueryBuilder('r')
-      .select('r.productProductId', 'productId')
-      .where('r.productProductId IN (:...ids)', { ids: ingredientIds })
+      .select('"r"."productId"', 'productId')
+      .where('"r"."productId" IN (:...ids)', { ids: ingredientIds })
       .distinct(true)
       .getRawMany<{ productId: number }>();
-    const subRecipeSet = new Set(subRecipeRows.map((r) => r.productId));
+    const subRecipeSet = new Set(subRecipeRows.map((r) => Number(r.productId)));
 
+    const ops: Promise<any>[] = [];
     for (const recipe of recipes) {
-      const quantityToReduce = Number(recipe.quantity) * portions;
-      const ingredient = recipe.ingredient;
-
-      if (subRecipeSet.has(ingredient.productId)) {
-        await this.consumeIngredients(
-          ingredient.productId,
-          quantityToReduce,
-          visited,
-        );
+      const qty = Number(recipe.quantity) * portions;
+      const ingredientId = recipe.ingredient.productId;
+      if (subRecipeSet.has(ingredientId)) {
+        ops.push(this.consumeIngredients(ingredientId, qty, visited));
       } else {
-        const ingredientFresh = await this._productRepository.findOne({
-          where: { productId: ingredient.productId },
-        });
-
-        if (!ingredientFresh) continue;
-
-        ingredientFresh.amount =
-          Number(ingredientFresh.amount) - quantityToReduce;
-        await this._productRepository.save(ingredientFresh);
+        ops.push(this._productRepository.decrement({ productId: ingredientId }, 'amount', qty));
       }
     }
+    await Promise.all(ops);
   }
 
   /**
@@ -538,67 +527,168 @@ export class RecipeService {
     productId: number,
     portions: number = 1,
     visited: Set<number> = new Set(),
-    manager?: EntityManager,
   ): Promise<void> {
-    if (visited.has(productId)) {
-      return;
-    }
+    if (visited.has(productId)) return;
     visited.add(productId);
 
     const recipes = await this._recipeRepository
       .createQueryBuilder('recipe')
       .leftJoinAndSelect('recipe.product', 'product')
       .leftJoinAndSelect('recipe.ingredient', 'ingredient')
-      .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
-      .leftJoinAndSelect('ingredient.categoryType', 'categoryType')
       .where('product.productId = :productId', { productId })
       .getMany();
 
-    if (!recipes || recipes.length === 0) {
-      return;
-    }
+    if (!recipes || recipes.length === 0) return;
 
     const ingredientIds = recipes.map((r) => r.ingredient.productId);
     const subRecipeRows = await this._recipeRepository
       .createQueryBuilder('r')
-      .select('r.productProductId', 'productId')
-      .where('r.productProductId IN (:...ids)', { ids: ingredientIds })
+      .select('"r"."productId"', 'productId')
+      .where('"r"."productId" IN (:...ids)', { ids: ingredientIds })
       .distinct(true)
       .getRawMany<{ productId: number }>();
-    const subRecipeSet = new Set(subRecipeRows.map((r) => r.productId));
+    const subRecipeSet = new Set(subRecipeRows.map((r) => Number(r.productId)));
 
+    const ops: Promise<any>[] = [];
     for (const recipe of recipes) {
-      const quantityToRestore = Number(recipe.quantity) * portions;
-      const ingredient = recipe.ingredient;
-
-      if (subRecipeSet.has(ingredient.productId)) {
-        await this.restoreIngredients(
-          ingredient.productId,
-          quantityToRestore,
-          visited,
-          manager,
-        );
+      const qty = Number(recipe.quantity) * portions;
+      const ingredientId = recipe.ingredient.productId;
+      if (subRecipeSet.has(ingredientId)) {
+        ops.push(this.restoreIngredients(ingredientId, qty, visited));
       } else {
-        const ingredientFresh = manager
-          ? await manager.findOne(Product, {
-              where: { productId: ingredient.productId },
-            })
-          : await this._productRepository.findOne({
-              where: { productId: ingredient.productId },
-            });
+        ops.push(this._productRepository.increment({ productId: ingredientId }, 'amount', qty));
+      }
+    }
+    await Promise.all(ops);
+  }
 
-        if (!ingredientFresh) continue;
+  /**
+   * Versión batch de consumeIngredients: procesa varios productos receta en 2 queries
+   * (una para todas las recetas, otra para detectar sub-recetas) en lugar de 2×N queries.
+   */
+  async consumeIngredientsBatch(
+    items: { productId: number; amount: number }[],
+    visited: Set<number> = new Set(),
+  ): Promise<void> {
+    const unvisited = items.filter((i) => !visited.has(i.productId));
+    if (!unvisited.length) return;
+    unvisited.forEach((i) => visited.add(i.productId));
 
-        ingredientFresh.amount =
-          Number(ingredientFresh.amount) + quantityToRestore;
+    const productIds = unvisited.map((i) => i.productId);
 
-        if (manager) {
-          await manager.save(Product, ingredientFresh);
+    const allRecipes = await this._recipeRepository
+      .createQueryBuilder('recipe')
+      .leftJoinAndSelect('recipe.product', 'product')
+      .leftJoinAndSelect('recipe.ingredient', 'ingredient')
+      .where('product.productId IN (:...ids)', { ids: productIds })
+      .getMany();
+
+    if (!allRecipes.length) return;
+
+    const recipesByProduct = new Map<number, Recipe[]>();
+    for (const recipe of allRecipes) {
+      const pid = recipe.product.productId;
+      if (!recipesByProduct.has(pid)) recipesByProduct.set(pid, []);
+      recipesByProduct.get(pid)!.push(recipe);
+    }
+
+    const ingredientIds = [...new Set(allRecipes.map((r) => r.ingredient.productId))];
+
+    const subRecipeRows = ingredientIds.length
+      ? await this._recipeRepository
+          .createQueryBuilder('r')
+          .select('"r"."productId"', 'productId')
+          .where('"r"."productId" IN (:...ids)', { ids: ingredientIds })
+          .distinct(true)
+          .getRawMany<{ productId: number }>()
+      : [];
+    const subRecipeSet = new Set(subRecipeRows.map((r) => Number(r.productId)));
+
+    const decrementMap = new Map<number, number>();
+    const subItems: { productId: number; amount: number }[] = [];
+
+    for (const item of unvisited) {
+      for (const recipe of recipesByProduct.get(item.productId) ?? []) {
+        const qty = Number(recipe.quantity) * item.amount;
+        const ingredientId = recipe.ingredient.productId;
+        if (subRecipeSet.has(ingredientId)) {
+          subItems.push({ productId: ingredientId, amount: qty });
         } else {
-          await this._productRepository.save(ingredientFresh);
+          decrementMap.set(ingredientId, (decrementMap.get(ingredientId) ?? 0) + qty);
         }
       }
     }
+
+    const ops: Promise<any>[] = [];
+    for (const [id, delta] of decrementMap.entries()) {
+      ops.push(this._productRepository.decrement({ productId: id }, 'amount', delta));
+    }
+    if (subItems.length) ops.push(this.consumeIngredientsBatch(subItems, visited));
+    await Promise.all(ops);
+  }
+
+  /**
+   * Versión batch de restoreIngredients: mismo principio que consumeIngredientsBatch.
+   */
+  async restoreIngredientsBatch(
+    items: { productId: number; portions: number }[],
+    visited: Set<number> = new Set(),
+  ): Promise<void> {
+    const unvisited = items.filter((i) => !visited.has(i.productId));
+    if (!unvisited.length) return;
+    unvisited.forEach((i) => visited.add(i.productId));
+
+    const productIds = unvisited.map((i) => i.productId);
+
+    const allRecipes = await this._recipeRepository
+      .createQueryBuilder('recipe')
+      .leftJoinAndSelect('recipe.product', 'product')
+      .leftJoinAndSelect('recipe.ingredient', 'ingredient')
+      .where('product.productId IN (:...ids)', { ids: productIds })
+      .getMany();
+
+    if (!allRecipes.length) return;
+
+    const recipesByProduct = new Map<number, Recipe[]>();
+    for (const recipe of allRecipes) {
+      const pid = recipe.product.productId;
+      if (!recipesByProduct.has(pid)) recipesByProduct.set(pid, []);
+      recipesByProduct.get(pid)!.push(recipe);
+    }
+
+    const ingredientIds = [...new Set(allRecipes.map((r) => r.ingredient.productId))];
+
+    const subRecipeRows = ingredientIds.length
+      ? await this._recipeRepository
+          .createQueryBuilder('r')
+          .select('"r"."productId"', 'productId')
+          .where('"r"."productId" IN (:...ids)', { ids: ingredientIds })
+          .distinct(true)
+          .getRawMany<{ productId: number }>()
+      : [];
+    const subRecipeSet = new Set(subRecipeRows.map((r) => Number(r.productId)));
+
+    const incrementMap = new Map<number, number>();
+    const subItems: { productId: number; portions: number }[] = [];
+
+    for (const item of unvisited) {
+      for (const recipe of recipesByProduct.get(item.productId) ?? []) {
+        const qty = Number(recipe.quantity) * item.portions;
+        const ingredientId = recipe.ingredient.productId;
+        if (subRecipeSet.has(ingredientId)) {
+          subItems.push({ productId: ingredientId, portions: qty });
+        } else {
+          incrementMap.set(ingredientId, (incrementMap.get(ingredientId) ?? 0) + qty);
+        }
+      }
+    }
+
+    const ops: Promise<any>[] = [];
+    for (const [id, delta] of incrementMap.entries()) {
+      ops.push(this._productRepository.increment({ productId: id }, 'amount', delta));
+    }
+    if (subItems.length) ops.push(this.restoreIngredientsBatch(subItems, visited));
+    await Promise.all(ops);
   }
 
   /**

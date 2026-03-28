@@ -16,6 +16,7 @@ import { Organizational } from './../../shared/entities/organizational.entity';
 import {
   Injectable,
   BadRequestException,
+  Logger,
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
@@ -40,6 +41,8 @@ import { RecipeService } from '../../recipes/services/recipe.service';
 
 @Injectable()
 export class InvoiceService {
+  private readonly logger = new Logger(InvoiceService.name);
+
   constructor(
     private readonly _invoiceRepository: InvoiceRepository,
     private readonly _invoiceTypeRepository: InvoiceTypeRepository,
@@ -603,122 +606,114 @@ export class InvoiceService {
       throw new NotFoundException('Factura no encontrada');
     }
 
+    const isCompra = invoice.invoiceType.code === 'FC';
+    const isVenta = invoice.invoiceType.code === 'FV';
+
+    const productIds: number[] = [];
+    const hasAccommodations = invoice.invoiceDetails.some(
+      (d) => d.accommodation,
+    );
+    let hasProducts = false;
+
+    for (const detail of invoice.invoiceDetails) {
+      if (detail.product) {
+        hasProducts = true;
+        productIds.push(detail.product.productId);
+      }
+    }
+
+    const [allProducts, disponibleState] = await Promise.all([
+      productIds.length
+        ? this._productRepository.find({
+            where: { productId: In(productIds) },
+            relations: ['categoryType'],
+          })
+        : Promise.resolve([]),
+      hasAccommodations
+        ? this._invoiceRepository.manager.findOne(StateType, {
+            where: { name: In(['Disponible', 'DISPONIBLE']) },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    const productsMap = new Map<number, Product>(
+      allProducts.map((p) => [p.productId, p]),
+    );
+
+    const recipeProductsToRestore: { productId: number; portions: number }[] =
+      [];
+    const stockOps: { productId: number; delta: number }[] = [];
+    const accommodationsToUpdate: any[] = [];
+
+    for (const detail of invoice.invoiceDetails) {
+      if (detail.product) {
+        const product = productsMap.get(detail.product.productId);
+        if (!product)
+          throw new Error(`Producto ${detail.product.productId} no encontrado`);
+
+        const detailAmount = Number(detail.amount ?? 0);
+        const categoryCode = product.categoryType?.code?.toUpperCase();
+        const isRecipeProduct = ['RES'].includes(categoryCode);
+
+        if (isCompra) {
+          stockOps.push({ productId: product.productId, delta: -detailAmount });
+        } else if (isVenta) {
+          if (isRecipeProduct) {
+            recipeProductsToRestore.push({
+              productId: product.productId,
+              portions: detailAmount,
+            });
+          } else {
+            stockOps.push({
+              productId: product.productId,
+              delta: detailAmount,
+            });
+          }
+        }
+      }
+
+      if (detail.accommodation && disponibleState) {
+        detail.accommodation.stateType = disponibleState;
+        accommodationsToUpdate.push(detail.accommodation);
+      }
+    }
+
+    if (recipeProductsToRestore.length) {
+      await this._recipeService.restoreIngredientsBatch(
+        recipeProductsToRestore,
+      );
+    }
+
     const queryRunner =
       this._invoiceRepository.manager.connection.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      const isCompra = invoice.invoiceType.code === 'FC';
-      const isVenta = invoice.invoiceType.code === 'FV';
-      let hasProducts = false;
-
-      const disponibleState = await queryRunner.manager.findOne(StateType, {
-        where: {
-          name: In(['Disponible', 'DISPONIBLE']),
-        },
-      });
-
-      const productIds: number[] = [];
-      const recipeProductIdsToRestore: { id: number; amount: number }[] = [];
-
-      for (const detail of invoice.invoiceDetails) {
-        if (detail.product) {
-          hasProducts = true;
-          productIds.push(detail.product.productId);
-        }
+      const txOps: Promise<any>[] = stockOps.map(({ productId, delta }) =>
+        delta > 0
+          ? queryRunner.manager.increment(
+              Product,
+              { productId },
+              'amount',
+              delta,
+            )
+          : queryRunner.manager.decrement(
+              Product,
+              { productId },
+              'amount',
+              Math.abs(delta),
+            ),
+      );
+      if (accommodationsToUpdate.length) {
+        txOps.push(queryRunner.manager.save(accommodationsToUpdate));
       }
-
-      const productsMap = new Map<number, Product>();
-      if (productIds.length > 0) {
-        const allProducts = await queryRunner.manager.find(Product, {
-          where: { productId: In(productIds) },
-          relations: ['categoryType'],
-        });
-        for (const p of allProducts) {
-          productsMap.set(p.productId, p);
-        }
-      }
-
-      const changedProducts: Product[] = [];
-      const changedAccommodations = [];
-
-      for (const detail of invoice.invoiceDetails) {
-        if (detail.product) {
-          const product = productsMap.get(detail.product.productId);
-          if (!product) {
-            throw new Error(
-              `Producto ${detail.product.productId} no encontrado`,
-            );
-          }
-
-          const currentAmount = Number(product.amount ?? 0);
-          const detailAmount = Number(detail.amount ?? 0);
-
-          if (isNaN(currentAmount) || isNaN(detailAmount)) {
-            throw new Error(
-              `Stock inválido: product.amount=${product.amount}, detail.amount=${detail.amount}`,
-            );
-          }
-
-          const categoryCode = product.categoryType?.code?.toUpperCase();
-          const isRecipeProduct = ['RES'].includes(categoryCode);
-
-          let productChanged = false;
-
-          if (isCompra) {
-            product.amount = currentAmount - detailAmount;
-            productChanged = true;
-          } else if (isVenta) {
-            if (isRecipeProduct) {
-              recipeProductIdsToRestore.push({
-                id: product.productId,
-                amount: detailAmount,
-              });
-            } else {
-              product.amount = currentAmount + detailAmount;
-              productChanged = true;
-            }
-          } else {
-            productChanged = true;
-          }
-
-          if (productChanged) {
-            changedProducts.push(product);
-          }
-        }
-
-        if (detail.accommodation && disponibleState) {
-          detail.accommodation.stateType = disponibleState;
-          changedAccommodations.push(detail.accommodation);
-        }
-      }
-
-      const saveOps: Promise<any>[] = [];
-
-      if (changedProducts.length > 0) {
-        saveOps.push(queryRunner.manager.save(changedProducts));
-      }
-      if (changedAccommodations.length > 0) {
-        saveOps.push(queryRunner.manager.save(changedAccommodations));
-      }
-
-      await Promise.all(saveOps);
-
-      for (const recipe of recipeProductIdsToRestore) {
-        await this._recipeService.restoreIngredients(
-          recipe.id,
-          recipe.amount,
-          new Set(),
-        );
-      }
+      await Promise.all(txOps);
 
       await queryRunner.manager.delete(InvoiceDetaill, {
         invoice: { invoiceId },
       });
-
       await queryRunner.manager.delete(Invoice, { invoiceId });
-
       await queryRunner.commitTransaction();
 
       this._eventEmitter.emit('invoice.deleted', { invoice, hasProducts });
