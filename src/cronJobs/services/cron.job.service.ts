@@ -24,17 +24,13 @@ export class CronJobService {
     const appEnv = this._configService.get<string>('app.env');
 
     if (appEnv !== 'production') {
-      this.logger.log(
-        `Skipping daily automated backup (Environment: ${appEnv})`,
-      );
       return;
     }
 
-    this.logger.log('Executing daily automated backup...');
     try {
       await this._backupUC.performBackupAndUpload();
     } catch (error) {
-      this.logger.error(`Automated backup failed: ${error.message}`);
+      this.logger.error(`Automated backup failed: ${error.message}`, error.stack);
     }
   }
 }

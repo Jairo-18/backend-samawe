@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import archiver from 'archiver';
 import * as path from 'path';
@@ -9,6 +9,8 @@ import { PassThrough } from 'stream';
 
 @Injectable()
 export class BackupService {
+  private readonly logger = new Logger(BackupService.name);
+
   constructor(
     private readonly dataSource: DataSource,
     private readonly googleDriveService: GoogleDriveService,
@@ -24,7 +26,7 @@ export class BackupService {
       archive.pipe(res);
       await archive.finalize();
     } catch (error) {
-      console.error('Backup creation failed:', error);
+      this.logger.error('Backup creation failed', error.stack);
       if (!res.headersSent) {
         res.status(500).send('Failed to generate backup');
       }
@@ -53,7 +55,7 @@ export class BackupService {
     if (fs.existsSync(uploadsDir)) {
       archive.directory(uploadsDir, 'uploads');
     } else {
-      console.warn(`Uploads directory not found at: ${uploadsDir}`);
+      this.logger.warn(`Uploads directory not found at: ${uploadsDir}`);
     }
 
     return { archive, filename };

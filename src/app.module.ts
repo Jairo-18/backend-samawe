@@ -14,14 +14,12 @@ import { UserModule } from './user/user.module';
 import { AccommodationModule } from './accommodations/accommodation.module';
 import { InvoiceModule } from './invoices/invoice.module';
 import { EarningModule } from './earnings/earning.module';
-import { ScheduleModule } from '@nestjs/schedule';
 import { RecipeModule } from './recipes/recipe.module';
 import { MenuModule } from './menus/menu.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { SocketModule } from './socket/socket.module';
 import { NotificationsModule } from './notifications/notifications.module';
-import { BackupModule } from './backup/backup.module';
 import { OrganizationalModule } from './organizational/organizational.module';
 
 @Module({
@@ -42,8 +40,6 @@ import { OrganizationalModule } from './organizational/organizational.module';
           : '/app/uploads',
       serveRoot: '/uploads',
     }),
-    ScheduleModule.forRoot(),
-
     SharedModule.forRoot(),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     AccommodationModule,
@@ -58,7 +54,6 @@ import { OrganizationalModule } from './organizational/organizational.module';
     MenuModule,
     UserModule,
     NotificationsModule,
-    BackupModule,
     OrganizationalModule,
   ],
   controllers: [AppController],

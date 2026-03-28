@@ -9,9 +9,7 @@ export class BackupUC {
 
   async performBackupAndUpload(): Promise<string> {
     try {
-      const fileId = await this.backupService.executeFullBackupAndUpload();
-      this.logger.log(`Backup uploaded successfully. File ID: ${fileId}`);
-      return fileId;
+      return await this.backupService.executeFullBackupAndUpload();
     } catch (error) {
       this.logger.error(`Backup process failed: ${error.message}`);
       throw error;
