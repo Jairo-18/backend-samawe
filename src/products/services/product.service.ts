@@ -1,4 +1,5 @@
-﻿import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
+﻿import { RecipeRepository } from './../../shared/repositories/recipe.repository';
+import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
 import { OrganizationalRepository } from './../../shared/repositories/organizational.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
@@ -25,6 +26,7 @@ export class ProductService {
     private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
     private readonly _unitOfMeasureRepository: UnitOfMeasureRepository,
     private readonly _organizationalRepository: OrganizationalRepository,
+    private readonly _recipeRepository: RecipeRepository,
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
@@ -272,6 +274,16 @@ export class ProductService {
     if (invoiceDetailCount > 0) {
       throw new BadRequestException(
         `El producto ${product.name} está asociado a una factura y no puede eliminarse.`,
+      );
+    }
+
+    const recipeCount = await this._recipeRepository.count({
+      where: { product: { productId } },
+    });
+
+    if (recipeCount > 0) {
+      throw new BadRequestException(
+        `El producto ${product.name} está asociado a una receta y no puede eliminarse.`,
       );
     }
 
