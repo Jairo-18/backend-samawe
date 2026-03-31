@@ -12,6 +12,7 @@ import { IdentificationType } from './identificationType.entity';
 import { PersonType } from './personType.entity';
 import { PhoneCode } from './phoneCode.entity';
 import { OrganizationalMedia } from './organizationalMedia.entity';
+import { CorporateValue } from './corporateValue.entity';
 
 @Entity({ name: 'Organizational' })
 export class Organizational {
@@ -63,6 +64,98 @@ export class Organizational {
   @Column('varchar', { length: 20, nullable: true })
   secondaryColor?: string;
 
+  @Column('varchar', { length: 20, nullable: true })
+  tertiaryColor?: string;
+
+  // Home
+  @Column('varchar', { length: 200, nullable: true })
+  homeTitle?: string;
+
+  @Column('text', { nullable: true })
+  homeDescription?: string;
+
+  @Column('varchar', { length: 200, nullable: true })
+  experienceTitle?: string;
+
+  @Column('text', { nullable: true })
+  experienceDescription?: string;
+
+  @Column('varchar', { length: 200, nullable: true })
+  reservationTitle?: string;
+
+  @Column('text', { nullable: true })
+  reservationDescription?: string;
+
+  // About Us
+  @Column('varchar', { length: 200, nullable: true })
+  aboutUsTitle?: string;
+
+  @Column('text', { nullable: true })
+  aboutUsDescription?: string;
+
+  @Column('varchar', { length: 200, nullable: true })
+  missionTitle?: string;
+
+  @Column('text', { nullable: true })
+  missionDescription?: string;
+
+  @Column('varchar', { length: 200, nullable: true })
+  visionTitle?: string;
+
+  @Column('text', { nullable: true })
+  visionDescription?: string;
+
+  @Column('varchar', { length: 200, nullable: true })
+  historyTitle?: string;
+
+  @Column('text', { nullable: true })
+  historyDescription?: string;
+
+  // Gastronomy
+  @Column('varchar', { length: 200, nullable: true })
+  gastronomyTitle?: string;
+
+  @Column('text', { nullable: true })
+  gastronomyDescription?: string;
+
+  @Column('varchar', { length: 200, nullable: true })
+  gastronomyHistoryTitle?: string;
+
+  @Column('text', { nullable: true })
+  gastronomyHistoryDescription?: string;
+
+  @Column('varchar', { length: 200, nullable: true })
+  gastronomyKitchenTitle?: string;
+
+  @Column('text', { nullable: true })
+  gastronomyKitchenDescription?: string;
+
+  @Column('varchar', { length: 200, nullable: true })
+  gastronomyIngredientsTitle?: string;
+
+  @Column('text', { nullable: true })
+  gastronomyIngredientsDescription?: string;
+
+  // Accommodations
+  @Column('varchar', { length: 200, nullable: true })
+  accommodationsTitle?: string;
+
+  @Column('text', { nullable: true })
+  accommodationsDescription?: string;
+
+  // How to Arrive
+  @Column('text', { nullable: true })
+  howToArrivePublicTransportDescription?: string;
+
+  @Column('text', { nullable: true })
+  howToArrivePrivateTransportDescription?: string;
+
+  @Column('text', { nullable: true })
+  accessibilityDescription?: string;
+
+  @Column('varchar', { length: 500, nullable: true })
+  mapsUrl?: string;
+
   @Column('varchar', { length: 200, nullable: true })
   metaTitle?: string;
 
@@ -95,6 +188,12 @@ export class Organizational {
     (organizationalMedia) => organizationalMedia.organizational,
   )
   medias: OrganizationalMedia[];
+
+  @OneToMany(
+    () => CorporateValue,
+    (corporateValue) => corporateValue.organizational,
+  )
+  corporateValues: CorporateValue[];
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt?: Date;

@@ -7,7 +7,10 @@ import {
   UpdateOrganizationalDto,
   CreateOrganizationalMediaDto,
   UpdateOrganizationalMediaDto,
+  CreateCorporateValueDto,
+  UpdateCorporateValueDto,
 } from '../dtos/organizational.dto';
+import { CorporateValueRepository } from '../../shared/repositories/corporateValue.repository';
 import { IdentificationTypeRepository } from '../../shared/repositories/identificationType.repository';
 import { PersonTypeRepository } from '../../shared/repositories/personType.repository';
 import { PhoneCodeRepository } from '../../shared/repositories/phoneCode.repository';
@@ -23,6 +26,7 @@ export class OrganizationalService {
     private readonly _personTypeRepository: PersonTypeRepository,
     private readonly _phoneCodeRepository: PhoneCodeRepository,
     private readonly _localStorageService: LocalStorageService,
+    private readonly _corporateValueRepository: CorporateValueRepository,
   ) {}
 
   async create(dto: CreateOrganizationalDto) {
@@ -290,5 +294,55 @@ export class OrganizationalService {
     return await this._mediaTypeRepository.find({
       order: { mediaTypeId: 'ASC' },
     });
+  }
+
+  async getCorporateValues(organizationalId: string) {
+    await this.findOne(organizationalId);
+    return await this._corporateValueRepository.find({
+      where: { organizational: { organizationalId } },
+      order: { order: 'ASC' },
+    });
+  }
+
+  async createCorporateValue(
+    organizationalId: string,
+    dto: CreateCorporateValueDto,
+  ) {
+    const organizational = await this.findOne(organizationalId);
+    const result = await this._corporateValueRepository.insert({
+      ...dto,
+      order: dto.order ?? 0,
+      organizational,
+    });
+    return { rowId: result.identifiers[0].corporateValueId };
+  }
+
+  async updateCorporateValue(
+    corporateValueId: string,
+    dto: UpdateCorporateValueDto,
+  ) {
+    const value = await this._corporateValueRepository.findOne({
+      where: { corporateValueId },
+    });
+    if (!value) {
+      throw new HttpException(
+        'Valor corporativo no encontrado',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    await this._corporateValueRepository.update({ corporateValueId }, { ...dto });
+  }
+
+  async deleteCorporateValue(corporateValueId: string) {
+    const value = await this._corporateValueRepository.findOne({
+      where: { corporateValueId },
+    });
+    if (!value) {
+      throw new HttpException(
+        'Valor corporativo no encontrado',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    await this._corporateValueRepository.delete({ corporateValueId });
   }
 }

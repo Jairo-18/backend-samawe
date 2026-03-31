@@ -17,6 +17,8 @@ import {
   UpdateOrganizationalDto,
   CreateOrganizationalMediaDto,
   UpdateOrganizationalMediaDto,
+  CreateCorporateValueDto,
+  UpdateCorporateValueDto,
 } from '../dtos/organizational.dto';
 import { AuthGuard } from '@nestjs/passport';
 import {
@@ -193,5 +195,41 @@ export class OrganizationalController {
       message: 'Media eliminada correctamente',
       statusCode: HttpStatus.OK,
     };
+  }
+
+  @Get(':id/corporate-values')
+  async getCorporateValues(@Param('id') id: string) {
+    const values = await this._organizationalUC.getCorporateValues(id);
+    return { statusCode: HttpStatus.OK, data: values };
+  }
+
+  @Post(':id/corporate-values')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async createCorporateValue(
+    @Param('id') id: string,
+    @Body() dto: CreateCorporateValueDto,
+  ) {
+    const data = await this._organizationalUC.createCorporateValue(id, dto);
+    return { statusCode: HttpStatus.CREATED, data };
+  }
+
+  @Patch('corporate-values/:valueId')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async updateCorporateValue(
+    @Param('valueId') valueId: string,
+    @Body() dto: UpdateCorporateValueDto,
+  ) {
+    await this._organizationalUC.updateCorporateValue(valueId, dto);
+    return { message: 'Valor corporativo actualizado', statusCode: HttpStatus.OK };
+  }
+
+  @Delete('corporate-values/:valueId')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async deleteCorporateValue(@Param('valueId') valueId: string) {
+    await this._organizationalUC.deleteCorporateValue(valueId);
+    return { message: 'Valor corporativo eliminado', statusCode: HttpStatus.OK };
   }
 }

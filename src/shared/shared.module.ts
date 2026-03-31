@@ -72,9 +72,11 @@ import { PersonTypeRepository } from './repositories/personType.repository';
 import { Organizational } from './entities/organizational.entity';
 import { OrganizationalMedia } from './entities/organizationalMedia.entity';
 import { MediaType } from './entities/mediaType.entity';
+import { CorporateValue } from './entities/corporateValue.entity';
 import { OrganizationalRepository } from './repositories/organizational.repository';
 import { OrganizationalMediaRepository } from './repositories/organizationalMedia.repository';
 import { MediaTypeRepository } from './repositories/mediaType.repository';
+import { CorporateValueRepository } from './repositories/corporateValue.repository';
 
 @Module({})
 export class SharedModule {
@@ -161,6 +163,7 @@ export class SharedModule {
           Organizational,
           OrganizationalMedia,
           MediaType,
+          CorporateValue,
         ]),
 
         JwtModule.registerAsync({
@@ -235,6 +238,7 @@ export class SharedModule {
         OrganizationalRepository,
         OrganizationalMediaRepository,
         MediaTypeRepository,
+        CorporateValueRepository,
       ],
       exports: [
         TypeOrmModule,
@@ -276,6 +280,7 @@ export class SharedModule {
         OrganizationalRepository,
         OrganizationalMediaRepository,
         MediaTypeRepository,
+        CorporateValueRepository,
       ],
     };
   }

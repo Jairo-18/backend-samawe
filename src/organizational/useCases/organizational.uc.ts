@@ -5,6 +5,8 @@ import {
   UpdateOrganizationalDto,
   CreateOrganizationalMediaDto,
   UpdateOrganizationalMediaDto,
+  CreateCorporateValueDto,
+  UpdateCorporateValueDto,
 } from '../dtos/organizational.dto';
 
 @Injectable()
@@ -53,5 +55,21 @@ export class OrganizationalUC {
 
   async findAllMediaTypes() {
     return await this._organizationalService.findAllMediaTypes();
+  }
+
+  async getCorporateValues(organizationalId: string) {
+    return await this._organizationalService.getCorporateValues(organizationalId);
+  }
+
+  async createCorporateValue(organizationalId: string, dto: CreateCorporateValueDto) {
+    return await this._organizationalService.createCorporateValue(organizationalId, dto);
+  }
+
+  async updateCorporateValue(corporateValueId: string, dto: UpdateCorporateValueDto) {
+    return await this._organizationalService.updateCorporateValue(corporateValueId, dto);
+  }
+
+  async deleteCorporateValue(corporateValueId: string) {
+    return await this._organizationalService.deleteCorporateValue(corporateValueId);
   }
 }
