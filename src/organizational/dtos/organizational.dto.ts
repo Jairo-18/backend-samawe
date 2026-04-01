@@ -240,6 +240,16 @@ export class CreateOrganizationalDto {
   @IsString()
   videoUrl?: string;
 
+  @ApiPropertyOptional({ example: 'https://www.facebook.com/ecohotelsamawe' })
+  @IsOptional()
+  @IsString()
+  facebookUrl?: string;
+
+  @ApiPropertyOptional({ example: 'https://www.instagram.com/ecohotelsamawe' })
+  @IsOptional()
+  @IsString()
+  instagramUrl?: string;
+
   @ApiPropertyOptional({ example: 'Eco Hotel Samawé | Naturaleza y Bienestar' })
   @IsOptional()
   @IsString()

@@ -154,6 +154,12 @@ export class Organizational {
   @Column('varchar', { length: 500, nullable: true })
   videoUrl?: string;
 
+  @Column('varchar', { length: 500, nullable: true })
+  facebookUrl?: string;
+
+  @Column('varchar', { length: 500, nullable: true })
+  instagramUrl?: string;
+
   @Column('varchar', { length: 200, nullable: true })
   metaTitle?: string;
 
