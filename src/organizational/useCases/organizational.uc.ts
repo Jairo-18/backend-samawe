@@ -72,4 +72,12 @@ export class OrganizationalUC {
   async deleteCorporateValue(corporateValueId: string) {
     return await this._organizationalService.deleteCorporateValue(corporateValueId);
   }
+
+  async uploadCorporateValueImage(corporateValueId: string, imageUrl: string, imagePublicId: string) {
+    return await this._organizationalService.uploadCorporateValueImage(corporateValueId, imageUrl, imagePublicId);
+  }
+
+  async deleteCorporateValueImage(corporateValueId: string) {
+    return await this._organizationalService.deleteCorporateValueImage(corporateValueId);
+  }
 }

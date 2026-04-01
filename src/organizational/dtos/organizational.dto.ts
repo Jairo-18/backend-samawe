@@ -91,7 +91,6 @@ export class CreateOrganizationalDto {
   @IsString()
   tertiaryColor?: string;
 
-  // Home
   @ApiPropertyOptional({ example: 'Bienvenidos a Eco Hotel' })
   @IsOptional()
   @IsString()
@@ -122,7 +121,6 @@ export class CreateOrganizationalDto {
   @IsString()
   reservationDescription?: string;
 
-  // About Us
   @ApiPropertyOptional({ example: 'Conoce la esencia de Río de Oro' })
   @IsOptional()
   @IsString()
@@ -158,12 +156,13 @@ export class CreateOrganizationalDto {
   @IsString()
   historyTitle?: string;
 
-  @ApiPropertyOptional({ example: 'El Ecohotel nació como un sueño familiar...' })
+  @ApiPropertyOptional({
+    example: 'El Ecohotel nació como un sueño familiar...',
+  })
   @IsOptional()
   @IsString()
   historyDescription?: string;
 
-  // Gastronomy
   @ApiPropertyOptional({ example: 'Sabores que fluyen como el río' })
   @IsOptional()
   @IsString()
@@ -204,7 +203,6 @@ export class CreateOrganizationalDto {
   @IsString()
   gastronomyIngredientsDescription?: string;
 
-  // Accommodations
   @ApiPropertyOptional({ example: 'Habitaciones' })
   @IsOptional()
   @IsString()
@@ -215,8 +213,9 @@ export class CreateOrganizationalDto {
   @IsString()
   accommodationsDescription?: string;
 
-  // How to Arrive
-  @ApiPropertyOptional({ example: 'Terminal del norte, flota sotrasanvicente...' })
+  @ApiPropertyOptional({
+    example: 'Terminal del norte, flota sotrasanvicente...',
+  })
   @IsOptional()
   @IsString()
   howToArrivePublicTransportDescription?: string;
@@ -235,6 +234,11 @@ export class CreateOrganizationalDto {
   @IsOptional()
   @IsString()
   mapsUrl?: string;
+
+  @ApiPropertyOptional({ example: 'https://www.youtube.com/embed/abc123' })
+  @IsOptional()
+  @IsString()
+  videoUrl?: string;
 
   @ApiPropertyOptional({ example: 'Eco Hotel Samawé | Naturaleza y Bienestar' })
   @IsOptional()
@@ -333,6 +337,11 @@ export class CreateCorporateValueDto {
   @IsOptional()
   @IsNumber()
   order?: number;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/sostenibilidad.webp' })
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
 }
 
 export class UpdateCorporateValueDto extends CreateCorporateValueDto {}

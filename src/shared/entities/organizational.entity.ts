@@ -67,7 +67,6 @@ export class Organizational {
   @Column('varchar', { length: 20, nullable: true })
   tertiaryColor?: string;
 
-  // Home
   @Column('varchar', { length: 200, nullable: true })
   homeTitle?: string;
 
@@ -86,7 +85,6 @@ export class Organizational {
   @Column('text', { nullable: true })
   reservationDescription?: string;
 
-  // About Us
   @Column('varchar', { length: 200, nullable: true })
   aboutUsTitle?: string;
 
@@ -111,7 +109,6 @@ export class Organizational {
   @Column('text', { nullable: true })
   historyDescription?: string;
 
-  // Gastronomy
   @Column('varchar', { length: 200, nullable: true })
   gastronomyTitle?: string;
 
@@ -136,14 +133,12 @@ export class Organizational {
   @Column('text', { nullable: true })
   gastronomyIngredientsDescription?: string;
 
-  // Accommodations
   @Column('varchar', { length: 200, nullable: true })
   accommodationsTitle?: string;
 
   @Column('text', { nullable: true })
   accommodationsDescription?: string;
 
-  // How to Arrive
   @Column('text', { nullable: true })
   howToArrivePublicTransportDescription?: string;
 
@@ -155,6 +150,9 @@ export class Organizational {
 
   @Column('varchar', { length: 500, nullable: true })
   mapsUrl?: string;
+
+  @Column('varchar', { length: 500, nullable: true })
+  videoUrl?: string;
 
   @Column('varchar', { length: 200, nullable: true })
   metaTitle?: string;

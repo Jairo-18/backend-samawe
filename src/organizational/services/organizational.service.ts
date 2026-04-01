@@ -164,6 +164,25 @@ export class OrganizationalService {
 
   async delete(organizationalId: string) {
     await this.findOne(organizationalId);
+
+    const medias = await this._organizationalMediaRepository.find({
+      where: { organizational: { organizationalId } },
+    });
+    for (const media of medias) {
+      if (media.publicId) {
+        await this._localStorageService.deleteImage(media.publicId);
+      }
+    }
+
+    const corporateValues = await this._corporateValueRepository.find({
+      where: { organizational: { organizationalId } },
+    });
+    for (const value of corporateValues) {
+      if (value.imagePublicId) {
+        await this._localStorageService.deleteImage(value.imagePublicId);
+      }
+    }
+
     await this._organizationalRepository.delete({ organizationalId });
   }
 
@@ -333,6 +352,48 @@ export class OrganizationalService {
     await this._corporateValueRepository.update({ corporateValueId }, { ...dto });
   }
 
+  async uploadCorporateValueImage(
+    corporateValueId: string,
+    imageUrl: string,
+    imagePublicId: string,
+  ) {
+    const value = await this._corporateValueRepository.findOne({
+      where: { corporateValueId },
+    });
+    if (!value) {
+      throw new HttpException(
+        'Valor corporativo no encontrado',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    if (value.imagePublicId) {
+      await this._localStorageService.deleteImage(value.imagePublicId);
+    }
+    await this._corporateValueRepository.update(
+      { corporateValueId },
+      { imageUrl, imagePublicId },
+    );
+    return { imageUrl, imagePublicId };
+  }
+
+  async deleteCorporateValueImage(corporateValueId: string) {
+    const value = await this._corporateValueRepository.findOne({
+      where: { corporateValueId },
+    });
+    if (!value) {
+      throw new HttpException(
+        'Valor corporativo no encontrado',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    const publicId = value.imagePublicId;
+    await this._corporateValueRepository.update(
+      { corporateValueId },
+      { imageUrl: null, imagePublicId: null },
+    );
+    return publicId;
+  }
+
   async deleteCorporateValue(corporateValueId: string) {
     const value = await this._corporateValueRepository.findOne({
       where: { corporateValueId },
@@ -342,6 +403,9 @@ export class OrganizationalService {
         'Valor corporativo no encontrado',
         HttpStatus.NOT_FOUND,
       );
+    }
+    if (value.imagePublicId) {
+      await this._localStorageService.deleteImage(value.imagePublicId);
     }
     await this._corporateValueRepository.delete({ corporateValueId });
   }

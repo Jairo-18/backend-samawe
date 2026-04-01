@@ -17,6 +17,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { LocalStorageService } from '../../local-storage/services/local-storage.service';
 
 @Injectable()
 export class ProductService {
@@ -27,6 +28,7 @@ export class ProductService {
     private readonly _unitOfMeasureRepository: UnitOfMeasureRepository,
     private readonly _organizationalRepository: OrganizationalRepository,
     private readonly _recipeRepository: RecipeRepository,
+    private readonly _localStorageService: LocalStorageService,
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
@@ -285,6 +287,16 @@ export class ProductService {
       throw new BadRequestException(
         `El producto ${product.name} está asociado a una receta y no puede eliminarse.`,
       );
+    }
+
+    const productWithImages = await this._productRepository.findOne({
+      where: { productId },
+      relations: ['images'],
+    });
+    if (productWithImages?.images?.length) {
+      for (const image of productWithImages.images) {
+        await this._localStorageService.deleteImage(image.publicId);
+      }
     }
 
     await this._productRepository.delete(productId);

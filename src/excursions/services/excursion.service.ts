@@ -20,6 +20,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { LocalStorageService } from '../../local-storage/services/local-storage.service';
 
 @Injectable()
 export class ExcursionService {
@@ -29,6 +30,7 @@ export class ExcursionService {
     private readonly _stateTypeRepository: StateTypeRepository,
     private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
     private readonly _organizationalRepository: OrganizationalRepository,
+    private readonly _localStorageService: LocalStorageService,
   ) {}
 
   async create(createExcursionDto: CreateExcursionDto): Promise<Excursion> {
@@ -197,6 +199,16 @@ export class ExcursionService {
       throw new BadRequestException(
         `La excursión ${excursion.name} está asociada a una factura y no puede eliminarse.`,
       );
+    }
+
+    const excursionWithImages = await this._excursionRepository.findOne({
+      where: { excursionId },
+      relations: ['images'],
+    });
+    if (excursionWithImages?.images?.length) {
+      for (const image of excursionWithImages.images) {
+        await this._localStorageService.deleteImage(image.publicId);
+      }
     }
 
     await this._excursionRepository.delete(excursionId);

@@ -23,6 +23,12 @@ export class CorporateValue {
   @Column({ type: 'int', default: 0 })
   order: number;
 
+  @Column('varchar', { length: 500, nullable: true })
+  imageUrl?: string;
+
+  @Column('varchar', { length: 300, nullable: true })
+  imagePublicId?: string;
+
   @ManyToOne(
     () => Organizational,
     (organizational) => organizational.corporateValues,

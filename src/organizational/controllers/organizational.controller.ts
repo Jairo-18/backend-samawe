@@ -164,7 +164,7 @@ export class OrganizationalController {
       label: file.originalname,
     });
     return {
-      message: 'Media agregada correctamente',
+      message: 'Se ha subido el archivo correctamente',
       statusCode: HttpStatus.CREATED,
       data,
     };
@@ -180,7 +180,7 @@ export class OrganizationalController {
   ) {
     await this._organizationalUC.updateMedia(mediaId, dto);
     return {
-      message: 'Media actualizada correctamente',
+      message: 'Se ha actualizado el archivo correctamente',
       statusCode: HttpStatus.OK,
     };
   }
@@ -192,7 +192,7 @@ export class OrganizationalController {
   async deleteMedia(@Param('mediaId') mediaId: string) {
     await this._organizationalUC.deleteMedia(mediaId);
     return {
-      message: 'Media eliminada correctamente',
+      message: 'Se ha eliminado el archivo correctamente',
       statusCode: HttpStatus.OK,
     };
   }
@@ -222,7 +222,10 @@ export class OrganizationalController {
     @Body() dto: UpdateCorporateValueDto,
   ) {
     await this._organizationalUC.updateCorporateValue(valueId, dto);
-    return { message: 'Valor corporativo actualizado', statusCode: HttpStatus.OK };
+    return {
+      message: 'Valor corporativo actualizado',
+      statusCode: HttpStatus.OK,
+    };
   }
 
   @Delete('corporate-values/:valueId')
@@ -230,6 +233,44 @@ export class OrganizationalController {
   @UseGuards(AuthGuard())
   async deleteCorporateValue(@Param('valueId') valueId: string) {
     await this._organizationalUC.deleteCorporateValue(valueId);
-    return { message: 'Valor corporativo eliminado', statusCode: HttpStatus.OK };
+    return {
+      message: 'Valor corporativo eliminado',
+      statusCode: HttpStatus.OK,
+    };
+  }
+
+  @Post('corporate-values/:valueId/upload-image')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadCorporateValueImage(
+    @Param('valueId') valueId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const uploadResult = await this._localStorageService.saveImage(
+      file,
+      'corporate-values',
+    );
+    const data = await this._organizationalUC.uploadCorporateValueImage(
+      valueId,
+      uploadResult.imageUrl,
+      uploadResult.publicId,
+    );
+    return { statusCode: HttpStatus.OK, data };
+  }
+
+  @Delete('corporate-values/:valueId/image')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard())
+  async deleteCorporateValueImage(@Param('valueId') valueId: string) {
+    const publicId =
+      await this._organizationalUC.deleteCorporateValueImage(valueId);
+    if (publicId) {
+      await this._localStorageService.deleteImage(publicId);
+    }
+    return {
+      message: 'Imagen eliminada correctamente',
+      statusCode: HttpStatus.OK,
+    };
   }
 }

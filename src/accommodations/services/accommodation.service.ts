@@ -21,6 +21,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { LocalStorageService } from '../../local-storage/services/local-storage.service';
 
 @Injectable()
 export class AccommodationService {
@@ -31,6 +32,7 @@ export class AccommodationService {
     private readonly _stateTypeRepository: StateTypeRepository,
     private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
     private readonly _organizationalRepository: OrganizationalRepository,
+    private readonly _localStorageService: LocalStorageService,
   ) {}
 
   async create(
@@ -221,6 +223,16 @@ export class AccommodationService {
       throw new BadRequestException(
         `El hospedaje ${accommodation.name} está asociado a una factura y no puede eliminarse.`,
       );
+    }
+
+    const accommodationWithImages = await this._accommodationRepository.findOne({
+      where: { accommodationId },
+      relations: ['images'],
+    });
+    if (accommodationWithImages?.images?.length) {
+      for (const image of accommodationWithImages.images) {
+        await this._localStorageService.deleteImage(image.publicId);
+      }
     }
 
     await this._accommodationRepository.delete(accommodationId);
