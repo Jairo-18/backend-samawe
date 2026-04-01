@@ -5,13 +5,14 @@ export class MailTemplateService {
   recoveryPasswordTemplate(
     resetLink: string,
     fistName: string,
+    lastName: string,
     resetToken: string,
-    organizationName: string = 'Samawe',
-    primaryColor: string = '#06a606',
+    organizationName: string = 'Eco Hotel Samawé',
+    primaryColor: string = '#486E2B',
     logoUrl: string = '',
   ) {
-    const brandColor = primaryColor || '#06a606';
-    const orgName = organizationName || 'Samawe';
+    const brandColor = primaryColor || '#486E2B';
+    const orgName = organizationName || 'Eco Hotel Samawé';
 
     const logoHtml = logoUrl
       ? `<img src="${logoUrl}" alt="${orgName} Logo" style="max-height: 50px; display: block; margin: 0 auto; margin-bottom: 20px;">`
@@ -38,7 +39,7 @@ export class MailTemplateService {
                     </div>
 
                     <p style="color: #4b5563; font-size: 16px; line-height: 24px; margin-bottom: 20px;">
-                      ¡Hola <strong>${fistName || ''}</strong>!
+                      ¡Hola <strong>${fistName || ''} ${lastName || ''}</strong>!
                     </p>
                     
                     <p style="color: #4b5563; font-size: 16px; line-height: 24px; margin-bottom: 25px;">
@@ -78,9 +79,6 @@ export class MailTemplateService {
                   </td>
                 </tr>
               </table>
-              <div style="margin-top: 20px; text-align: center;">
-                <p style="color: #9ca3af; font-size: 12px;">Desarrollado con pasión para ${orgName}.</p>
-              </div>
             </td>
           </tr>
         </table>
