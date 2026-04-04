@@ -125,6 +125,67 @@ export function mapAccommodationDetail(
   };
 }
 
+export interface MostRequestedAccommodationDto {
+  accommodationId: number;
+  code: string;
+  name: string;
+  description?: string;
+  amountPerson: number;
+  amountRoom: number;
+  amountBathroom: number;
+  jacuzzi: boolean;
+  priceSale: number;
+  categoryType: { categoryTypeId: number; code: string; name: string } | null;
+  bedType: { bedTypeId: number; code: string; name: string } | null;
+  stateType: { stateTypeId: number; code: string; name: string } | null;
+  images: { accommodationImageId: number; imageUrl: string; publicId: string }[];
+  organizationalId: string | null;
+}
+
+export function mapMostRequestedAccommodation(
+  accommodation: Accommodation,
+): MostRequestedAccommodationDto {
+  return {
+    accommodationId: accommodation.accommodationId,
+    code: accommodation.code,
+    name: accommodation.name,
+    description: accommodation.description,
+    amountPerson: accommodation.amountPerson,
+    amountRoom: accommodation.amountRoom,
+    amountBathroom: accommodation.amountBathroom,
+    jacuzzi: accommodation.jacuzzi,
+    priceSale: accommodation.priceSale,
+    categoryType: accommodation.categoryType
+      ? {
+          categoryTypeId: accommodation.categoryType.categoryTypeId,
+          code: accommodation.categoryType.code,
+          name: accommodation.categoryType.name,
+        }
+      : null,
+    bedType: accommodation.bedType
+      ? {
+          bedTypeId: accommodation.bedType.bedTypeId,
+          code: accommodation.bedType.code,
+          name: accommodation.bedType.name,
+        }
+      : null,
+    stateType: accommodation.stateType
+      ? {
+          stateTypeId: accommodation.stateType.stateTypeId,
+          code: accommodation.stateType.code,
+          name: accommodation.stateType.name,
+        }
+      : null,
+    images:
+      accommodation.images?.map((img) => ({
+        accommodationImageId: img.accommodationImageId,
+        imageUrl: img.imageUrl,
+        publicId: img.publicId,
+      })) ?? [],
+    organizationalId: accommodation.organizational?.organizationalId ?? null,
+  };
+}
+
 export interface ExcursionDetailDto {
   excursionId: number;
   code: string;

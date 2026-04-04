@@ -12,6 +12,8 @@ import { AccommodationRepository } from './../../shared/repositories/accommodati
 import {
   mapAccommodationDetail,
   AccommodationDetailDto,
+  mapMostRequestedAccommodation,
+  MostRequestedAccommodationDto,
 } from './../../shared/mappers/entity-mappers';
 import {
   BadRequestException,
@@ -208,6 +210,31 @@ export class AccommodationService {
     }
 
     return mapAccommodationDetail(accommodation);
+  }
+
+  async getMostRequested(): Promise<MostRequestedAccommodationDto[]> {
+    const topTwo = await this._invoiceDetaillRepository
+      .createQueryBuilder('detail')
+      .select('detail.accommodationId', 'accommodationId')
+      .addSelect('COUNT(detail.accommodationId)', 'count')
+      .where('detail.accommodationId IS NOT NULL')
+      .groupBy('detail.accommodationId')
+      .orderBy('count', 'DESC')
+      .limit(2)
+      .getRawMany();
+
+    const accommodations = await Promise.all(
+      topTwo.map(({ accommodationId }) =>
+        this._accommodationRepository.findOne({
+          where: { accommodationId: Number(accommodationId) },
+          relations: ['categoryType', 'bedType', 'stateType', 'images'],
+        }),
+      ),
+    );
+
+    return accommodations
+      .filter(Boolean)
+      .map((a) => mapMostRequestedAccommodation(a));
   }
 
   async delete(accommodationId: number): Promise<void> {

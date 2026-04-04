@@ -53,7 +53,10 @@ export class UserService {
       });
 
       if (existingUserByEmail) {
-        throw new HttpException('El email ya está en uso', HttpStatus.CONFLICT);
+        throw new HttpException(
+          'El correo electrónico ya está en uso',
+          HttpStatus.CONFLICT,
+        );
       }
     }
 
@@ -66,7 +69,7 @@ export class UserService {
 
     if (existingUserByIdentification) {
       throw new HttpException(
-        'El usuario ya existe con esta identificación',
+        'Ya existe un usuario registrado con este número de identificación',
         HttpStatus.CONFLICT,
       );
     }
@@ -80,7 +83,7 @@ export class UserService {
 
     if (existingPhoneUser) {
       throw new HttpException(
-        'Este número ya está en uso',
+        'Este número de teléfono ya está en uso',
         HttpStatus.CONFLICT,
       );
     }
@@ -150,7 +153,10 @@ export class UserService {
       });
 
       if (existingUserByEmail) {
-        throw new HttpException('El email ya está en uso', HttpStatus.CONFLICT);
+        throw new HttpException(
+          'El correo electrónico ya está en uso',
+          HttpStatus.CONFLICT,
+        );
       }
     }
 
@@ -163,7 +169,7 @@ export class UserService {
 
     if (existingUserByIdentification) {
       throw new HttpException(
-        'El usuario ya existe con esta identificación',
+        'Ya existe un usuario registrado con este número de identificación',
         HttpStatus.CONFLICT,
       );
     }
@@ -177,7 +183,7 @@ export class UserService {
 
     if (existingPhoneUser) {
       throw new HttpException(
-        'Este número ya está en uso',
+        'Este número de teléfono ya está en uso',
         HttpStatus.CONFLICT,
       );
     }
@@ -250,7 +256,7 @@ export class UserService {
 
       if (emailExist) {
         throw new HttpException(
-          'Ya existe un usuario con este correo',
+          'Ya existe un usuario registrado con este correo electrónico',
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -268,7 +274,7 @@ export class UserService {
       });
       if (identificationNumberExist) {
         throw new HttpException(
-          'Ya existe un usuario con ese tipo y número de identificación',
+          'Ya existe un usuario registrado con ese tipo y número de identificación',
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -286,7 +292,7 @@ export class UserService {
       });
       if (phoneExist) {
         throw new HttpException(
-          'Ya existe un usuario con ese tipo y número de teléfono',
+          'Ya existe un usuario registrado con ese tipo y número de teléfono',
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -301,6 +307,7 @@ export class UserService {
       roleType,
       phoneCode,
       identificationType,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       personType,
       password,
       confirmPassword,

@@ -93,3 +93,13 @@ export function DeleteImageDocs() {
     ApiOperation({ summary: 'Elimina una imagen de un hospedaje' }),
   );
 }
+
+export function GetMostRequestedDocs() {
+  return applyDecorators(
+    ApiBearerAuth(),
+    ApiOperation({
+      summary: 'Obtiene los 2 hospedajes más solicitados según las facturas',
+    }),
+    ApiOkResponse({ type: [Accommodation] }),
+  );
+}

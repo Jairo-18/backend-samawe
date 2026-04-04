@@ -4,6 +4,7 @@
 } from './../dtos/accommodation.dto';
 import { AccommodationService } from './../services/accommodation.service';
 import { Injectable } from '@nestjs/common';
+import { MostRequestedAccommodationDto } from '../../shared/mappers/entity-mappers';
 
 @Injectable()
 export class AccommodationUC {
@@ -29,5 +30,9 @@ export class AccommodationUC {
 
   async delete(accommodationId: number) {
     return await this._accommodationService.delete(accommodationId);
+  }
+
+  async getMostRequested(): Promise<MostRequestedAccommodationDto[]> {
+    return await this._accommodationService.getMostRequested();
   }
 }
