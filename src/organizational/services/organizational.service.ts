@@ -82,7 +82,12 @@ export class OrganizationalService {
         'identificationType',
         'phoneCode',
         'personType',
+        'benefitSections',
+        'benefitSections.items',
       ],
+      order: {
+        benefitSections: { order: 'ASC' },
+      } as any,
     });
   }
 

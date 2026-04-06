@@ -73,10 +73,14 @@ import { Organizational } from './entities/organizational.entity';
 import { OrganizationalMedia } from './entities/organizationalMedia.entity';
 import { MediaType } from './entities/mediaType.entity';
 import { CorporateValue } from './entities/corporateValue.entity';
+import { BenefitSection } from './entities/benefitSection.entity';
+import { BenefitItem } from './entities/benefitItem.entity';
 import { OrganizationalRepository } from './repositories/organizational.repository';
 import { OrganizationalMediaRepository } from './repositories/organizationalMedia.repository';
 import { MediaTypeRepository } from './repositories/mediaType.repository';
 import { CorporateValueRepository } from './repositories/corporateValue.repository';
+import { BenefitSectionRepository } from './repositories/benefitSection.repository';
+import { BenefitItemRepository } from './repositories/benefitItem.repository';
 
 @Module({})
 export class SharedModule {
@@ -164,6 +168,8 @@ export class SharedModule {
           OrganizationalMedia,
           MediaType,
           CorporateValue,
+          BenefitSection,
+          BenefitItem,
         ]),
 
         JwtModule.registerAsync({
@@ -239,6 +245,8 @@ export class SharedModule {
         OrganizationalMediaRepository,
         MediaTypeRepository,
         CorporateValueRepository,
+        BenefitSectionRepository,
+        BenefitItemRepository,
       ],
       exports: [
         TypeOrmModule,
@@ -281,6 +289,8 @@ export class SharedModule {
         OrganizationalMediaRepository,
         MediaTypeRepository,
         CorporateValueRepository,
+        BenefitSectionRepository,
+        BenefitItemRepository,
       ],
     };
   }

@@ -21,6 +21,7 @@ import { join } from 'path';
 import { SocketModule } from './socket/socket.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OrganizationalModule } from './organizational/organizational.module';
+import { BenefitSectionModule } from './benefit-section/benefitSection.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { OrganizationalModule } from './organizational/organizational.module';
     UserModule,
     NotificationsModule,
     OrganizationalModule,
+    BenefitSectionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

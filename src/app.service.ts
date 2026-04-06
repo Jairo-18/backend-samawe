@@ -127,6 +127,11 @@ export class AppService {
             ...cleanRel(m),
             mediaType: cleanRel(m.mediaType),
           })) || [],
+        benefitSections:
+          org.benefitSections?.map((section) => ({
+            ...cleanRel(section),
+            items: section.items?.map((item) => cleanRel(item)) || [],
+          })) || [],
       };
     });
 
