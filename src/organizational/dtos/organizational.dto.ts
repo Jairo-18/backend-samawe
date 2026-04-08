@@ -91,6 +91,31 @@ export class CreateOrganizationalDto {
   @IsString()
   tertiaryColor?: string;
 
+  @ApiPropertyOptional({ example: '#2B2B2B' })
+  @IsOptional()
+  @IsString()
+  textColor?: string;
+
+  @ApiPropertyOptional({ example: '#11382E' })
+  @IsOptional()
+  @IsString()
+  titleColor?: string;
+
+  @ApiPropertyOptional({ example: '#486E2B' })
+  @IsOptional()
+  @IsString()
+  subtitleColor?: string;
+
+  @ApiPropertyOptional({ example: '#FFFFFF' })
+  @IsOptional()
+  @IsString()
+  bgPrimaryColor?: string;
+
+  @ApiPropertyOptional({ example: '#F3F7F0' })
+  @IsOptional()
+  @IsString()
+  bgSecondaryColor?: string;
+
   @ApiPropertyOptional({ example: 'Bienvenidos a Eco Hotel' })
   @IsOptional()
   @IsString()

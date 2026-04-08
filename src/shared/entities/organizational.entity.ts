@@ -68,6 +68,21 @@ export class Organizational {
   @Column('varchar', { length: 20, nullable: true })
   tertiaryColor?: string;
 
+  @Column('varchar', { length: 20, nullable: true })
+  textColor?: string;
+
+  @Column('varchar', { length: 20, nullable: true })
+  titleColor?: string;
+
+  @Column('varchar', { length: 20, nullable: true })
+  subtitleColor?: string;
+
+  @Column('varchar', { length: 20, nullable: true })
+  bgPrimaryColor?: string;
+
+  @Column('varchar', { length: 20, nullable: true })
+  bgSecondaryColor?: string;
+
   @Column('varchar', { length: 200, nullable: true })
   homeTitle?: string;
 
