@@ -47,3 +47,18 @@ export interface AccommodationComplete {
   deletedAt?: Date;
   images?: AccommodationImage[];
 }
+
+export interface AccommodationPublicListItem {
+  accommodationId: number;
+  name: string;
+  description?: string;
+  amountPerson: number;
+  amountRoom: number;
+  amountBathroom: number;
+  jacuzzi: boolean;
+  priceSale: number;
+  categoryType: CategoryTypeClean | null;
+  bedType: BedTypeClean | null;
+  stateType: StateTypeClean | null;
+  images: AccommodationImage[];
+}

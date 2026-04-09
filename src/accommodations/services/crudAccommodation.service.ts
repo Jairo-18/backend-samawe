@@ -9,8 +9,12 @@ import {
   PaginatedListAccommodationsParamsDto,
   PartialAccommodationDto,
 } from '../dtos/crudAccommodation.dto';
+import { ParamsPaginationDto } from '../../shared/dtos/pagination.dto';
 import { Equal, FindOptionsWhere, ILike } from 'typeorm';
-import { AccommodationInterfacePaginatedList } from '../interface/accommodation.interface';
+import {
+  AccommodationInterfacePaginatedList,
+  AccommodationPublicListItem,
+} from '../interface/accommodation.interface';
 
 @Injectable()
 export class CrudAccommodationService {
@@ -178,6 +182,61 @@ export class CrudAccommodationService {
     });
 
     return new ResponsePaginationDto(accommodations, pageMetaDto);
+  }
+
+  async paginatedPublicList(
+    params: ParamsPaginationDto,
+  ): Promise<ResponsePaginationDto<AccommodationPublicListItem>> {
+    const skip = (params.page - 1) * params.perPage;
+
+    const [entities, itemCount] =
+      await this._accommodationRepository.findAndCount({
+        skip,
+        take: params.perPage,
+        order: { name: params.order ?? 'ASC' },
+        relations: ['categoryType', 'bedType', 'stateType', 'images'],
+      });
+
+    const items: AccommodationPublicListItem[] = entities.map((a) => ({
+      accommodationId: a.accommodationId,
+      name: a.name,
+      description: a.description,
+      amountPerson: a.amountPerson,
+      amountRoom: a.amountRoom,
+      amountBathroom: a.amountBathroom,
+      jacuzzi: a.jacuzzi,
+      priceSale: a.priceSale,
+      categoryType: a.categoryType
+        ? {
+            categoryTypeId: a.categoryType.categoryTypeId,
+            code: a.categoryType.code,
+            name: a.categoryType.name,
+          }
+        : null,
+      bedType: a.bedType
+        ? {
+            bedTypeId: a.bedType.bedTypeId,
+            code: a.bedType.code,
+            name: a.bedType.name,
+          }
+        : null,
+      stateType: a.stateType
+        ? {
+            stateTypeId: a.stateType.stateTypeId,
+            code: a.stateType.code,
+            name: a.stateType.name,
+          }
+        : null,
+      images:
+        a.images?.map((img) => ({
+          accommodationImageId: img.accommodationImageId,
+          imageUrl: img.imageUrl,
+          publicId: img.publicId,
+        })) ?? [],
+    }));
+
+    const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto: params });
+    return new ResponsePaginationDto(items, pageMetaDto);
   }
 
   async paginatedPartialAccommodations(

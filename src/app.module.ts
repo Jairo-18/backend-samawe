@@ -3,6 +3,8 @@ import { GenericTypeModule } from './types/genericType.module';
 import { ExcursionModule } from './excursions/excursion.module';
 import { ProductModule } from './products/product.module';
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PassportModule } from '@nestjs/passport';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -33,6 +35,13 @@ import { BenefitSectionModule } from './benefit-section/benefitSection.module';
           ? '.env.production'
           : '.env.development',
     }),
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
     SocketModule,
     ServeStaticModule.forRoot({
       rootPath:
@@ -59,6 +68,12 @@ import { BenefitSectionModule } from './benefit-section/benefitSection.module';
     BenefitSectionModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

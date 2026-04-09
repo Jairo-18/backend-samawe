@@ -2,6 +2,7 @@
   PaginatedAccommodationSelectParamsDto,
   PaginatedListAccommodationsParamsDto,
 } from './../dtos/crudAccommodation.dto';
+import { ParamsPaginationDto } from '../../shared/dtos/pagination.dto';
 import { CrudAccommodationService } from '../services/crudAccommodation.service';
 import { Injectable } from '@nestjs/common';
 
@@ -19,5 +20,9 @@ export class CrudAccommodationUC {
     return await this._crudAccommodationService.paginatedPartialAccommodations(
       params,
     );
+  }
+
+  async paginatedPublicList(params: ParamsPaginationDto) {
+    return await this._crudAccommodationService.paginatedPublicList(params);
   }
 }
