@@ -42,6 +42,7 @@ async function bootstrap() {
   }
 
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
   app.use(bodyParser.urlencoded({ extended: true }));
   const configService = app.get(ConfigService);
   const swaggerUser = configService.get<string>('swagger.user');

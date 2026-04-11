@@ -37,7 +37,6 @@ export function PaginatedPhoneCodeSelectDocs() {
       summary: 'Obtiene una lista paginada de códigos telefónicos',
     }),
     ApiOkResponse({ type: ResponsePaginationDto<PhoneCode> }),
-    ApiBearerAuth(),
   );
 }
 

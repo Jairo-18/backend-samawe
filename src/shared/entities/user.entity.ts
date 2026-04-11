@@ -94,8 +94,20 @@ export class User {
   @Column({ type: 'timestamp', nullable: true })
   resetTokenExpiry?: Date;
 
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  emailVerificationToken?: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  emailVerificationTokenExpiry?: Date;
+
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  isEmailVerified: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  isBanned: boolean;
 
   @CreateDateColumn({
     type: 'timestamp',

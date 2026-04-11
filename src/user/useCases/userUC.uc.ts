@@ -19,6 +19,10 @@ export class UserUC {
     return await this._userService.register(user);
   }
 
+  async verifyEmail(token: string, userId: string) {
+    return await this._userService.verifyEmail(token, userId);
+  }
+
   async findOne(id: string) {
     return await this._userService.findOne(id);
   }

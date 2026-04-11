@@ -92,7 +92,7 @@ export interface ChangePasswordModel {
 
 export interface UserFiltersModel {
   where?: UserWhereModel;
-  relations?: 'roles';
+  relations?: string[];
 }
 
 export interface UserWhereModel {

@@ -4,6 +4,7 @@ import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { SharedModule } from '../shared/shared.module';
 import { CronJobService } from './services/cron.job.service';
+import { UserRepository } from 'src/shared/repositories/user.repository';
 
 @Module({
   imports: [
@@ -13,6 +14,6 @@ import { CronJobService } from './services/cron.job.service';
     BackupModule,
   ],
   controllers: [],
-  providers: [CronJobService],
+  providers: [CronJobService, UserRepository],
 })
 export class CronJobModule {}

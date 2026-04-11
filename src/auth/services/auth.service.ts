@@ -49,6 +49,23 @@ export class AuthService {
       throw new UnauthorizedException(INVALID_ACCESS_DATA_MESSAGE);
     }
 
+    if (user.isBanned) {
+      throw new UnauthorizedException(
+        'Tu cuenta ha sido suspendida. Contacta al administrador.',
+      );
+    }
+
+    if (!user.isEmailVerified) {
+      const tokenExpired =
+        !user.emailVerificationTokenExpiry ||
+        user.emailVerificationTokenExpiry < new Date();
+      throw new UnauthorizedException(
+        tokenExpired
+          ? 'Tu enlace de verificación expiró. Vuelve a registrarte.'
+          : 'Debes verificar tu correo electrónico antes de iniciar sesión.',
+      );
+    }
+
     const payload = { email: user.email, sub: user.userId, id: user.userId };
 
     const tokens = this.generateTokens(payload);
@@ -183,6 +200,7 @@ export class AuthService {
     const user = await this._userService.findOneByParams(
       {
         where: { email: body.email },
+        relations: ['organizational', 'organizational.medias', 'organizational.medias.mediaType'],
       },
       false,
       false,
@@ -205,10 +223,12 @@ export class AuthService {
         body: this._mailTemplateService.recoveryPasswordTemplate(
           `${frontendUrl}/auth/${user.userId}/change-password`,
           user.firstName,
+          user.lastName,
           token,
           user.organizational?.name,
           user.organizational?.primaryColor || undefined,
-          undefined,
+          user.organizational?.medias?.find((m) => m.mediaType?.code === 'LOGO')?.url || undefined,
+          user.organizational?.bgSecondaryColor || undefined,
         ),
       });
     }
@@ -217,6 +237,12 @@ export class AuthService {
   async googleSignIn(user: any) {
     if (!user) {
       throw new UnauthorizedException('No se pudo autenticar con Google');
+    }
+
+    if (user.isBanned) {
+      throw new UnauthorizedException(
+        'Tu cuenta ha sido suspendida. Contacta al administrador.',
+      );
     }
 
     const payload = {

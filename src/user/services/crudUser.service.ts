@@ -160,6 +160,7 @@ export class CrudUserService {
         { firstName: ILike(term), ...orgFilter },
         { lastName: ILike(term), ...orgFilter },
         { identificationNumber: ILike(term), ...orgFilter },
+        { email: ILike(term), ...orgFilter },
       );
     } else if (params.organizationalId) {
       where.push({
@@ -177,6 +178,7 @@ export class CrudUserService {
         userId: true,
         firstName: true,
         lastName: true,
+        email: true,
         identificationNumber: true,
         isActive: true,
       },

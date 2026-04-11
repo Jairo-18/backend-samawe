@@ -20,6 +20,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -38,6 +39,7 @@ export class AuthController {
   ) {}
 
   @Post('/sign-in')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @SignInDocs()
   async signIn(@Body() body: LoginDto): Promise<SignInResponseDto> {
     const data = await this._authUC.login(body);
@@ -87,6 +89,7 @@ export class AuthController {
   }
 
   @Post('/recovery-password')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   async recoveryPassword(
     @Body() body: RecoveryPasswordBodyDto,
   ): Promise<{ statusCode: number; message: string }> {

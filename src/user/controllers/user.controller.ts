@@ -48,6 +48,18 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { IsNotEmpty, IsString } from 'class-validator';
+
+class VerifyEmailQueryDto {
+  @IsString()
+  @IsNotEmpty()
+  token: string;
+
+  @IsString()
+  @IsNotEmpty()
+  userId: string;
+}
 import { AuthGuard } from '@nestjs/passport';
 import { ResponsePaginationDto } from 'src/shared/dtos/pagination.dto';
 
@@ -69,7 +81,7 @@ export class UserController {
   }
 
   @Get('paginated-phone-code')
-  @UseGuards(AuthGuard())
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @PaginatedPhoneCodeSelectDocs()
   async paginatedPhoneCodeSelect(
     @Query() params: PaginatedCodePhoneUser,
@@ -98,20 +110,34 @@ export class UserController {
     };
   }
 
+  @Get('verify-email')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  async verifyEmail(
+    @Query() query: VerifyEmailQueryDto,
+  ): Promise<{ message: string; statusCode: number }> {
+    await this._userUC.verifyEmail(query.token, query.userId);
+    return {
+      message: 'Correo verificado correctamente',
+      statusCode: HttpStatus.OK,
+    };
+  }
+
   @Post('register')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @RegisterUserDocs()
   async register(
     @Body() user: CreateUserDto,
   ): Promise<CreatedRecordResponseDto> {
     const rowId = await this._userUC.register(user);
     return {
-      message: 'Registro exitoso',
+      message: '',
       statusCode: HttpStatus.CREATED,
       data: rowId,
     };
   }
 
   @Patch('recovery-password')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @RecoveryPasswordDocs()
   async recoveryPassword(
     @Body() body: RecoveryPasswordDto,

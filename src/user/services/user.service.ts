@@ -32,6 +32,9 @@ import {
   mapUserDetail,
   UserDetailDto,
 } from './../../shared/mappers/entity-mappers';
+import { MailsService } from '../../shared/services/mails.service';
+import { MailTemplateService } from '../../shared/services/mail-template.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserService {
@@ -44,6 +47,9 @@ export class UserService {
     private readonly _invoiceRepository: InvoiceRepository,
     private readonly _personTypeRepository: PersonTypeRepository,
     private readonly _organizationalRepository: OrganizationalRepository,
+    private readonly _mailsService: MailsService,
+    private readonly _mailTemplateService: MailTemplateService,
+    private readonly _configService: ConfigService,
   ) {}
 
   async create(user: CreateUserDto): Promise<{ rowId: string }> {
@@ -132,6 +138,7 @@ export class UserService {
       identificationType,
       phoneCode,
       personType,
+      isEmailVerified: true,
       ...(organizational && { organizational }),
     });
 
@@ -223,14 +230,18 @@ export class UserService {
         : (identificationType as any)?.identificationTypeId,
     );
 
-    let organizational = null;
-    if (user.organizationalId) {
-      organizational = await this._organizationalRepository.findOne({
-        where: { organizationalId: user.organizationalId },
-      });
-      if (!organizational) {
-        throw new BadRequestException('La organización asignada no existe');
-      }
+    const org = user.organizationalId
+      ? await this._organizationalRepository.findOne({
+          where: { organizationalId: user.organizationalId },
+          relations: ['medias', 'medias.mediaType'],
+        })
+      : await this._organizationalRepository.findOne({
+          where: {},
+          relations: ['medias', 'medias.mediaType'],
+        });
+
+    if (user.organizationalId && !org) {
+      throw new BadRequestException('La organización asignada no existe');
     }
 
     const userConfirm = {
@@ -240,11 +251,33 @@ export class UserService {
       identificationType,
       phoneCode,
       personType,
-      ...(organizational && { organizational }),
+      isActive: true,
+      isEmailVerified: false,
+      organizational: org,
     };
 
-    const res = await this._userRepository.insert(userConfirm);
-    return { rowId: res.identifiers[0].id };
+    await this._userRepository.insert(userConfirm);
+
+    try {
+      const token = await this.generateEmailVerificationToken(user.userId);
+      const frontendUrl =
+        this._configService.get<string>('APP_FRONTEND_URL') ||
+        'https://ecohotesamawe.com';
+      await this._mailsService.sendEmail({
+        to: user.email,
+        subject: 'Verifica tu correo electrónico',
+        body: this._mailTemplateService.verifyEmailTemplate(
+          `${frontendUrl}/auth/verify-email?token=${token}&userId=${user.userId}`,
+          user.firstName,
+          user.lastName,
+          org,
+        ),
+      });
+    } catch (error) {
+      console.error('Error sending verification email:', error);
+    }
+
+    return { rowId: user.userId };
   }
 
   async update(userId: string, userData: UpdateUserModel) {
@@ -473,6 +506,7 @@ export class UserService {
   ): Promise<User> {
     const user = await this._userRepository.findOne({
       where: { ...params.where },
+      ...(params.relations?.length && { relations: params.relations }),
     });
     if (!user && errors) {
       if (!login) {
@@ -482,6 +516,45 @@ export class UserService {
       }
     }
     return user;
+  }
+
+  async generateEmailVerificationToken(userId: string): Promise<string> {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiry = new Date();
+    expiry.setMinutes(expiry.getMinutes() + 30);
+
+    await this._userRepository.update(userId, {
+      emailVerificationToken: token,
+      emailVerificationTokenExpiry: expiry,
+    });
+
+    return token;
+  }
+
+  async verifyEmail(token: string, userId: string): Promise<void> {
+    const user = await this._userRepository.findOne({
+      where: { userId, emailVerificationToken: token },
+    });
+
+    if (!user) {
+      throw new HttpException('Token inválido', HttpStatus.BAD_REQUEST);
+    }
+
+    if (user.emailVerificationTokenExpiry < new Date()) {
+      throw new HttpException(
+        'El enlace de verificación ha expirado',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    await this._userRepository.update(
+      { userId },
+      {
+        isEmailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationTokenExpiry: null,
+      },
+    );
   }
 
   async generateResetToken(userId: string): Promise<string> {
@@ -498,33 +571,26 @@ export class UserService {
   }
 
   async recoveryPassword(body: RecoveryPasswordDto) {
-    try {
-      const user = await this._userRepository.findOne({
-        where: { userId: body.userId, resetToken: body.resetToken },
-      });
-      if (!user) {
-        throw new HttpException(NOT_FOUND_MESSAGE, HttpStatus.NOT_FOUND);
-      }
-      if (user.resetTokenExpiry < new Date()) {
-        throw new HttpException(
-          'Token inválido o expirado',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      if (body.newPassword !== body.confirmNewPassword) {
-        throw new HttpException(PASSWORDS_NOT_MATCH, HttpStatus.CONFLICT);
-      }
-      await this._userRepository.update(
-        { userId: body.userId },
-        {
-          password: await this._passwordService.generateHash(body.newPassword),
-          resetToken: null,
-          resetTokenExpiry: null,
-        },
-      );
-    } catch (error) {
-      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+    const user = await this._userRepository.findOne({
+      where: { userId: body.userId, resetToken: body.resetToken },
+    });
+    if (!user) {
+      throw new HttpException(NOT_FOUND_MESSAGE, HttpStatus.NOT_FOUND);
     }
+    if (user.resetTokenExpiry < new Date()) {
+      throw new HttpException('Token inválido o expirado', HttpStatus.BAD_REQUEST);
+    }
+    if (body.newPassword !== body.confirmNewPassword) {
+      throw new HttpException(PASSWORDS_NOT_MATCH, HttpStatus.CONFLICT);
+    }
+    await this._userRepository.update(
+      { userId: body.userId },
+      {
+        password: await this._passwordService.generateHash(body.newPassword),
+        resetToken: null,
+        resetTokenExpiry: null,
+      },
+    );
   }
 
   async findByRoles(roleNames: string[]): Promise<User[]> {
@@ -559,10 +625,14 @@ export class UserService {
           {
             googleId: googleUser.googleId,
             avatarUrl: googleUser.avatarUrl || user.avatarUrl,
+            isEmailVerified: true,
+            emailVerificationToken: null,
+            emailVerificationTokenExpiry: null,
           },
         );
         user.googleId = googleUser.googleId;
         user.avatarUrl = googleUser.avatarUrl || user.avatarUrl;
+        user.isEmailVerified = true;
         return user;
       }
     }
@@ -613,6 +683,7 @@ export class UserService {
       phoneCode,
       personType,
       isActive: true,
+      isEmailVerified: true,
     });
 
     const savedUser = await this._userRepository.save(newUser);
