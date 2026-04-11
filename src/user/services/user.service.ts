@@ -160,8 +160,54 @@ export class UserService {
       });
 
       if (existingUserByEmail) {
+        if (existingUserByEmail.isEmailVerified) {
+          throw new HttpException(
+            'El correo electrónico ya está en uso',
+            HttpStatus.CONFLICT,
+          );
+        }
+
+        const tokenExpired =
+          !existingUserByEmail.emailVerificationTokenExpiry ||
+          existingUserByEmail.emailVerificationTokenExpiry < new Date();
+
+        if (!tokenExpired) {
+          throw new HttpException(
+            {
+              message:
+                'Ya tienes un registro pendiente. Revisa tu correo y verifica tu cuenta.',
+              code: 'PENDING_VERIFICATION',
+            },
+            HttpStatus.CONFLICT,
+          );
+        }
+
+        const newToken = await this.generateEmailVerificationToken(
+          existingUserByEmail.userId,
+        );
+        const frontendUrl =
+          this._configService.get<string>('APP_FRONTEND_URL') ||
+          'https://ecohotesamawe.com';
+        const org = await this._organizationalRepository.findOne({
+          where: {},
+          relations: ['medias', 'medias.mediaType'],
+        });
+        await this._mailsService.sendEmail({
+          to: existingUserByEmail.email,
+          subject: 'Verifica tu correo electrónico',
+          body: this._mailTemplateService.verifyEmailTemplate(
+            `${frontendUrl}/auth/verify-email?token=${newToken}&userId=${existingUserByEmail.userId}`,
+            existingUserByEmail.firstName,
+            existingUserByEmail.lastName,
+            org,
+          ),
+        });
         throw new HttpException(
-          'El correo electrónico ya está en uso',
+          {
+            message:
+              'Tu enlace de verificación había expirado. Te enviamos uno nuevo, revisa tu correo.',
+            code: 'VERIFICATION_RESENT',
+          },
           HttpStatus.CONFLICT,
         );
       }
