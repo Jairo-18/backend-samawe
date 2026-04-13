@@ -4,7 +4,6 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { BackupUC } from '../../backup/useCases/backup.uc';
 import { ConfigService } from '@nestjs/config';
 import { UserRepository } from '../../shared/repositories/user.repository';
-import { LessThan } from 'typeorm';
 
 @Injectable()
 export class CronJobService {
@@ -20,10 +19,22 @@ export class CronJobService {
   @Cron('*/10 * * * *')
   async handleExpiredUnverifiedUsers() {
     try {
-      const deleted = await this._userRepository.delete({
-        isEmailVerified: false,
-        emailVerificationTokenExpiry: LessThan(new Date()),
-      });
+      const expiredUsers = await this._userRepository
+        .createQueryBuilder('user')
+        .leftJoin('user.invoices', 'invoice')
+        .where('user.isEmailVerified = :verified', { verified: false })
+        .andWhere('user.emailVerificationTokenExpiry < :now', {
+          now: new Date(),
+        })
+        .andWhere('invoice.invoiceId IS NULL')
+        .select('user.userId')
+        .getMany();
+
+      if (expiredUsers.length === 0) return;
+
+      const ids = expiredUsers.map((u) => u.userId);
+      const deleted = await this._userRepository.delete(ids);
+
       if (deleted.affected > 0) {
         this.logger.log(
           `Eliminados ${deleted.affected} usuarios sin verificar con token expirado`,
