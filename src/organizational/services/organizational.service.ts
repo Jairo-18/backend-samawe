@@ -84,9 +84,15 @@ export class OrganizationalService {
         'personType',
         'benefitSections',
         'benefitSections.items',
+        'corporateValues',
+        'legalSections',
+        'legalSections.items',
+        'legalSections.items.children',
       ],
       order: {
         benefitSections: { order: 'ASC' },
+        corporateValues: { order: 'ASC' },
+        legalSections: { items: { order: 'ASC', children: { order: 'ASC' } } },
       } as any,
     });
   }

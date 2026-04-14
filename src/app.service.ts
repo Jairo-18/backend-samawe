@@ -55,6 +55,7 @@ export class AppService {
       discountType,
       additionalType,
       personType,
+      mediaType,
       organizational,
     ] = await Promise.all([
       this._repositoryService.repositories.identificationType.find({
@@ -62,6 +63,7 @@ export class AppService {
       }),
       this._repositoryService.repositories.phoneCode.find({
         select: ['phoneCodeId', 'name', 'code'],
+        order: { name: 'ASC' },
       }),
       this._repositoryService.repositories.roleType.find({
         select: ['roleTypeId', 'name', 'code'],
@@ -99,6 +101,9 @@ export class AppService {
       this._repositoryService.repositories.personType.find({
         select: ['personTypeId', 'name', 'code'],
       }),
+      this._repositoryService.repositories.mediaType.find({
+        select: ['mediaTypeId', 'name', 'code'],
+      }),
       this._organizationalService.findAllWithFullData(),
     ]);
 
@@ -132,6 +137,16 @@ export class AppService {
             ...cleanRel(section),
             items: section.items?.map((item) => cleanRel(item)) || [],
           })) || [],
+        corporateValues:
+          org.corporateValues?.map((v) => cleanRel(v)) || [],
+        legalSections:
+          org.legalSections?.map((section) => ({
+            ...cleanRel(section),
+            items: section.items?.map((item) => ({
+              ...cleanRel(item),
+              children: item.children?.map((c) => cleanRel(c)) || [],
+            })) || [],
+          })) || [],
       };
     });
 
@@ -150,6 +165,7 @@ export class AppService {
       discountType,
       additionalType,
       personType,
+      mediaType,
       organizational: mappedOrganizational,
     };
   }

@@ -14,6 +14,7 @@ import { PhoneCode } from './phoneCode.entity';
 import { OrganizationalMedia } from './organizationalMedia.entity';
 import { CorporateValue } from './corporateValue.entity';
 import { BenefitSection } from './benefitSection.entity';
+import { LegalSection } from './legalSection.entity';
 
 @Entity({ name: 'Organizational' })
 export class Organizational {
@@ -220,6 +221,12 @@ export class Organizational {
     (benefitSection) => benefitSection.organizational,
   )
   benefitSections: BenefitSection[];
+
+  @OneToMany(
+    () => LegalSection,
+    (legalSection) => legalSection.organizational,
+  )
+  legalSections: LegalSection[];
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt?: Date;

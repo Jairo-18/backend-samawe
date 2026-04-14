@@ -24,6 +24,7 @@ import { SocketModule } from './socket/socket.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OrganizationalModule } from './organizational/organizational.module';
 import { BenefitSectionModule } from './benefit-section/benefitSection.module';
+import { LegalModule } from './legal/legal.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { BenefitSectionModule } from './benefit-section/benefitSection.module';
     NotificationsModule,
     OrganizationalModule,
     BenefitSectionModule,
+    LegalModule,
   ],
   controllers: [AppController],
   providers: [

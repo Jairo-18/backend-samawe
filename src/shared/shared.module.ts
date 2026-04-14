@@ -81,6 +81,12 @@ import { MediaTypeRepository } from './repositories/mediaType.repository';
 import { CorporateValueRepository } from './repositories/corporateValue.repository';
 import { BenefitSectionRepository } from './repositories/benefitSection.repository';
 import { BenefitItemRepository } from './repositories/benefitItem.repository';
+import { LegalSection } from './entities/legalSection.entity';
+import { LegalItem } from './entities/legalItem.entity';
+import { LegalItemChild } from './entities/legalItemChild.entity';
+import { LegalSectionRepository } from './repositories/legalSection.repository';
+import { LegalItemRepository } from './repositories/legalItem.repository';
+import { LegalItemChildRepository } from './repositories/legalItemChild.repository';
 
 @Module({})
 export class SharedModule {
@@ -170,6 +176,9 @@ export class SharedModule {
           CorporateValue,
           BenefitSection,
           BenefitItem,
+          LegalSection,
+          LegalItem,
+          LegalItemChild,
         ]),
 
         JwtModule.registerAsync({
@@ -247,6 +256,9 @@ export class SharedModule {
         CorporateValueRepository,
         BenefitSectionRepository,
         BenefitItemRepository,
+        LegalSectionRepository,
+        LegalItemRepository,
+        LegalItemChildRepository,
       ],
       exports: [
         TypeOrmModule,
@@ -291,6 +303,9 @@ export class SharedModule {
         CorporateValueRepository,
         BenefitSectionRepository,
         BenefitItemRepository,
+        LegalSectionRepository,
+        LegalItemRepository,
+        LegalItemChildRepository,
       ],
     };
   }
