@@ -10,10 +10,12 @@ import { AuthUC } from './useCases/auth.UC';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
+import { LocalStorageModule } from '../local-storage/local-storage.module';
 
 @Module({
   imports: [
     SharedModule,
+    LocalStorageModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
