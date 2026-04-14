@@ -1,4 +1,4 @@
-﻿import { PaginatedCodePhoneUser } from './../dtos/crudUser.dto';
+import { PaginatedCodePhoneUser } from './../dtos/crudUser.dto';
 import { PhoneCode } from './../../shared/entities/phoneCode.entity';
 import { CrudUserUC } from './../useCases/crudUserUC';
 import { PASSWORD_CHANGED_MESSAGE } from './../../shared/constants/messages.constant';
@@ -33,7 +33,6 @@ import {
   GetUserResponseDto,
   RecoveryPasswordDto,
 } from '../dtos/user.dto';
-
 import { UserUC } from '../useCases/userUC.uc';
 import {
   Body,
@@ -47,9 +46,14 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { IsNotEmpty, IsString } from 'class-validator';
+import { AuthGuard } from '@nestjs/passport';
+import { ResponsePaginationDto } from 'src/shared/dtos/pagination.dto';
 
 class VerifyEmailQueryDto {
   @IsString()
@@ -60,8 +64,6 @@ class VerifyEmailQueryDto {
   @IsNotEmpty()
   userId: string;
 }
-import { AuthGuard } from '@nestjs/passport';
-import { ResponsePaginationDto } from 'src/shared/dtos/pagination.dto';
 
 @Controller('user')
 @ApiTags('Usuarios')
@@ -182,9 +184,34 @@ export class UserController {
     @Body() userData: UpdateUserDto,
   ): Promise<UpdateRecordResponseDto> {
     await this._userUC.update(id, userData);
-
     return {
       message: 'Información almacenada correctamente',
+      statusCode: HttpStatus.OK,
+    };
+  }
+
+  @Patch(':id/avatar')
+  @UseGuards(AuthGuard())
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadAvatar(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<UpdateRecordResponseDto> {
+    await this._userUC.uploadAvatar(id, file);
+    return {
+      message: 'Foto de perfil actualizada correctamente',
+      statusCode: HttpStatus.OK,
+    };
+  }
+
+  @Delete(':id/avatar')
+  @UseGuards(AuthGuard())
+  async deleteAvatar(
+    @Param('id') id: string,
+  ): Promise<UpdateRecordResponseDto> {
+    await this._userUC.deleteAvatar(id);
+    return {
+      message: 'Foto de perfil eliminada correctamente',
       statusCode: HttpStatus.OK,
     };
   }

@@ -46,4 +46,12 @@ export class UserUC {
   async delete(id: string) {
     return await this._userService.delete(id);
   }
+
+  async uploadAvatar(id: string, file: Express.Multer.File) {
+    return await this._userService.uploadAvatar(id, file);
+  }
+
+  async deleteAvatar(id: string) {
+    return await this._userService.deleteAvatar(id);
+  }
 }

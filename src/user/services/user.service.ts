@@ -35,6 +35,7 @@ import {
 import { MailsService } from '../../shared/services/mails.service';
 import { MailTemplateService } from '../../shared/services/mail-template.service';
 import { ConfigService } from '@nestjs/config';
+import { LocalStorageService } from '../../local-storage/services/local-storage.service';
 
 @Injectable()
 export class UserService {
@@ -50,6 +51,7 @@ export class UserService {
     private readonly _mailsService: MailsService,
     private readonly _mailTemplateService: MailTemplateService,
     private readonly _configService: ConfigService,
+    private readonly _localStorageService: LocalStorageService,
   ) {}
 
   async create(user: CreateUserDto): Promise<{ rowId: string }> {
@@ -624,7 +626,10 @@ export class UserService {
       throw new HttpException(NOT_FOUND_MESSAGE, HttpStatus.NOT_FOUND);
     }
     if (user.resetTokenExpiry < new Date()) {
-      throw new HttpException('Token inválido o expirado', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Token inválido o expirado',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     if (body.newPassword !== body.confirmNewPassword) {
       throw new HttpException(PASSWORDS_NOT_MATCH, HttpStatus.CONFLICT);
@@ -637,6 +642,48 @@ export class UserService {
         resetTokenExpiry: null,
       },
     );
+  }
+
+  async uploadAvatar(userId: string, file: Express.Multer.File): Promise<void> {
+    const user = await this._userRepository.findOne({ where: { userId } });
+    if (!user) {
+      throw new HttpException('El usuario no existe', HttpStatus.NOT_FOUND);
+    }
+
+    if (user.avatarUrl) {
+      const uploadsIndex = user.avatarUrl.indexOf('/uploads/');
+      if (uploadsIndex !== -1) {
+        const oldPublicId = user.avatarUrl.substring(
+          uploadsIndex + '/uploads/'.length,
+        );
+        await this._localStorageService.deleteImage(oldPublicId);
+      }
+    }
+
+    const { imageUrl } = await this._localStorageService.saveImage(
+      file,
+      'users',
+    );
+    await this._userRepository.update({ userId }, { avatarUrl: imageUrl });
+  }
+
+  async deleteAvatar(userId: string): Promise<void> {
+    const user = await this._userRepository.findOne({ where: { userId } });
+    if (!user) {
+      throw new HttpException('El usuario no existe', HttpStatus.NOT_FOUND);
+    }
+
+    if (user.avatarUrl) {
+      const uploadsIndex = user.avatarUrl.indexOf('/uploads/');
+      if (uploadsIndex !== -1) {
+        const publicId = user.avatarUrl.substring(
+          uploadsIndex + '/uploads/'.length,
+        );
+        await this._localStorageService.deleteImage(publicId);
+      }
+    }
+
+    await this._userRepository.update({ userId }, { avatarUrl: null });
   }
 
   async findByRoles(roleNames: string[]): Promise<User[]> {
@@ -684,7 +731,7 @@ export class UserService {
     }
 
     if (user) {
-      if (googleUser.avatarUrl && user.avatarUrl !== googleUser.avatarUrl) {
+      if (googleUser.avatarUrl && !user.avatarUrl) {
         await this._userRepository.update(
           { userId: user.userId },
           { avatarUrl: googleUser.avatarUrl },

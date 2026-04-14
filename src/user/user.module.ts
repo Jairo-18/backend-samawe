@@ -7,9 +7,10 @@ import { UserController } from './controllers/user.controller';
 import { CrudUserService } from './services/crudUser.service';
 import { UserUC } from './useCases/userUC.uc';
 import { PasswordService } from './services/password.service';
+import { LocalStorageModule } from '../local-storage/local-storage.module';
 
 @Module({
-  imports: [SharedModule, PassportModule.register({ defaultStrategy: 'jwt' })],
+  imports: [SharedModule, PassportModule.register({ defaultStrategy: 'jwt' }), LocalStorageModule],
   controllers: [UserController],
   providers: [
     UserUC,
