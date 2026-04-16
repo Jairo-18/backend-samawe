@@ -90,7 +90,6 @@ export class InvoiceDetailService {
           : Promise.resolve(null),
       ]);
 
-      // Resolver taxeType: primero lo que viene en el DTO, luego el del item
       const taxeTypeId =
         createInvoiceDetailDto.taxeTypeId ??
         product?.taxeType?.taxeTypeId ??
@@ -151,7 +150,6 @@ export class InvoiceDetailService {
         throw new BadRequestException('El precio de venta no es válido');
       }
 
-      // Fórmula colombiana: priceSale ya incluye el impuesto
       const { priceWithoutTax, taxe, priceWithTax } =
         this._generalInvoiceDetaillService.decomposeTax(priceSaleRaw, taxRate);
       const subtotal = Number((amount * priceWithTax).toFixed(2));
@@ -552,7 +550,6 @@ export class InvoiceDetailService {
     let firstResProductName: string | null = null;
 
     for (const dto of dtos) {
-      // Resolver taxeType: DTO > producto > hospedaje > excursión
       const productItem = dto.productId
         ? productMap.get(Number(dto.productId))
         : null;
@@ -618,7 +615,6 @@ export class InvoiceDetailService {
       if (isNaN(priceSaleRaw) || priceSaleRaw < 0)
         throw new BadRequestException('El precio de venta no es válido');
 
-      // Fórmula colombiana: priceSale ya incluye el impuesto
       const { priceWithoutTax, taxe, priceWithTax } =
         this._generalInvoiceDetaillService.decomposeTax(priceSaleRaw, taxRate);
       const subtotal = Number((amount * priceWithTax).toFixed(2));

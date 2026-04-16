@@ -48,10 +48,12 @@ export class LegalController {
   @UseGuards(AuthGuard())
   async deleteSection(@Param('legalSectionId') legalSectionId: string) {
     await this._legalUC.deleteSection(legalSectionId);
-    return { statusCode: HttpStatus.OK, message: 'Sección eliminada correctamente' };
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Sección eliminada correctamente',
+    };
   }
 
-  // Items
   @Post(':legalSectionId/items')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
@@ -71,7 +73,10 @@ export class LegalController {
     @Body() dto: UpdateLegalItemDto,
   ) {
     await this._legalUC.updateItem(legalItemId, dto);
-    return { statusCode: HttpStatus.OK, message: 'Item actualizado correctamente' };
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Item actualizado correctamente',
+    };
   }
 
   @Delete('items/:legalItemId')
@@ -79,10 +84,12 @@ export class LegalController {
   @UseGuards(AuthGuard())
   async deleteItem(@Param('legalItemId') legalItemId: string) {
     await this._legalUC.deleteItem(legalItemId);
-    return { statusCode: HttpStatus.OK, message: 'Item eliminado correctamente' };
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Item eliminado correctamente',
+    };
   }
 
-  // Children
   @Post('items/:legalItemId/children')
   @ApiBearerAuth()
   @UseGuards(AuthGuard())
@@ -102,7 +109,10 @@ export class LegalController {
     @Body() dto: UpdateLegalItemChildDto,
   ) {
     await this._legalUC.updateChild(legalItemChildId, dto);
-    return { statusCode: HttpStatus.OK, message: 'Sub-item actualizado correctamente' };
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Sub-item actualizado correctamente',
+    };
   }
 
   @Delete('children/:legalItemChildId')
@@ -110,7 +120,10 @@ export class LegalController {
   @UseGuards(AuthGuard())
   async deleteChild(@Param('legalItemChildId') legalItemChildId: string) {
     await this._legalUC.deleteChild(legalItemChildId);
-    return { statusCode: HttpStatus.OK, message: 'Sub-item eliminado correctamente' };
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Sub-item eliminado correctamente',
+    };
   }
 
   @Patch(':legalSectionId/items/reorder')

@@ -112,7 +112,6 @@ export class InvoiceService {
         priceSaleRaw = Number(detailDto.priceSale) || 0;
       }
 
-      // Resolver taxeType: DTO > producto
       const taxeTypeId =
         detailDto.taxeTypeId ?? product?.taxeType?.taxeTypeId ?? null;
 
@@ -131,7 +130,6 @@ export class InvoiceService {
             : taxeType.percentage;
       }
 
-      // Fórmula colombiana: priceSale ya incluye el impuesto
       const priceWithoutTax =
         taxRate > 0
           ? Math.round((priceSaleRaw / (1 + taxRate)) * 100) / 100
@@ -610,6 +608,73 @@ export class InvoiceService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async getInvoicesByIds(ids: number[]): Promise<Invoice[]> {
+    if (!ids || ids.length === 0) return [];
+    return this._invoiceRepository.find({
+      where: { invoiceId: In(ids) },
+      relations: [
+        'invoiceType',
+        'payType',
+        'paidType',
+        'user',
+        'user.identificationType',
+        'user.personType',
+        'employee',
+        'invoiceDetails',
+        'invoiceDetails.product',
+        'invoiceDetails.product.categoryType',
+        'invoiceDetails.accommodation',
+        'invoiceDetails.accommodation.categoryType',
+        'invoiceDetails.excursion',
+        'invoiceDetails.excursion.categoryType',
+        'invoiceDetails.taxeType',
+      ],
+      order: { startDate: 'DESC' },
+    });
+  }
+
+  async getTransferInvoices(
+    startDate?: string,
+    endDate?: string,
+  ): Promise<Invoice[]> {
+    const query = this._invoiceRepository
+      .createQueryBuilder('invoice')
+      .leftJoinAndSelect('invoice.invoiceType', 'invoiceType')
+      .leftJoinAndSelect('invoice.payType', 'payType')
+      .leftJoinAndSelect('invoice.paidType', 'paidType')
+      .leftJoinAndSelect('invoice.user', 'user')
+      .leftJoinAndSelect('user.identificationType', 'identificationType')
+      .leftJoinAndSelect('user.personType', 'personType')
+      .leftJoinAndSelect('invoice.employee', 'employee')
+      .leftJoinAndSelect('invoice.invoiceDetails', 'invoiceDetails')
+      .leftJoinAndSelect('invoiceDetails.product', 'product')
+      .leftJoinAndSelect('product.categoryType', 'productCategory')
+      .leftJoinAndSelect('invoiceDetails.accommodation', 'accommodation')
+      .leftJoinAndSelect('accommodation.categoryType', 'accommodationCategory')
+      .leftJoinAndSelect('invoiceDetails.excursion', 'excursion')
+      .leftJoinAndSelect('excursion.categoryType', 'excursionCategory')
+      .leftJoinAndSelect('invoiceDetails.taxeType', 'taxeType')
+      .where('payType.payTypeId = :payTypeId', { payTypeId: 2 })
+      .orderBy('invoice.startDate', 'DESC');
+
+    if (startDate && endDate) {
+      query.andWhere('invoice.startDate BETWEEN :start AND :end', {
+        start: `${startDate} 00:00:00`,
+        end: `${endDate} 23:59:59`,
+      });
+    } else if (startDate) {
+      query.andWhere('invoice.startDate >= :start', {
+        start: `${startDate} 00:00:00`,
+      });
+    } else if (endDate) {
+      query.andWhere('invoice.startDate <= :end', {
+        end: `${endDate} 23:59:59`,
+      });
+    }
+
+    return query.getMany();
   }
 
   async delete(invoiceId: number): Promise<void> {

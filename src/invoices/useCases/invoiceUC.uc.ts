@@ -3,6 +3,7 @@ import { PaginatedListExcursionsParamsDto } from './../../excursions/dtos/crudEx
 import { Injectable } from '@nestjs/common';
 import { InvoiceService } from './../services/invoice.service';
 import { InvoiceDetailService } from '../services/invoiceDetail.service';
+import { InvoiceExcelService } from '../services/invoiceExcel.service';
 import {
   CreateInvoiceDto,
   GetInvoiceWithDetailsDto,
@@ -20,6 +21,7 @@ export class InvoiceUC {
     private readonly _invoiceService: InvoiceService,
     private readonly _invoiceDetailService: InvoiceDetailService,
     private readonly _invoicedPaginatedService: InvoicedPaginatedService,
+    readonly excelService: InvoiceExcelService,
   ) {}
 
   async createInvoice(createInvoiceDto: CreateInvoiceDto, employeeId: string) {
@@ -58,6 +60,14 @@ export class InvoiceUC {
       invoiceId,
       detailId,
     );
+  }
+
+  async getInvoicesByIds(ids: number[]) {
+    return this._invoiceService.getInvoicesByIds(ids);
+  }
+
+  async getTransferInvoices(startDate?: string, endDate?: string) {
+    return this._invoiceService.getTransferInvoices(startDate, endDate);
   }
 
   async toggleDetailPaymentBulk(

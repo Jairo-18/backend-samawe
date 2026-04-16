@@ -110,6 +110,41 @@ export function ToggleDetailPaymentDocs() {
   );
 }
 
+export function ExportSelectedInvoicesExcelDocs() {
+  return applyDecorators(
+    ApiBearerAuth(),
+    ApiOperation({
+      summary: 'Exportar a Excel un conjunto de facturas seleccionadas por ID',
+    }),
+    ApiOkResponse({
+      description:
+        'Archivo .xlsx con hoja de facturas y hoja de detalles de ítems',
+    }),
+    ApiBody({
+      schema: {
+        type: 'object',
+        properties: {
+          invoiceIds: { type: 'array', items: { type: 'number' } },
+        },
+      },
+    }),
+  );
+}
+
+export function ExportTransferInvoicesExcelDocs() {
+  return applyDecorators(
+    ApiBearerAuth(),
+    ApiOperation({
+      summary:
+        'Exportar a Excel todas las facturas de transferencia (payTypeId = 2)',
+    }),
+    ApiOkResponse({
+      description:
+        'Archivo .xlsx con hoja de facturas y hoja de detalles de ítems',
+    }),
+  );
+}
+
 export function ToggleDetailPaymentBulkDocs() {
   return applyDecorators(
     ApiBearerAuth(),

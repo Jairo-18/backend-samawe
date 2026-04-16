@@ -130,8 +130,6 @@ export class AuthController {
       isNewUser: data.user.isNewUser ? 'true' : 'false',
     });
 
-    // Use URL fragment (#) instead of query params so tokens and PII are never
-    // sent to servers in Referer headers and never appear in server access logs.
     return res.redirect(
       `${frontendUrl}/auth/google/callback#${params.toString()}`,
     );

@@ -17,7 +17,7 @@ export class LegalSection {
   legalSectionId: string;
 
   @Column('varchar', { length: 20, nullable: false })
-  type: string; // 'terms' | 'privacy'
+  type: string;
 
   @ManyToOne(
     () => Organizational,

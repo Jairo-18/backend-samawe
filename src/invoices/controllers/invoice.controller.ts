@@ -1,4 +1,5 @@
-﻿import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
+import { Response } from 'express';
+import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { PaginatedListInvoicesParamsDto } from './../dtos/paginatedInvoice.dto';
 import { Invoice } from './../../shared/entities/invoice.entity';
 import {
@@ -12,7 +13,6 @@ import {
   UpdateInvoiceDto,
   CreateInvoiceDto,
 } from './../dtos/invoice.dto';
-
 import {
   CreatedRecordResponseDto,
   DeleteReCordResponseDto,
@@ -31,6 +31,7 @@ import {
   Query,
   Request,
   ParseArrayPipe,
+  Res,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
@@ -43,6 +44,8 @@ import {
   DeleteDetailDocs,
   ToggleDetailPaymentDocs,
   ToggleDetailPaymentBulkDocs,
+  ExportTransferInvoicesExcelDocs,
+  ExportSelectedInvoicesExcelDocs,
 } from '../decorators/invoice.decorators';
 import { InvoiceUC } from '../useCases/invoiceUC.uc';
 import { AuthGuard } from '@nestjs/passport';
@@ -76,9 +79,7 @@ export class InvoiceController {
       title: 'Factura creada',
       message: 'Factura registrada',
       statusCode: HttpStatus.CREATED,
-      data: {
-        rowId: rowId.invoiceId.toString(),
-      },
+      data: { rowId: rowId.invoiceId.toString() },
     };
   }
 
@@ -88,10 +89,7 @@ export class InvoiceController {
     @Param('id') invoiceId: number,
   ): Promise<{ statusCode: number; data: GetInvoiceWithDetailsDto }> {
     const invoice = await this._invoiceUC.findOne(invoiceId);
-    return {
-      statusCode: HttpStatus.OK,
-      data: invoice,
-    };
+    return { statusCode: HttpStatus.OK, data: invoice };
   }
 
   @Delete(':id')
@@ -115,7 +113,6 @@ export class InvoiceController {
     dtos: CreateInvoiceDetailDto[],
   ): Promise<CreatedRecordResponseDto> {
     await this._invoiceUC.addDetails(invoiceId, dtos);
-
     return {
       title: 'Items agregados',
       message: 'Items agregados exitosamente',
@@ -131,7 +128,6 @@ export class InvoiceController {
     @Body() invoiceData: UpdateInvoiceDto,
   ): Promise<UpdateRecordResponseDto> {
     await this._invoiceUC.update({ invoiceId, ...invoiceData });
-
     return {
       title: 'Factura editada',
       message: 'Factura editada exitosamente',
@@ -199,5 +195,58 @@ export class InvoiceController {
       statusCode: HttpStatus.OK,
       data: result,
     };
+  }
+
+  @Get('transfer/excel')
+  @ExportTransferInvoicesExcelDocs()
+  async exportTransferInvoicesExcel(
+    @Res() res: Response,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const invoices = await this._invoiceUC.getTransferInvoices(
+      startDate,
+      endDate,
+    );
+    const buffer = await this._invoiceUC.excelService.buildBuffer(invoices);
+    const fecha = this._buildFechaStamp();
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=Facturas_Transferencia_${fecha}.xlsx`,
+    );
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.send(buffer);
+  }
+
+  @Post('selected/excel')
+  @ExportSelectedInvoicesExcelDocs()
+  async exportSelectedInvoicesExcel(
+    @Body() body: { invoiceIds: number[] },
+    @Res() res: Response,
+  ) {
+    const invoices = await this._invoiceUC.getInvoicesByIds(body.invoiceIds);
+    const buffer = await this._invoiceUC.excelService.buildBuffer(invoices);
+    const fecha = this._buildFechaStamp();
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=Facturas_Seleccionadas_${fecha}.xlsx`,
+    );
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.send(buffer);
+  }
+
+  private _buildFechaStamp(): string {
+    const now = new Date();
+    return (
+      now.toLocaleDateString('es-CO').replace(/\//g, '-') +
+      '_' +
+      now.toLocaleTimeString('es-CO', { hour12: false }).replace(/:/g, '-')
+    );
   }
 }

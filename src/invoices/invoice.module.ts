@@ -6,6 +6,7 @@ import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { SharedModule } from '../shared/shared.module';
 import { InvoiceDetailService } from './services/invoiceDetail.service';
+import { InvoiceExcelService } from './services/invoiceExcel.service';
 import { RecipeModule } from '../recipes/recipe.module';
 import { RecipeService } from '../recipes/services/recipe.service';
 
@@ -21,6 +22,7 @@ import { RecipeService } from '../recipes/services/recipe.service';
     InvoiceUC,
     InvoiceDetailService,
     InvoicedPaginatedService,
+    InvoiceExcelService,
     RecipeService,
   ],
   exports: [InvoiceService, InvoiceDetailService],
