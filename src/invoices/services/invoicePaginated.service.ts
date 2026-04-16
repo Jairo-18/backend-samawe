@@ -191,12 +191,19 @@ export class InvoicedPaginatedService {
 
     const transformedItems = items.map((invoice) => {
       let totalTaxes = 0;
+      let totalVat = 0;
+      let totalIco8 = 0;
+      let totalIco5 = 0;
       if (invoice.invoiceDetails && invoice.invoiceDetails.length > 0) {
-        totalTaxes = invoice.invoiceDetails.reduce((sum, detail) => {
-          const taxAmount =
-            (detail.priceWithTax - detail.priceWithoutTax) * detail.amount;
-          return sum + taxAmount;
-        }, 0);
+        invoice.invoiceDetails.forEach((detail) => {
+          const vat = Math.round(Number(detail.totalVat ?? 0) * 100) / 100;
+          const ico8 = Math.round(Number(detail.totalIco8 ?? 0) * 100) / 100;
+          const ico5 = Math.round(Number(detail.totalIco5 ?? 0) * 100) / 100;
+          totalVat += vat;
+          totalIco8 += ico8;
+          totalIco5 += ico5;
+          totalTaxes += vat + ico8 + ico5;
+        });
       }
 
       const simplified: SimplifiedInvoiceResponse = {
@@ -216,6 +223,9 @@ export class InvoicedPaginatedService {
             ? parseFloat(invoice.total) || 0
             : invoice.total || 0,
         totalTaxes,
+        totalVat: Math.round(totalVat * 100) / 100,
+        totalIco8: Math.round(totalIco8 * 100) / 100,
+        totalIco5: Math.round(totalIco5 * 100) / 100,
         tableNumber: invoice.tableNumber,
         orderTime: invoice.orderTime,
         readyTime: invoice.readyTime,

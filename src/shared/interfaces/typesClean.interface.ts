@@ -15,3 +15,9 @@ export interface BedTypeClean {
   name?: string;
   code?: string;
 }
+
+export interface TaxeTypeClean {
+  taxeTypeId: number;
+  name?: string;
+  percentage?: number;
+}

@@ -14,6 +14,7 @@ import { CategoryType } from './categoryType.entity';
 import { BedType } from './bedType.entity';
 import { StateType } from './stateType.entity';
 import { Organizational } from './organizational.entity';
+import { TaxeType } from './taxeType.entity';
 
 @Entity({ name: 'Accommodation' })
 export class Accommodation {
@@ -73,6 +74,10 @@ export class Accommodation {
     eager: true,
   })
   images: AccommodationImage[];
+
+  @ManyToOne(() => TaxeType, { nullable: true, eager: false })
+  @JoinColumn({ name: 'taxeTypeId' })
+  taxeType?: TaxeType;
 
   @ManyToOne(() => Organizational, { nullable: true, eager: false })
   @JoinColumn({ name: 'organizationalId' })

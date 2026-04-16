@@ -6,6 +6,9 @@
   subtotalWithTax?: number;
   total: number;
   totalTaxes?: number;
+  totalVat?: number;
+  totalIco8?: number;
+  totalIco5?: number;
   tableNumber?: string;
   orderTime?: Date;
   readyTime?: Date;

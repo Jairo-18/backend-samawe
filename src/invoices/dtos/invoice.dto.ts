@@ -423,6 +423,16 @@ export class InvoiceDetailDto {
 
   @ApiProperty({ type: () => ExcursionMiniDto, required: false })
   excursion?: ExcursionMiniDto;
+
+  @ApiProperty({ required: false })
+  taxeType?: {
+    taxeTypeId: number;
+    name: string;
+    percentage: number;
+  };
+
+  @ApiProperty({ required: false })
+  isPaid?: boolean;
 }
 
 export class StateTypeDto {
@@ -498,6 +508,15 @@ export class GetInvoiceWithDetailsDto {
     description: 'Total de la factura',
   })
   totalTaxes: number;
+
+  @ApiProperty({ example: 1900, description: 'Total IVA 19%' })
+  totalVat: number;
+
+  @ApiProperty({ example: 800, description: 'Total IPOCONSUMO 8%' })
+  totalIco8: number;
+
+  @ApiProperty({ example: 500, description: 'Total IPOCONSUMO 5%' })
+  totalIco5: number;
 
   @ApiProperty({
     example: 10000,

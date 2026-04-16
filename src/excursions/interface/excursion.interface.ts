@@ -1,6 +1,7 @@
 ﻿import {
   StateTypeClean,
   CategoryTypeClean,
+  TaxeTypeClean,
 } from './../../shared/interfaces/typesClean.interface';
 
 export interface ExcursionImage {
@@ -18,6 +19,7 @@ export interface ExcursionInterfacePaginatedList {
   priceSale: number;
   stateType: StateTypeClean;
   categoryType: CategoryTypeClean;
+  taxeType: TaxeTypeClean | null;
   images: ExcursionImage[];
 }
 

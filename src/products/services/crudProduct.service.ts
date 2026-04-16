@@ -26,6 +26,7 @@ export class CrudProductService {
         'productRecipesIngredient',
       )
       .leftJoinAndSelect('Product.images', 'images')
+      .leftJoinAndSelect('Product.taxeType', 'taxeType')
       .skip(skip)
       .take(params.perPage)
       .orderBy('Product.name', 'ASC');
@@ -232,6 +233,13 @@ export class CrudProductService {
                 unitOfMeasureId: product.unitOfMeasure.unitOfMeasureId,
                 code: product.unitOfMeasure.code,
                 name: product.unitOfMeasure.name,
+              }
+            : null,
+          taxeType: product.taxeType
+            ? {
+                taxeTypeId: product.taxeType.taxeTypeId,
+                percentage: product.taxeType.percentage,
+                name: product.taxeType.name,
               }
             : null,
           images:

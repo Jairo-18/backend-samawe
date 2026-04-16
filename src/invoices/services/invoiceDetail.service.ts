@@ -61,19 +61,46 @@ export class InvoiceDetailService {
     preloadedInvoice?: Invoice,
   ) {
     try {
-      const [invoice, taxeType] = await Promise.all([
+      const [invoice, product, accommodation, excursion] = await Promise.all([
         preloadedInvoice
           ? Promise.resolve(preloadedInvoice)
           : this._invoiceRepository.findOne({
               where: { invoiceId },
               relations: ['invoiceType', 'paidType', 'organizational'],
             }),
-        createInvoiceDetailDto.taxeTypeId
-          ? this._taxeTypeRepository.findOne({
-              where: { taxeTypeId: createInvoiceDetailDto.taxeTypeId },
+        createInvoiceDetailDto.productId
+          ? this._productRepository.findOne({
+              where: { productId: createInvoiceDetailDto.productId },
+              relations: ['categoryType', 'taxeType'],
+            })
+          : Promise.resolve(null),
+        createInvoiceDetailDto.accommodationId
+          ? this._accommodationRepository.findOne({
+              where: {
+                accommodationId: createInvoiceDetailDto.accommodationId,
+              },
+              relations: ['stateType', 'taxeType'],
+            })
+          : Promise.resolve(null),
+        createInvoiceDetailDto.excursionId
+          ? this._excursionRepository.findOne({
+              where: { excursionId: createInvoiceDetailDto.excursionId },
+              relations: ['taxeType'],
             })
           : Promise.resolve(null),
       ]);
+
+      // Resolver taxeType: primero lo que viene en el DTO, luego el del item
+      const taxeTypeId =
+        createInvoiceDetailDto.taxeTypeId ??
+        product?.taxeType?.taxeTypeId ??
+        accommodation?.taxeType?.taxeTypeId ??
+        excursion?.taxeType?.taxeTypeId ??
+        null;
+
+      const taxeType = taxeTypeId
+        ? await this._taxeTypeRepository.findOne({ where: { taxeTypeId } })
+        : null;
 
       if (!invoice) {
         throw new NotFoundException(
@@ -101,19 +128,10 @@ export class InvoiceDetailService {
       }
 
       let priceBuy = 0;
-      let priceWithoutTax = 0;
-      let priceWithTax = 0;
-      let taxe = 0;
-      let subtotal = 0;
+      let priceSaleRaw = 0;
       let isProduct = false;
-      let product = null;
 
-      if (createInvoiceDetailDto.productId) {
-        product = await this._productRepository.findOne({
-          where: { productId: createInvoiceDetailDto.productId },
-          relations: ['categoryType'],
-        });
-        if (!product) throw new NotFoundException('Producto no encontrado');
+      if (product) {
         if (!product.isActive)
           throw new BadRequestException('Este producto está inactivo');
 
@@ -122,21 +140,27 @@ export class InvoiceDetailService {
           createInvoiceDetailDto,
         );
         priceBuy = prices.priceBuy;
-        priceWithoutTax = prices.priceWithoutTax;
-
+        priceSaleRaw = prices.priceSale;
         isProduct = true;
       } else {
         priceBuy = Number(createInvoiceDetailDto.priceBuy) || 0;
-        priceWithoutTax = Number(createInvoiceDetailDto.priceWithoutTax) || 0;
+        priceSaleRaw = Number(createInvoiceDetailDto.priceSale) || 0;
       }
 
-      if (isNaN(priceWithoutTax) || priceWithoutTax < 0) {
-        throw new BadRequestException('El precio sin impuesto no es válido');
+      if (isNaN(priceSaleRaw) || priceSaleRaw < 0) {
+        throw new BadRequestException('El precio de venta no es válido');
       }
 
-      priceWithTax = Number((priceWithoutTax * (1 + taxRate)).toFixed(2));
-      taxe = Number((priceWithTax - priceWithoutTax).toFixed(2));
-      subtotal = Number((amount * priceWithTax).toFixed(2));
+      // Fórmula colombiana: priceSale ya incluye el impuesto
+      const { priceWithoutTax, taxe, priceWithTax } =
+        this._generalInvoiceDetaillService.decomposeTax(priceSaleRaw, taxRate);
+      const subtotal = Number((amount * priceWithTax).toFixed(2));
+      const { totalVat, totalIco8, totalIco5 } =
+        this._generalInvoiceDetaillService.computeTaxColumns(
+          taxe,
+          amount,
+          taxeType?.taxeTypeId,
+        );
 
       const detail = this._invoiceDetaillRepository.create({
         amount,
@@ -145,6 +169,9 @@ export class InvoiceDetailService {
         priceWithTax,
         taxe,
         subtotal,
+        totalVat,
+        totalIco8,
+        totalIco5,
         taxeType,
         invoice,
         startDate: createInvoiceDetailDto.startDate,
@@ -155,22 +182,6 @@ export class InvoiceDetailService {
       });
 
       if (product) detail.product = product;
-
-      const [accommodation, excursion] = await Promise.all([
-        createInvoiceDetailDto.accommodationId
-          ? this._accommodationRepository.findOne({
-              where: {
-                accommodationId: createInvoiceDetailDto.accommodationId,
-              },
-              relations: ['stateType'],
-            })
-          : Promise.resolve(null),
-        createInvoiceDetailDto.excursionId
-          ? this._excursionRepository.findOne({
-              where: { excursionId: createInvoiceDetailDto.excursionId },
-            })
-          : Promise.resolve(null),
-      ]);
 
       if (createInvoiceDetailDto.accommodationId && !accommodation) {
         throw new NotFoundException('Hospedaje no encontrado');
@@ -412,6 +423,7 @@ export class InvoiceDetailService {
         dtos.filter((d) => d.productId).map((d) => Number(d.productId)),
       ),
     ];
+
     const excursionIds = [
       ...new Set(
         dtos.filter((d) => d.excursionId).map((d) => Number(d.excursionId)),
@@ -439,18 +451,19 @@ export class InvoiceDetailService {
         productIds.length
           ? this._productRepository.find({
               where: { productId: In(productIds) },
-              relations: ['categoryType'],
+              relations: ['categoryType', 'taxeType'],
             })
           : Promise.resolve([]),
         excursionIds.length
           ? this._excursionRepository.find({
               where: { excursionId: In(excursionIds) },
+              relations: ['taxeType'],
             })
           : Promise.resolve([]),
         accommodationIds.length
           ? this._accommodationRepository.find({
               where: { accommodationId: In(accommodationIds) },
-              relations: ['stateType'],
+              relations: ['stateType', 'taxeType'],
             })
           : Promise.resolve([]),
       ]);
@@ -539,7 +552,34 @@ export class InvoiceDetailService {
     let firstResProductName: string | null = null;
 
     for (const dto of dtos) {
-      const taxeType = dto.taxeTypeId ? taxeTypeMap.get(dto.taxeTypeId) : null;
+      // Resolver taxeType: DTO > producto > hospedaje > excursión
+      const productItem = dto.productId
+        ? productMap.get(Number(dto.productId))
+        : null;
+      const accommodationItem = dto.accommodationId
+        ? accommodationMap.get(Number(dto.accommodationId))
+        : null;
+      const excursionItem = dto.excursionId
+        ? excursionMap.get(Number(dto.excursionId))
+        : null;
+
+      const resolvedTaxeTypeId =
+        dto.taxeTypeId ??
+        productItem?.taxeType?.taxeTypeId ??
+        accommodationItem?.taxeType?.taxeTypeId ??
+        excursionItem?.taxeType?.taxeTypeId ??
+        null;
+
+      let taxeType = resolvedTaxeTypeId
+        ? taxeTypeMap.get(resolvedTaxeTypeId)
+        : null;
+      if (!taxeType && resolvedTaxeTypeId) {
+        taxeType = await this._taxeTypeRepository.findOne({
+          where: { taxeTypeId: resolvedTaxeTypeId },
+        });
+        if (taxeType) taxeTypeMap.set(resolvedTaxeTypeId, taxeType);
+      }
+
       if (dto.taxeTypeId && !taxeType)
         throw new NotFoundException('Tipo de impuesto no encontrado');
 
@@ -554,12 +594,12 @@ export class InvoiceDetailService {
         throw new BadRequestException('La cantidad debe ser mayor a cero');
 
       let priceBuy = 0;
-      let priceWithoutTax = 0;
+      let priceSaleRaw = 0;
       let product: any = null;
       let isProduct = false;
 
       if (dto.productId) {
-        product = productMap.get(Number(dto.productId));
+        product = productItem;
         if (!product) throw new NotFoundException('Producto no encontrado');
         if (!product.isActive)
           throw new BadRequestException('Este producto está inactivo');
@@ -568,19 +608,26 @@ export class InvoiceDetailService {
           dto,
         );
         priceBuy = prices.priceBuy;
-        priceWithoutTax = prices.priceWithoutTax;
+        priceSaleRaw = prices.priceSale;
         isProduct = true;
       } else {
         priceBuy = Number(dto.priceBuy) || 0;
-        priceWithoutTax = Number(dto.priceWithoutTax) || 0;
+        priceSaleRaw = Number(dto.priceSale) || 0;
       }
 
-      if (isNaN(priceWithoutTax) || priceWithoutTax < 0)
-        throw new BadRequestException('El precio sin impuesto no es válido');
+      if (isNaN(priceSaleRaw) || priceSaleRaw < 0)
+        throw new BadRequestException('El precio de venta no es válido');
 
-      const priceWithTax = Number((priceWithoutTax * (1 + taxRate)).toFixed(2));
-      const taxe = Number((priceWithTax - priceWithoutTax).toFixed(2));
+      // Fórmula colombiana: priceSale ya incluye el impuesto
+      const { priceWithoutTax, taxe, priceWithTax } =
+        this._generalInvoiceDetaillService.decomposeTax(priceSaleRaw, taxRate);
       const subtotal = Number((amount * priceWithTax).toFixed(2));
+      const { totalVat, totalIco8, totalIco5 } =
+        this._generalInvoiceDetaillService.computeTaxColumns(
+          taxe,
+          amount,
+          taxeType?.taxeTypeId,
+        );
 
       const detail = this._invoiceDetaillRepository.create({
         amount,
@@ -589,6 +636,9 @@ export class InvoiceDetailService {
         priceWithTax,
         taxe,
         subtotal,
+        totalVat,
+        totalIco8,
+        totalIco5,
         taxeType,
         invoice,
         startDate: dto.startDate,
@@ -601,7 +651,7 @@ export class InvoiceDetailService {
       if (product) detail.product = product;
 
       if (dto.accommodationId) {
-        const accommodation = accommodationMap.get(Number(dto.accommodationId));
+        const accommodation = accommodationItem;
         if (!accommodation)
           throw new NotFoundException('Hospedaje no encontrado');
         if (!accommodation.stateType)
@@ -635,7 +685,7 @@ export class InvoiceDetailService {
       }
 
       if (dto.excursionId) {
-        const excursion = excursionMap.get(Number(dto.excursionId));
+        const excursion = excursionItem;
         if (!excursion) throw new NotFoundException('Excursión no encontrada');
         detail.excursion = excursion;
         if (isBuy) {

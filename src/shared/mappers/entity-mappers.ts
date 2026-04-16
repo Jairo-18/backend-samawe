@@ -20,6 +20,7 @@ export interface ProductDetailDto {
   isActive: boolean;
   categoryType: { categoryTypeId: number; code: string; name: string } | null;
   unitOfMeasure: { unitOfMeasureId: number; code: string; name: string } | null;
+  taxeType: { taxeTypeId: number; percentage: number; name: string } | null;
   images: { productImageId: number; imageUrl: string; publicId: string }[];
   organizationalId: string | null;
 }
@@ -48,6 +49,13 @@ export function mapProductDetail(product: Product): ProductDetailDto {
           name: product.unitOfMeasure.name,
         }
       : null,
+    taxeType: product.taxeType
+      ? {
+          taxeTypeId: product.taxeType.taxeTypeId,
+          percentage: product.taxeType.percentage,
+          name: product.taxeType.name,
+        }
+      : null,
     images:
       product.images?.map((img) => ({
         productImageId: img.productImageId,
@@ -72,6 +80,7 @@ export interface AccommodationDetailDto {
   categoryType: { categoryTypeId: number; code: string; name: string } | null;
   bedType: { bedTypeId: number; code: string; name: string } | null;
   stateType: { stateTypeId: number; code: string; name: string } | null;
+  taxeType: { taxeTypeId: number; percentage: number; name: string } | null;
   images: {
     accommodationImageId: number;
     imageUrl: string;
@@ -115,6 +124,13 @@ export function mapAccommodationDetail(
           name: accommodation.stateType.name,
         }
       : null,
+    taxeType: accommodation.taxeType
+      ? {
+          taxeTypeId: accommodation.taxeType.taxeTypeId,
+          percentage: accommodation.taxeType.percentage,
+          name: accommodation.taxeType.name,
+        }
+      : null,
     images:
       accommodation.images?.map((img) => ({
         accommodationImageId: img.accommodationImageId,
@@ -138,7 +154,11 @@ export interface MostRequestedAccommodationDto {
   categoryType: { categoryTypeId: number; code: string; name: string } | null;
   bedType: { bedTypeId: number; code: string; name: string } | null;
   stateType: { stateTypeId: number; code: string; name: string } | null;
-  images: { accommodationImageId: number; imageUrl: string; publicId: string }[];
+  images: {
+    accommodationImageId: number;
+    imageUrl: string;
+    publicId: string;
+  }[];
   organizationalId: string | null;
 }
 
@@ -195,6 +215,7 @@ export interface ExcursionDetailDto {
   priceSale: number;
   categoryType: { categoryTypeId: number; code: string; name: string } | null;
   stateType: { stateTypeId: number; code: string; name: string } | null;
+  taxeType: { taxeTypeId: number; percentage: number; name: string } | null;
   images: { excursionImageId: number; imageUrl: string; publicId: string }[];
   organizationalId: string | null;
 }
@@ -219,6 +240,13 @@ export function mapExcursionDetail(excursion: Excursion): ExcursionDetailDto {
           stateTypeId: excursion.stateType.stateTypeId,
           code: excursion.stateType.code,
           name: excursion.stateType.name,
+        }
+      : null,
+    taxeType: excursion.taxeType
+      ? {
+          taxeTypeId: excursion.taxeType.taxeTypeId,
+          percentage: excursion.taxeType.percentage,
+          name: excursion.taxeType.name,
         }
       : null,
     images:

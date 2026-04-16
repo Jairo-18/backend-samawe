@@ -89,6 +89,15 @@ export class CreateProductDto {
 
   @ApiProperty({
     example: 1,
+    description: 'ID del tipo de impuesto por defecto (IVA, IPOCONSUMO, etc.)',
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  taxeTypeId?: number;
+
+  @ApiProperty({
+    example: 1,
     description: 'ID del tipo de categoría (relación con CategoryType)',
     required: true,
   })
@@ -175,6 +184,15 @@ export class UpdateProductDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID del tipo de impuesto por defecto (IVA, IPOCONSUMO, etc.)',
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  taxeTypeId?: number;
 
   @ApiProperty({
     example: 1,

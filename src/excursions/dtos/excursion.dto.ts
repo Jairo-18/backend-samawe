@@ -78,6 +78,15 @@ export class CreateExcursionDto {
   categoryTypeId: number;
 
   @ApiProperty({
+    example: 1,
+    description: 'ID del tipo de impuesto por defecto (IVA, IPOCONSUMO, etc.)',
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  taxeTypeId?: number;
+
+  @ApiProperty({
     example: 'uuid-de-organizacion',
     description: 'ID de la organización',
     required: false,
@@ -152,6 +161,15 @@ export class UpdateExcursionDto {
   @IsOptional()
   @IsNumber()
   stateTypeId?: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID del tipo de impuesto por defecto (IVA, IPOCONSUMO, etc.)',
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  taxeTypeId?: number;
 
   @ApiProperty({
     example: 'uuid-de-organizacion',

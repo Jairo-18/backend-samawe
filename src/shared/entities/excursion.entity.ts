@@ -13,6 +13,7 @@ import {
 import { CategoryType } from './categoryType.entity';
 import { StateType } from './stateType.entity';
 import { Organizational } from './organizational.entity';
+import { TaxeType } from './taxeType.entity';
 
 @Entity({ name: 'Excursion' })
 export class Excursion {
@@ -47,6 +48,10 @@ export class Excursion {
     eager: true,
   })
   images: ExcursionImage[];
+
+  @ManyToOne(() => TaxeType, { nullable: true, eager: false })
+  @JoinColumn({ name: 'taxeTypeId' })
+  taxeType?: TaxeType;
 
   @ManyToOne(() => Organizational, { nullable: true, eager: false })
   @JoinColumn({ name: 'organizationalId' })

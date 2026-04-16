@@ -3,6 +3,7 @@ import { StateTypeRepository } from './../../shared/repositories/stateType.repos
 import { OrganizationalRepository } from './../../shared/repositories/organizational.repository';
 import { BedTypeRepository } from './../../shared/repositories/bedType.repository';
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
+import { TaxeTypeRepository } from './../../shared/repositories/taxeType.repository';
 import { Accommodation } from './../../shared/entities/accommodation.entity';
 import {
   CreateAccommodationDto,
@@ -35,6 +36,7 @@ export class AccommodationService {
     private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
     private readonly _organizationalRepository: OrganizationalRepository,
     private readonly _localStorageService: LocalStorageService,
+    private readonly _taxeTypeRepository: TaxeTypeRepository,
   ) {}
 
   async create(
@@ -54,6 +56,7 @@ export class AccommodationService {
         bedTypeId,
         stateTypeId,
         organizationalId,
+        taxeTypeId,
         ...accommodationData
       } = createAccommodationDto;
 
@@ -91,12 +94,23 @@ export class AccommodationService {
         throw new BadRequestException('Tipo de estado no encontrado');
       }
 
+      let taxeType = null;
+      if (taxeTypeId) {
+        taxeType = await this._taxeTypeRepository.findOne({
+          where: { taxeTypeId },
+        });
+        if (!taxeType) {
+          throw new BadRequestException('Tipo de impuesto no encontrado');
+        }
+      }
+
       const newAccommodation = this._accommodationRepository.create({
         ...accommodationData,
         categoryType,
         bedType,
         stateType,
         ...(organizational && { organizational }),
+        ...(taxeType && { taxeType }),
       });
 
       return await this._accommodationRepository.save(newAccommodation);
@@ -185,7 +199,22 @@ export class AccommodationService {
       accommodation.bedType = bed;
     }
 
-    Object.assign(accommodation, updateAccommodationDto);
+    if (updateAccommodationDto.taxeTypeId !== undefined) {
+      if (updateAccommodationDto.taxeTypeId === null) {
+        accommodation.taxeType = null;
+      } else {
+        const taxeType = await this._taxeTypeRepository.findOne({
+          where: { taxeTypeId: updateAccommodationDto.taxeTypeId },
+        });
+        if (!taxeType) {
+          throw new NotFoundException('Tipo de impuesto no encontrado');
+        }
+        accommodation.taxeType = taxeType;
+      }
+    }
+
+    const { taxeTypeId: _t, ...updateData } = updateAccommodationDto;
+    Object.assign(accommodation, updateData);
 
     return await this._accommodationRepository.save(accommodation);
   }
@@ -202,7 +231,7 @@ export class AccommodationService {
 
     const accommodation = await this._accommodationRepository.findOne({
       where: { accommodationId: id },
-      relations: ['categoryType', 'bedType', 'stateType'],
+      relations: ['categoryType', 'bedType', 'stateType', 'taxeType'],
     });
 
     if (!accommodation) {

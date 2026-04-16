@@ -3,6 +3,7 @@ import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDet
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
 import { OrganizationalRepository } from './../../shared/repositories/organizational.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
+import { TaxeTypeRepository } from './../../shared/repositories/taxeType.repository';
 import { Product } from './../../shared/entities/product.entity';
 import { CreateProductDto, UpdateProductDto } from './../dtos/product.dto';
 import { UnitOfMeasureRepository } from './../../shared/repositories/unitOfMeasure.repository';
@@ -29,6 +30,7 @@ export class ProductService {
     private readonly _organizationalRepository: OrganizationalRepository,
     private readonly _recipeRepository: RecipeRepository,
     private readonly _localStorageService: LocalStorageService,
+    private readonly _taxeTypeRepository: TaxeTypeRepository,
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
@@ -45,6 +47,7 @@ export class ProductService {
         categoryTypeId,
         unitOfMeasureId,
         organizationalId,
+        taxeTypeId,
         ...productData
       } = createProductDto;
 
@@ -76,11 +79,22 @@ export class ProductService {
         }
       }
 
+      let taxeType = null;
+      if (taxeTypeId) {
+        taxeType = await this._taxeTypeRepository.findOne({
+          where: { taxeTypeId },
+        });
+        if (!taxeType) {
+          throw new BadRequestException('Tipo de impuesto no encontrado');
+        }
+      }
+
       const newProduct = this._productRepository.create({
         ...productData,
         categoryType,
         ...(unitOfMeasure && { unitOfMeasure }),
         ...(organizational && { organizational }),
+        ...(taxeType && { taxeType }),
       });
 
       return await this._productRepository.save(newProduct);
@@ -159,7 +173,22 @@ export class ProductService {
       }
     }
 
-    Object.assign(product, updateProductDto);
+    if (updateProductDto.taxeTypeId !== undefined) {
+      if (updateProductDto.taxeTypeId === null) {
+        product.taxeType = null;
+      } else {
+        const taxeType = await this._taxeTypeRepository.findOne({
+          where: { taxeTypeId: updateProductDto.taxeTypeId },
+        });
+        if (!taxeType) {
+          throw new NotFoundException('Tipo de impuesto no encontrado');
+        }
+        product.taxeType = taxeType;
+      }
+    }
+
+    const { taxeTypeId: _t, ...updateData } = updateProductDto;
+    Object.assign(product, updateData);
 
     return await this._productRepository.save(product);
   }
@@ -179,6 +208,7 @@ export class ProductService {
       relations: [
         'categoryType',
         'unitOfMeasure',
+        'taxeType',
         'productRecipes',
         'productRecipes.ingredient',
         'images',

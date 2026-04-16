@@ -47,7 +47,7 @@
         {
           invoiceDetailId: 2,
           amount: 5,
-          priceWithoutTax: '1000',
+          priceSale: '1000',
           priceWithTax: '1100',
           subtotal: '5500',
           taxe: 'IVA 10%',
@@ -118,7 +118,7 @@
         {
           invoiceDetailId: 2,
           amount: 5,
-          priceWithoutTax: '1000',
+          priceSale: '1000',
           priceWithTax: '1100',
           subtotal: '5500',
           taxe: 'IVA 10%',
@@ -189,7 +189,7 @@
         {
           invoiceDetailId: 2,
           amount: 5,
-          priceWithoutTax: '1000',
+          priceSale: '1000',
           priceWithTax: '1100',
           subtotal: '5500',
           taxe: 'IVA 10%',
@@ -260,7 +260,7 @@
         {
           invoiceDetailId: 2,
           amount: 5,
-          priceWithoutTax: '1000',
+          priceSale: '1000',
           priceWithTax: '1100',
           subtotal: '5500',
           taxe: 'IVA 10%',
@@ -355,7 +355,7 @@ export const CREATE_INVOICE_DETAILS_EXAMPLE = [
     excursionId: 0,
     amount: 2,
     priceBuy: 800,
-    priceWithoutTax: 1200,
+    priceSale: 1200,
     taxeTypeId: 1,
     startDate: '2025-06-15T14:00:00Z',
     endDate: '2025-06-20T10:00:00Z',
@@ -366,7 +366,7 @@ export const CREATE_INVOICE_DETAILS_EXAMPLE = [
     excursionId: 0,
     amount: 1,
     priceBuy: 4000,
-    priceWithoutTax: 5000,
+    priceSale: 5000,
     taxeTypeId: 2,
     startDate: '2025-07-01T12:00:00Z',
     endDate: '2025-07-05T12:00:00Z',

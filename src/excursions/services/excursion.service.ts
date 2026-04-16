@@ -2,6 +2,7 @@
 import { StateTypeRepository } from './../../shared/repositories/stateType.repository';
 import { OrganizationalRepository } from './../../shared/repositories/organizational.repository';
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
+import { TaxeTypeRepository } from './../../shared/repositories/taxeType.repository';
 import {
   CreateExcursionDto,
   UpdateExcursionDto,
@@ -31,6 +32,7 @@ export class ExcursionService {
     private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
     private readonly _organizationalRepository: OrganizationalRepository,
     private readonly _localStorageService: LocalStorageService,
+    private readonly _taxeTypeRepository: TaxeTypeRepository,
   ) {}
 
   async create(createExcursionDto: CreateExcursionDto): Promise<Excursion> {
@@ -47,6 +49,7 @@ export class ExcursionService {
         categoryTypeId,
         stateTypeId,
         organizationalId,
+        taxeTypeId,
         ...excursionData
       } = createExcursionDto;
 
@@ -76,11 +79,22 @@ export class ExcursionService {
         throw new BadRequestException('Tipo de estado no encontrado');
       }
 
+      let taxeType = null;
+      if (taxeTypeId) {
+        taxeType = await this._taxeTypeRepository.findOne({
+          where: { taxeTypeId },
+        });
+        if (!taxeType) {
+          throw new BadRequestException('Tipo de impuesto no encontrado');
+        }
+      }
+
       const newExcursion = this._excursionRepository.create({
         ...excursionData,
         categoryType,
         stateType,
         ...(organizational && { organizational }),
+        ...(taxeType && { taxeType }),
       });
 
       return await this._excursionRepository.save(newExcursion);
@@ -159,6 +173,21 @@ export class ExcursionService {
       delete updateExcursionDto.categoryTypeId;
     }
 
+    if (updateExcursionDto.taxeTypeId !== undefined) {
+      if (updateExcursionDto.taxeTypeId === null) {
+        excursion.taxeType = null;
+      } else {
+        const taxeType = await this._taxeTypeRepository.findOne({
+          where: { taxeTypeId: updateExcursionDto.taxeTypeId },
+        });
+        if (!taxeType) {
+          throw new NotFoundException('Tipo de impuesto no encontrado');
+        }
+        excursion.taxeType = taxeType;
+      }
+      delete updateExcursionDto.taxeTypeId;
+    }
+
     Object.assign(excursion, updateExcursionDto);
 
     return await this._excursionRepository.save(excursion);
@@ -176,7 +205,7 @@ export class ExcursionService {
 
     const excursion = await this._excursionRepository.findOne({
       where: { excursionId: id },
-      relations: ['categoryType', 'stateType'],
+      relations: ['categoryType', 'stateType', 'taxeType'],
     });
 
     if (!excursion) {

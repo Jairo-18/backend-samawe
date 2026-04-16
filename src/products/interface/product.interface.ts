@@ -1,4 +1,4 @@
-﻿import { CategoryTypeClean } from './../../shared/interfaces/typesClean.interface';
+﻿import { CategoryTypeClean, TaxeTypeClean } from './../../shared/interfaces/typesClean.interface';
 
 export interface ProductImageClean {
   productImageId: number;
@@ -23,6 +23,7 @@ export interface ProductInterfacePaginatedList {
   isActive: boolean;
   categoryType: CategoryTypeClean;
   unitOfMeasure?: UnitOfMeasureClean | null;
+  taxeType?: TaxeTypeClean | null;
   images: ProductImageClean[];
 }
 

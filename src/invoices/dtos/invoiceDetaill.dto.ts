@@ -63,12 +63,12 @@ export class CreateInvoiceDetailDto {
   priceBuy?: number;
 
   @ApiProperty({
-    description: 'Precio unitario sin impuestos',
-    example: 1200.0,
+    description: 'Precio de venta unitario con impuesto incluido (all-in)',
+    example: 6500.0,
   })
   @IsNumber()
   @IsNotEmpty()
-  priceWithoutTax: number;
+  priceSale: number;
 
   @ApiPropertyOptional({
     description: 'ID del tipo de impuesto aplicado al ítem',

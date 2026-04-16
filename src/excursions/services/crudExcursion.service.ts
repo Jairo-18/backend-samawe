@@ -99,7 +99,7 @@ export class CrudExcursionService {
       skip,
       take: params.perPage,
       order: { name: 'ASC' },
-      relations: ['categoryType', 'stateType'],
+      relations: ['categoryType', 'stateType', 'taxeType'],
     });
 
     const excursions = entities.map((excursion) => ({
@@ -121,6 +121,13 @@ export class CrudExcursionService {
             stateTypeId: excursion.stateType.stateTypeId,
             code: excursion.stateType.code,
             name: excursion.stateType.name,
+          }
+        : null,
+      taxeType: excursion.taxeType
+        ? {
+            taxeTypeId: excursion.taxeType.taxeTypeId,
+            percentage: excursion.taxeType.percentage,
+            name: excursion.taxeType.name,
           }
         : null,
       images:

@@ -131,7 +131,7 @@ export class CrudAccommodationService {
         skip,
         take: params.perPage,
         order: { name: 'ASC' },
-        relations: ['categoryType', 'bedType', 'stateType'],
+        relations: ['categoryType', 'bedType', 'stateType', 'taxeType'],
       });
 
     const accommodations: AccommodationInterfacePaginatedList[] = entities.map(
@@ -165,6 +165,13 @@ export class CrudAccommodationService {
               stateTypeId: accommodation.stateType.stateTypeId,
               code: accommodation.stateType.code,
               name: accommodation.stateType.name,
+            }
+          : null,
+        taxeType: accommodation.taxeType
+          ? {
+              taxeTypeId: accommodation.taxeType.taxeTypeId,
+              percentage: accommodation.taxeType.percentage,
+              name: accommodation.taxeType.name,
             }
           : null,
         images:

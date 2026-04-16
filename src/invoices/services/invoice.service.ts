@@ -81,12 +81,46 @@ export class InvoiceService {
     let hasProducts = false;
 
     for (const detailDto of detailsDto) {
-      let taxRate = 0;
-      let taxeType = null;
+      const amount = Number(detailDto.amount);
+      if (isNaN(amount) || amount <= 0) {
+        throw new BadRequestException('La cantidad debe ser mayor a cero');
+      }
 
-      if (detailDto.taxeTypeId) {
+      let priceBuy = 0;
+      let priceSaleRaw = 0;
+      let product = null;
+
+      if (detailDto.productId) {
+        product = await this._productRepository.findOne({
+          where: { productId: detailDto.productId },
+          relations: ['taxeType'],
+        });
+        if (!product) {
+          throw new NotFoundException('Producto no encontrado');
+        }
+        priceBuy =
+          detailDto.priceBuy !== undefined
+            ? Number(detailDto.priceBuy)
+            : Number(product.priceBuy);
+        priceSaleRaw =
+          detailDto.priceSale !== undefined
+            ? Number(detailDto.priceSale)
+            : Number(product.priceSale);
+        hasProducts = true;
+      } else {
+        priceBuy = Number(detailDto.priceBuy) || 0;
+        priceSaleRaw = Number(detailDto.priceSale) || 0;
+      }
+
+      // Resolver taxeType: DTO > producto
+      const taxeTypeId =
+        detailDto.taxeTypeId ?? product?.taxeType?.taxeTypeId ?? null;
+
+      let taxeType = null;
+      let taxRate = 0;
+      if (taxeTypeId) {
         taxeType = await this._taxeTypeRepository.findOne({
-          where: { taxeTypeId: detailDto.taxeTypeId },
+          where: { taxeTypeId },
         });
         if (!taxeType) {
           throw new NotFoundException('Tipo de impuesto no encontrado');
@@ -97,47 +131,20 @@ export class InvoiceService {
             : taxeType.percentage;
       }
 
-      const amount = Number(detailDto.amount);
-      if (isNaN(amount) || amount <= 0) {
-        throw new BadRequestException('La cantidad debe ser mayor a cero');
-      }
-
-      let priceBuy = 0;
-      let priceWithoutTax = 0;
-      let priceWithTax = 0;
-      let detailSubtotal = 0;
-
-      if (detailDto.productId) {
-        const product = await this._productRepository.findOne({
-          where: { productId: detailDto.productId },
-        });
-        if (!product) {
-          throw new NotFoundException('Producto no encontrado');
-        }
-
-        priceBuy =
-          detailDto.priceBuy !== undefined
-            ? Number(detailDto.priceBuy)
-            : Number(product.priceBuy);
-
-        priceWithoutTax =
-          detailDto.priceWithoutTax !== undefined
-            ? Number(detailDto.priceWithoutTax)
-            : Number(product.priceSale);
-
-        hasProducts = true;
-      } else {
-        priceBuy = Number(detailDto.priceBuy) || 0;
-        priceWithoutTax = Number(detailDto.priceWithoutTax) || 0;
-      }
-
-      priceWithTax = Number((priceWithoutTax * (1 + taxRate)).toFixed(2));
-      detailSubtotal = Number((amount * priceWithTax).toFixed(2));
+      // Fórmula colombiana: priceSale ya incluye el impuesto
+      const priceWithoutTax =
+        taxRate > 0
+          ? Math.round((priceSaleRaw / (1 + taxRate)) * 100) / 100
+          : priceSaleRaw;
+      const taxe = Math.round((priceSaleRaw - priceWithoutTax) * 100) / 100;
+      const priceWithTax = priceSaleRaw;
+      const detailSubtotal = Number((amount * priceWithTax).toFixed(2));
 
       const detail = this._invoiceDetaillRepository.create({
         amount,
         priceBuy,
         priceWithoutTax,
+        taxe,
         priceWithTax,
         subtotal: detailSubtotal,
         taxeType,
@@ -145,12 +152,7 @@ export class InvoiceService {
         endDate: detailDto.endDate,
       });
 
-      if (detailDto.productId) {
-        const product = await this._productRepository.findOne({
-          where: { productId: detailDto.productId },
-        });
-        detail.product = product;
-      }
+      if (product) detail.product = product;
 
       if (detailDto.accommodationId) {
         const accommodation = await this._accommodationRepository.findOne({
@@ -174,13 +176,9 @@ export class InvoiceService {
 
       details.push(detail);
 
-      const lineSubtotalWithoutTax = amount * priceWithoutTax;
-      const lineSubtotalWithTax = amount * priceWithTax;
-      const taxAmount = lineSubtotalWithTax - lineSubtotalWithoutTax;
-
-      subtotalWithoutTax += lineSubtotalWithoutTax;
-      subtotalWithTax += taxAmount;
-      total += lineSubtotalWithTax;
+      subtotalWithoutTax += amount * priceWithoutTax;
+      subtotalWithTax += amount * taxe;
+      total += detailSubtotal;
     }
 
     subtotalWithoutTax = Math.round(subtotalWithoutTax * 100) / 100;
@@ -339,6 +337,7 @@ export class InvoiceService {
         'invoiceDetails.product',
         'invoiceDetails.accommodation',
         'invoiceDetails.excursion',
+        'invoiceDetails.taxeType',
         'user.phoneCode',
         'user.identificationType',
       ],
@@ -348,14 +347,27 @@ export class InvoiceService {
       throw new NotFoundException('Factura no encontrada');
     }
 
-    const { totalTaxes } = await this._invoiceDetaillRepository
-      .createQueryBuilder('d')
-      .select(
-        'COALESCE(SUM((d.priceWithTax - d.priceWithoutTax) * d.amount), 0)',
-        'totalTaxes',
-      )
-      .where('d.invoiceId = :invoiceId', { invoiceId })
-      .getRawOne();
+    const { totalTaxes, totalVat, totalIco8, totalIco5 } =
+      await this._invoiceDetaillRepository
+        .createQueryBuilder('d')
+        .select(
+          'COALESCE(SUM((d.priceWithTax - d.priceWithoutTax) * d.amount), 0)',
+          'totalTaxes',
+        )
+        .addSelect(
+          'COALESCE(SUM(CASE WHEN d.taxeTypeId = 1 THEN (d.priceWithTax - d.priceWithoutTax) * d.amount ELSE 0 END), 0)',
+          'totalVat',
+        )
+        .addSelect(
+          'COALESCE(SUM(CASE WHEN d.taxeTypeId = 3 THEN (d.priceWithTax - d.priceWithoutTax) * d.amount ELSE 0 END), 0)',
+          'totalIco8',
+        )
+        .addSelect(
+          'COALESCE(SUM(CASE WHEN d.taxeTypeId = 4 THEN (d.priceWithTax - d.priceWithoutTax) * d.amount ELSE 0 END), 0)',
+          'totalIco5',
+        )
+        .where('d.invoiceId = :invoiceId', { invoiceId })
+        .getRawOne();
 
     return {
       invoiceId: invoice.invoiceId,
@@ -374,6 +386,9 @@ export class InvoiceService {
       transfer: invoice.transfer,
       total: invoice.total?.toString(),
       totalTaxes: Number(totalTaxes),
+      totalVat: Number(totalVat),
+      totalIco8: Number(totalIco8),
+      totalIco5: Number(totalIco5),
       tableNumber: invoice.tableNumber,
       orderTime: invoice.orderTime?.toISOString(),
       readyTime: invoice.readyTime?.toISOString(),
@@ -438,6 +453,14 @@ export class InvoiceService {
           name: detail.excursion.name,
           code: detail.excursion.code,
         },
+        taxeType: detail.taxeType && {
+          taxeTypeId: detail.taxeType.taxeTypeId,
+          name: detail.taxeType.name,
+          percentage: detail.taxeType.percentage,
+        },
+        totalVat: Number(detail.totalVat ?? 0),
+        totalIco8: Number(detail.totalIco8 ?? 0),
+        totalIco5: Number(detail.totalIco5 ?? 0),
         startDate: detail.startDate,
         endDate: detail.endDate,
         isPaid: detail.isPaid,

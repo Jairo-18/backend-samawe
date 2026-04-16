@@ -14,6 +14,7 @@ import { ProductImage } from './productImage.entity';
 import { UnitOfMeasure } from './unitOfMeasure.entity';
 import { Recipe } from './recipe.entity';
 import { Organizational } from './organizational.entity';
+import { TaxeType } from './taxeType.entity';
 
 @Entity({ name: 'Product' })
 export class Product {
@@ -63,6 +64,10 @@ export class Product {
 
   @Column({ nullable: true })
   unitOfMeasureId: number;
+
+  @ManyToOne(() => TaxeType, { nullable: true, eager: false })
+  @JoinColumn({ name: 'taxeTypeId' })
+  taxeType?: TaxeType;
 
   @ManyToOne(() => Organizational, { nullable: true, eager: false })
   @JoinColumn({ name: 'organizationalId' })

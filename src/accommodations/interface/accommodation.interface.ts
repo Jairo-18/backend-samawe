@@ -2,6 +2,7 @@
   StateTypeClean,
   CategoryTypeClean,
   BedTypeClean,
+  TaxeTypeClean,
 } from './../../shared/interfaces/typesClean.interface';
 
 export interface AccommodationImage {
@@ -24,6 +25,7 @@ export interface AccommodationInterfacePaginatedList {
   stateType: StateTypeClean;
   bedType: BedTypeClean;
   categoryType: CategoryTypeClean;
+  taxeType: TaxeTypeClean;
   images: AccommodationImage[];
 }
 

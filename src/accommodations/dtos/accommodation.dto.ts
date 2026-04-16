@@ -108,6 +108,15 @@ export class CreateAccommodationDto {
   stateTypeId: number;
 
   @ApiProperty({
+    example: 1,
+    description: 'ID del tipo de impuesto por defecto (IVA, IPOCONSUMO, etc.)',
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  taxeTypeId?: number;
+
+  @ApiProperty({
     example: 'uuid-de-organizacion',
     description: 'ID de la organización',
     required: false,
@@ -201,6 +210,15 @@ export class UpdateAccommodationDto {
   @IsNumber()
   @IsOptional()
   stateTypeId?: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID del tipo de impuesto por defecto (IVA, IPOCONSUMO, etc.)',
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  taxeTypeId?: number;
 
   @ApiProperty({
     example: 'uuid-de-organizacion',
