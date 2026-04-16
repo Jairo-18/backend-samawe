@@ -74,7 +74,7 @@ export class ExcursionController {
   ): Promise<CreatedRecordResponseDto> {
     const createExcursion = await this._excursionUC.create(excursionDto);
     return {
-      message: 'Registro de pasadía exitoso',
+      message: 'Registro exitoso',
       statusCode: HttpStatus.CREATED,
       data: {
         rowId: createExcursion.excursionId.toString(),
@@ -92,7 +92,7 @@ export class ExcursionController {
     await this._excursionUC.update(excursionId, excursionData);
 
     return {
-      message: 'Pasadía actualizado correctamente',
+      message: 'Actualizado correctamente',
       statusCode: HttpStatus.OK,
     };
   }
@@ -123,7 +123,7 @@ export class ExcursionController {
     await this._excursionUC.delete(excursionId);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Pasadía eliminada exitosamente',
+      message: 'Eliminado correctamente',
     };
   }
 
