@@ -109,7 +109,7 @@ async function bootstrap() {
           frameAncestors: ["'none'"],
         },
       },
-      crossOriginResourcePolicy: { policy: 'same-origin' },
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
       crossOriginEmbedderPolicy: false,
       frameguard: { action: 'deny' },
       hsts: {

@@ -50,12 +50,6 @@ import { LegalModule } from './legal/legal.module';
           ? join(process.cwd(), 'uploads')
           : '/app/uploads',
       serveRoot: '/uploads',
-      serveStaticOptions: {
-        setHeaders: (res) => {
-          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-          res.setHeader('Access-Control-Allow-Origin', '*');
-        },
-      },
     }),
     SharedModule.forRoot(),
     PassportModule.register({ defaultStrategy: 'jwt' }),
