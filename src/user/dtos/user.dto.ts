@@ -13,6 +13,7 @@ import {
   IsBoolean,
   MinLength,
 } from 'class-validator';
+import { IsNotDisposableEmail } from '../../shared/validators/isNotDisposableEmail';
 import { HttpStatus } from '@nestjs/common';
 import { GET_ALL_USER_EXAMPLE } from '../constants/examples.conts';
 
@@ -59,6 +60,10 @@ export class CreateUserDto {
 
   @ApiPropertyOptional({ example: 'test@gmail.com' })
   @IsOptional()
+  @IsEmail({}, { message: 'Debe ser un correo válido' })
+  @IsNotDisposableEmail({
+    message: 'No se permiten correos de dominios desechables',
+  })
   email?: string;
 
   @ApiProperty({
@@ -186,6 +191,9 @@ export class UpdateUserDto {
   @ApiProperty({ example: 'test@gmail.com', required: false })
   @IsOptional()
   @IsEmail({}, { message: 'Debe ser un correo válido' })
+  @IsNotDisposableEmail({
+    message: 'No se permiten correos de dominios desechables',
+  })
   email: string;
 
   @ApiProperty({ example: '2' })
