@@ -105,6 +105,11 @@ export class ExcursionController {
     return await this._crudExcursionUC.paginatedList(params);
   }
 
+  @Get()
+  async findAll(@Query('organizationalId') organizationalId?: string) {
+    return await this._crudExcursionUC.findAll(organizationalId);
+  }
+
   @Get(':id')
   @FindOneExcursionDocs()
   async findOne(@Param('id') excursionId: string): Promise<GetExcursionDto> {

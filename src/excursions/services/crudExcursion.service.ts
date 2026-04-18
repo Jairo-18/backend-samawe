@@ -18,6 +18,38 @@ export class CrudExcursionService {
     private readonly _excursionRepository: ExcursionRepository,
   ) {}
 
+  async findAll(organizationalId?: string) {
+    const where: FindOptionsWhere<Excursion> = {};
+    if (organizationalId) {
+      where.organizational = { organizationalId };
+    }
+    const entities = await this._excursionRepository.find({
+      where,
+      order: { categoryType: { name: 'ASC' }, name: 'ASC' },
+      relations: ['categoryType', 'stateType', 'taxeType'],
+    });
+    return {
+      data: {
+        excursions: entities.map((e) => ({
+          excursionId: e.excursionId,
+          code: e.code,
+          name: e.name,
+          description: e.description,
+          priceBuy: e.priceBuy,
+          priceSale: e.priceSale,
+          categoryType: e.categoryType ?? null,
+          stateType: e.stateType ?? null,
+          taxeType: e.taxeType ?? null,
+          images: e.images?.map((img) => ({
+            excursionImageId: img.excursionImageId,
+            imageUrl: img.imageUrl,
+            publicId: img.publicId,
+          })) ?? [],
+        })),
+      },
+    };
+  }
+
   async paginatedList(params: PaginatedListExcursionsParamsDto) {
     const skip = (params.page - 1) * params.perPage;
     const where: FindOptionsWhere<Excursion>[] = [];

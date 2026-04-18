@@ -9,6 +9,10 @@ import { Injectable } from '@nestjs/common';
 export class CrudExcursionUC {
   constructor(private readonly _crudExcursionService: CrudExcursionService) {}
 
+  async findAll(organizationalId?: string) {
+    return await this._crudExcursionService.findAll(organizationalId);
+  }
+
   async paginatedList(params: PaginatedListExcursionsParamsDto) {
     return await this._crudExcursionService.paginatedList(params);
   }
