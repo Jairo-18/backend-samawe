@@ -107,6 +107,7 @@ async function bootstrap() {
           objectSrc: ["'none'"],
           baseUri: ["'self'"],
           frameAncestors: ["'none'"],
+          formAction: ["'self'"],
         },
       },
       crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -115,12 +116,25 @@ async function bootstrap() {
       hsts: {
         maxAge: 31536000,
         includeSubDomains: true,
+        preload: true,
       },
+      hidePoweredBy: true,
       referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
       permittedCrossDomainPolicies: { permittedPolicies: 'none' },
       xContentTypeOptions: true,
     }),
   );
+
+  // Cache-Control por tipo de ruta
+  app.use((req: any, res: any, next: any) => {
+    const path: string = req.path || '';
+    if (path.startsWith('/auth') || path.startsWith('/api') || path.startsWith('/app')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    } else if (/\.(js|css|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/.test(path)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+    next();
+  });
 
   const port = configService.get<number>('app.port') || 3000;
   await app.listen(port, '0.0.0.0');

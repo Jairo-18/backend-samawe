@@ -9,6 +9,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { IdentificationType } from './identificationType.entity';
 import { RoleType } from './roleType.entity';
 import { Invoice } from './invoice.entity';
@@ -50,12 +51,14 @@ export class User {
   })
   phone: string;
 
+  @Exclude()
   @Column('varchar', {
     length: 255,
     nullable: true,
   })
   password: string;
 
+  @Exclude()
   @Column({ type: 'varchar', length: 100, nullable: true, unique: true })
   googleId?: string;
 
@@ -88,15 +91,19 @@ export class User {
   @JoinColumn({ name: 'organizationalId' })
   organizational?: Organizational;
 
+  @Exclude()
   @Column({ type: 'varchar', length: 200, nullable: true })
   resetToken?: string;
 
+  @Exclude()
   @Column({ type: 'timestamp', nullable: true })
   resetTokenExpiry?: Date;
 
+  @Exclude()
   @Column({ type: 'varchar', length: 200, nullable: true })
   emailVerificationToken?: string;
 
+  @Exclude()
   @Column({ type: 'timestamp', nullable: true })
   emailVerificationTokenExpiry?: Date;
 
