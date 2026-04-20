@@ -157,6 +157,9 @@ export class Organizational {
   accommodationsDescription?: string;
 
   @Column('text', { nullable: true })
+  howToArriveDescription?: string;
+
+  @Column('text', { nullable: true })
   howToArrivePublicTransportDescription?: string;
 
   @Column('text', { nullable: true })

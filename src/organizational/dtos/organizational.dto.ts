@@ -238,6 +238,11 @@ export class CreateOrganizationalDto {
   @IsString()
   accommodationsDescription?: string;
 
+  @ApiPropertyOptional({ example: 'Para llegar al ecohotel...' })
+  @IsOptional()
+  @IsString()
+  howToArriveDescription?: string;
+
   @ApiPropertyOptional({
     example: 'Terminal del norte, flota sotrasanvicente...',
   })
