@@ -116,7 +116,7 @@ export class OrganizationalService {
   async findBySlug(slug: string) {
     const org = await this._organizationalRepository.findOne({
       where: { slug },
-      relations: ['identificationType', 'personType', 'phoneCode'],
+      relations: ['identificationType', 'personType', 'phoneCode', 'medias', 'medias.mediaType'],
     });
 
     if (!org) {
