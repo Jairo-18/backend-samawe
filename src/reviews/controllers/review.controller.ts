@@ -1,0 +1,202 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
+import { ReviewUC } from '../useCases/reviewUC.uc';
+import {
+  CreateReviewDto,
+  UpdateReviewDto,
+  CreateReviewReplyDto,
+  UpdateReviewReplyDto,
+} from '../dtos/review.dto';
+
+@Controller('reviews')
+@ApiTags('Reseñas')
+export class ReviewController {
+  constructor(private readonly _reviewUC: ReviewUC) {}
+
+  @Get()
+  @ApiOperation({ summary: 'Listar todas las reseñas con sus respuestas' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de reseñas del hotel',
+    content: {
+      'application/json': {
+        example: {
+          statusCode: 200,
+          data: [
+            {
+              reviewId: 1,
+              title: 'Excelente estadía',
+              comment:
+                'El hotel superó todas mis expectativas, el servicio fue impecable.',
+              createdAt: '2026-04-23T10:00:00.000Z',
+              updatedAt: '2026-04-23T10:00:00.000Z',
+              user: {
+                userId: 'uuid-del-usuario',
+                firstName: 'Juan',
+                lastName: 'García',
+                avatarUrl: null,
+              },
+              organizational: {
+                organizationalId: 'uuid-de-la-organizacion',
+                name: 'Hotel Samawe',
+              },
+              replies: [
+                {
+                  reviewReplyId: 1,
+                  comment:
+                    '¡Gracias por tu comentario, Juan! Fue un placer recibirte.',
+                  createdAt: '2026-04-23T12:00:00.000Z',
+                  updatedAt: '2026-04-23T12:00:00.000Z',
+                  user: {
+                    userId: 'uuid-del-staff',
+                    firstName: 'Ana',
+                    lastName: 'López',
+                    avatarUrl: null,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+  })
+  async findAll(@Query('organizationalId') organizationalId?: string) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this._reviewUC.findAll(organizationalId),
+    };
+  }
+
+  @Get(':id')
+  @UseGuards(AuthGuard())
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Obtener una reseña por ID' })
+  async findOne(@Param('id', ParseIntPipe) reviewId: number) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this._reviewUC.findOne(reviewId),
+    };
+  }
+
+  @Post()
+  @UseGuards(AuthGuard())
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Crear una reseña' })
+  async create(@Request() req: any, @Body() dto: CreateReviewDto) {
+    const review = await this._reviewUC.create(req.user.userId, dto);
+    return {
+      message: 'Reseña creada exitosamente',
+      statusCode: HttpStatus.CREATED,
+      data: review,
+    };
+  }
+
+  @Patch(':id')
+  @UseGuards(AuthGuard())
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Editar una reseña propia' })
+  async update(
+    @Param('id', ParseIntPipe) reviewId: number,
+    @Request() req: any,
+    @Body() dto: UpdateReviewDto,
+  ) {
+    const review = await this._reviewUC.update(reviewId, req.user.userId, dto);
+    return {
+      message: 'Reseña actualizada correctamente',
+      statusCode: HttpStatus.OK,
+      data: review,
+    };
+  }
+
+  @Delete(':id')
+  @UseGuards(AuthGuard())
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Eliminar una reseña propia' })
+  async remove(
+    @Param('id', ParseIntPipe) reviewId: number,
+    @Request() req: any,
+  ) {
+    await this._reviewUC.remove(reviewId, req.user.userId);
+    return {
+      message: 'Reseña eliminada correctamente',
+      statusCode: HttpStatus.OK,
+    };
+  }
+
+  @Post(':id/replies')
+  @UseGuards(AuthGuard())
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Responder a una reseña' })
+  async createReply(
+    @Param('id', ParseIntPipe) reviewId: number,
+    @Request() req: any,
+    @Body() dto: CreateReviewReplyDto,
+  ) {
+    const reply = await this._reviewUC.createReply(
+      reviewId,
+      req.user.userId,
+      dto,
+    );
+    return {
+      message: 'Respuesta agregada exitosamente',
+      statusCode: HttpStatus.CREATED,
+      data: reply,
+    };
+  }
+
+  @Patch(':reviewId/replies/:replyId')
+  @ApiOperation({ summary: 'Editar una respuesta propia' })
+  @UseGuards(AuthGuard())
+  @ApiBearerAuth()
+  async updateReply(
+    @Param('replyId', ParseIntPipe) reviewReplyId: number,
+    @Request() req: any,
+    @Body() dto: UpdateReviewReplyDto,
+  ) {
+    const reply = await this._reviewUC.updateReply(
+      reviewReplyId,
+      req.user.userId,
+      dto,
+    );
+    return {
+      message: 'Respuesta actualizada correctamente',
+      statusCode: HttpStatus.OK,
+      data: reply,
+    };
+  }
+
+  @Delete(':reviewId/replies/:replyId')
+  @ApiOperation({ summary: 'Eliminar una respuesta propia' })
+  @UseGuards(AuthGuard())
+  @ApiBearerAuth()
+  async removeReply(
+    @Param('replyId', ParseIntPipe) reviewReplyId: number,
+    @Request() req: any,
+  ) {
+    await this._reviewUC.removeReply(reviewReplyId, req.user.userId);
+    return {
+      message: 'Respuesta eliminada correctamente',
+      statusCode: HttpStatus.OK,
+    };
+  }
+}

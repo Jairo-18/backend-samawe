@@ -87,6 +87,10 @@ import { LegalItemChild } from './entities/legalItemChild.entity';
 import { LegalSectionRepository } from './repositories/legalSection.repository';
 import { LegalItemRepository } from './repositories/legalItem.repository';
 import { LegalItemChildRepository } from './repositories/legalItemChild.repository';
+import { Review } from './entities/review.entity';
+import { ReviewReply } from './entities/reviewReply.entity';
+import { ReviewRepository } from './repositories/review.repository';
+import { ReviewReplyRepository } from './repositories/reviewReply.repository';
 
 @Module({})
 export class SharedModule {
@@ -179,6 +183,8 @@ export class SharedModule {
           LegalSection,
           LegalItem,
           LegalItemChild,
+          Review,
+          ReviewReply,
         ]),
 
         JwtModule.registerAsync({
@@ -259,6 +265,8 @@ export class SharedModule {
         LegalSectionRepository,
         LegalItemRepository,
         LegalItemChildRepository,
+        ReviewRepository,
+        ReviewReplyRepository,
       ],
       exports: [
         TypeOrmModule,
@@ -306,6 +314,8 @@ export class SharedModule {
         LegalSectionRepository,
         LegalItemRepository,
         LegalItemChildRepository,
+        ReviewRepository,
+        ReviewReplyRepository,
       ],
     };
   }
