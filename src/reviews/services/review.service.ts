@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Between, ILike } from 'typeorm';
 import { ReviewRepository } from '../../shared/repositories/review.repository';
 import { ReviewReplyRepository } from '../../shared/repositories/reviewReply.repository';
 import { UserRepository } from '../../shared/repositories/user.repository';
@@ -42,12 +43,33 @@ export class ReviewService {
     organizationalId: string,
     page: number = 1,
     perPage: number = 15,
+    search?: string,
+    filter?: 'all' | '1' | '2' | '3' | '4' | '5',
+    sort: 'newest' | 'oldest' = 'newest',
   ): Promise<ResponsePaginationDto<Review>> {
     const skip = (page - 1) * perPage;
+    const base: Record<string, any> = { organizational: { organizationalId } };
+
+    if (filter && filter !== 'all') {
+      const n = Number(filter);
+      base['score'] = Between(n, n + 0.9);
+    }
+
+    let whereClause: any;
+    if (search?.trim()) {
+      const q = `%${search.trim()}%`;
+      whereClause = [
+        { ...base, title: ILike(q) },
+        { ...base, comment: ILike(q) },
+      ];
+    } else {
+      whereClause = base;
+    }
+
     const [reviews, itemCount] = await this._reviewRepository.findAndCount({
-      where: { organizational: { organizationalId } },
+      where: whereClause,
       relations: ['user', 'replies', 'replies.user'],
-      order: { createdAt: 'DESC' },
+      order: { createdAt: sort === 'oldest' ? 'ASC' : 'DESC' },
       skip,
       take: perPage,
     });

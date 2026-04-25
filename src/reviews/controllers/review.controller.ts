@@ -51,8 +51,11 @@ export class ReviewController {
     @Query('organizationalId') organizationalId: string,
     @Query('page') page: number = 1,
     @Query('perPage') perPage: number = 15,
+    @Query('search') search?: string,
+    @Query('filter') filter?: 'all' | '1' | '2' | '3' | '4' | '5',
+    @Query('sort') sort?: 'newest' | 'oldest',
   ) {
-    return this._reviewUC.findPaginated(organizationalId, Number(page), Number(perPage));
+    return this._reviewUC.findPaginated(organizationalId, Number(page), Number(perPage), search, filter, sort);
   }
 
   @Get()

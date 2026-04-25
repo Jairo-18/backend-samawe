@@ -15,8 +15,15 @@ export class ReviewUC {
     return this._reviewService.findAll(organizationalId);
   }
 
-  async findPaginated(organizationalId: string, page: number, perPage: number) {
-    return this._reviewService.findPaginated(organizationalId, page, perPage);
+  async findPaginated(
+    organizationalId: string,
+    page: number,
+    perPage: number,
+    search?: string,
+    filter?: 'all' | '1' | '2' | '3' | '4' | '5',
+    sort?: 'newest' | 'oldest',
+  ) {
+    return this._reviewService.findPaginated(organizationalId, page, perPage, search, filter, sort);
   }
 
   async findOne(reviewId: number) {
