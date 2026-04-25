@@ -7,9 +7,14 @@ import { ReviewUC } from './useCases/reviewUC.uc';
 import { ReviewRepository } from '../shared/repositories/review.repository';
 import { ReviewReplyRepository } from '../shared/repositories/reviewReply.repository';
 import { OrganizationalRepository } from '../shared/repositories/organizational.repository';
+import { OrganizationalModule } from '../organizational/organizational.module';
 
 @Module({
-  imports: [SharedModule, PassportModule.register({ defaultStrategy: 'jwt' })],
+  imports: [
+    SharedModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    OrganizationalModule,
+  ],
   controllers: [ReviewController],
   providers: [
     ReviewService,

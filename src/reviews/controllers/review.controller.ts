@@ -26,11 +26,34 @@ import {
   CreateReviewReplyDto,
   UpdateReviewReplyDto,
 } from '../dtos/review.dto';
+import { GoogleBusinessService } from '../../organizational/services/google-business.service';
 
 @Controller('reviews')
 @ApiTags('Reseñas')
 export class ReviewController {
-  constructor(private readonly _reviewUC: ReviewUC) {}
+  constructor(
+    private readonly _reviewUC: ReviewUC,
+    private readonly _googleBusinessService: GoogleBusinessService,
+  ) {}
+
+  @Get('google')
+  @ApiOperation({ summary: 'Reseñas de Google Business del tenant' })
+  async findGoogleReviews(@Query('organizationalId') organizationalId: string) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this._googleBusinessService.getGoogleReviews(organizationalId),
+    };
+  }
+
+  @Get('paginated')
+  @ApiOperation({ summary: 'Listar reseñas paginadas' })
+  async findPaginated(
+    @Query('organizationalId') organizationalId: string,
+    @Query('page') page: number = 1,
+    @Query('perPage') perPage: number = 15,
+  ) {
+    return this._reviewUC.findPaginated(organizationalId, Number(page), Number(perPage));
+  }
 
   @Get()
   @ApiOperation({ summary: 'Listar todas las reseñas con sus respuestas' })

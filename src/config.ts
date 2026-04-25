@@ -60,6 +60,7 @@ export const config = async () => {
       clientId: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
       callbackUrl: `${process.env.APP_BASE_URL || 'http://localhost:3000'}/auth/google/callback`,
+      businessCallbackUrl: `${process.env.APP_BASE_URL || 'http://localhost:3000'}/auth/google-business/callback`,
     },
   };
 };

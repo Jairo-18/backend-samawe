@@ -16,6 +16,8 @@ import {
 } from '../dtos/review.dto';
 import { Review } from '../../shared/entities/review.entity';
 import { ReviewReply } from '../../shared/entities/reviewReply.entity';
+import { PageMetaDto } from '../../shared/dtos/pageMeta.dto';
+import { ResponsePaginationDto } from '../../shared/dtos/pagination.dto';
 
 @Injectable()
 export class ReviewService {
@@ -34,6 +36,26 @@ export class ReviewService {
       relations: ['user', 'replies', 'replies.user', 'organizational'],
       order: { createdAt: 'DESC' },
     });
+  }
+
+  async findPaginated(
+    organizationalId: string,
+    page: number = 1,
+    perPage: number = 15,
+  ): Promise<ResponsePaginationDto<Review>> {
+    const skip = (page - 1) * perPage;
+    const [reviews, itemCount] = await this._reviewRepository.findAndCount({
+      where: { organizational: { organizationalId } },
+      relations: ['user', 'replies', 'replies.user'],
+      order: { createdAt: 'DESC' },
+      skip,
+      take: perPage,
+    });
+    const pagination = new PageMetaDto({
+      itemCount,
+      pageOptionsDto: { page, perPage },
+    });
+    return new ResponsePaginationDto(reviews, pagination);
   }
 
   async findOne(reviewId: number): Promise<Review> {

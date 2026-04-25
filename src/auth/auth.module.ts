@@ -11,11 +11,13 @@ import { JwtModule, JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { LocalStorageModule } from '../local-storage/local-storage.module';
+import { OrganizationalModule } from '../organizational/organizational.module';
 
 @Module({
   imports: [
     SharedModule,
     LocalStorageModule,
+    OrganizationalModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({

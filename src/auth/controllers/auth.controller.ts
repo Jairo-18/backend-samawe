@@ -15,6 +15,7 @@ import {
   Get,
   HttpStatus,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -28,6 +29,7 @@ import {
   RefreshTokenDocs,
   SignOutDocs,
 } from '../decorators/auth.decorators';
+import { GoogleBusinessService } from '../../organizational/services/google-business.service';
 
 @Controller('auth')
 @ApiTags('Autenticación')
@@ -36,6 +38,7 @@ export class AuthController {
     private readonly _authUC: AuthUC,
     private readonly _authService: AuthService,
     private readonly _configService: ConfigService,
+    private readonly _googleBusinessService: GoogleBusinessService,
   ) {}
 
   @Post('/sign-in')
@@ -105,6 +108,26 @@ export class AuthController {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async googleAuth(@Req() _req: any) {
     // Passport redirige automáticamente a Google
+  }
+
+  @Get('/google-business/callback')
+  async googleBusinessCallback(
+    @Query('code') code: string,
+    @Query('state') organizationalId: string,
+    @Res() res: any,
+  ) {
+    const frontendUrl =
+      this._configService.get<string>('APP_FRONTEND_URL') || 'http://localhost:4200';
+    try {
+      await this._googleBusinessService.handleCallback(code, organizationalId);
+      return res.redirect(
+        `${frontendUrl}/organizational/application?googleBusiness=success`,
+      );
+    } catch {
+      return res.redirect(
+        `${frontendUrl}/organizational/application?googleBusiness=error`,
+      );
+    }
   }
 
   @Get('/google/callback')

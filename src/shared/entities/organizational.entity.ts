@@ -186,6 +186,15 @@ export class Organizational {
   @Column('varchar', { length: 500, nullable: true })
   metaDescription?: string;
 
+  @Column('text', { nullable: true })
+  googleBusinessRefreshToken?: string;
+
+  @Column('varchar', { length: 200, nullable: true })
+  googleBusinessAccountName?: string;
+
+  @Column('varchar', { length: 200, nullable: true })
+  googleBusinessLocationName?: string;
+
   @Column({ type: 'boolean', default: false })
   paymentEnabled: boolean;
 
