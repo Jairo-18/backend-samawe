@@ -84,11 +84,7 @@ export class BackupService {
 
     let sql = '-- Samawe Database Dump (Topological Order)\n';
     sql += `-- Generated at: ${new Date().toISOString()}\n\n`;
-    sql += 'BEGIN;\n\n';
-    for (const meta of sortedMetadatas) {
-      sql += `ALTER TABLE "${meta.tableName}" DISABLE TRIGGER ALL;\n`;
-    }
-    sql += '\n';
+    sql += 'SET session_replication_role = replica;\n\n';
 
     for (const meta of sortedMetadatas) {
       const records = await this.dataSource.query(
@@ -100,22 +96,20 @@ export class BackupService {
       const columnList = columns.map((c) => `"${c}"`).join(', ');
 
       sql += `-- Table: ${meta.tableName}\n`;
+      sql += 'BEGIN;\n';
 
       for (let i = 0; i < records.length; i += this.BATCH_SIZE) {
         const batch = records.slice(i, i + this.BATCH_SIZE);
         const valueRows = batch.map((record) =>
           `(${Object.values(record).map((val) => this.escapeSqlValue(val)).join(', ')})`,
         );
-        sql += `INSERT INTO "${meta.tableName}" (${columnList}) VALUES\n  ${valueRows.join(',\n  ')};\n`;
+        sql += `INSERT INTO "${meta.tableName}" (${columnList}) VALUES\n  ${valueRows.join(',\n  ')}\n  ON CONFLICT DO NOTHING;\n`;
       }
 
-      sql += '\n';
+      sql += 'COMMIT;\n\n';
     }
 
-    for (const meta of sortedMetadatas) {
-      sql += `ALTER TABLE "${meta.tableName}" ENABLE TRIGGER ALL;\n`;
-    }
-    sql += '\nCOMMIT;\n';
+    sql += 'SET session_replication_role = DEFAULT;\n';
 
     return sql;
   }
