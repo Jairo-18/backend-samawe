@@ -14,11 +14,23 @@ export class BackupController {
   @UseGuards(AuthGuard())
   @ApiOperation({ summary: 'Generar y descargar un backup completo' })
   async generateBackup(@Res() res: Response) {
-    const { archive, filename } = await this._backupUC.generateManualBackup();
+    try {
+      const { archive, filename } = await this._backupUC.generateManualBackup();
 
-    res.attachment(filename);
-    archive.pipe(res);
-    await archive.finalize();
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+      archive.on('error', (err) => {
+        if (!res.headersSent) res.status(500).json({ message: err.message });
+      });
+
+      archive.pipe(res);
+      await archive.finalize();
+    } catch (error) {
+      if (!res.headersSent) {
+        res.status(500).json({ message: error.message });
+      }
+    }
   }
 
   @Get('test-upload')
