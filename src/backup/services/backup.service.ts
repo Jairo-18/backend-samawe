@@ -76,12 +76,19 @@ export class BackupService {
     return uploadPromise;
   }
 
+  private readonly BATCH_SIZE = 500;
+
   private async generateSqlDump(): Promise<string> {
     const metadatas = this.dataSource.entityMetadatas;
     const sortedMetadatas = this.topologicalSort(metadatas);
 
     let sql = '-- Samawe Database Dump (Topological Order)\n';
     sql += `-- Generated at: ${new Date().toISOString()}\n\n`;
+    sql += 'BEGIN;\n\n';
+    for (const meta of sortedMetadatas) {
+      sql += `ALTER TABLE "${meta.tableName}" DISABLE TRIGGER ALL;\n`;
+    }
+    sql += '\n';
 
     for (const meta of sortedMetadatas) {
       const records = await this.dataSource.query(
@@ -89,18 +96,26 @@ export class BackupService {
       );
       if (records.length === 0) continue;
 
+      const columns = Object.keys(records[0]);
+      const columnList = columns.map((c) => `"${c}"`).join(', ');
+
       sql += `-- Table: ${meta.tableName}\n`;
 
-      for (const record of records) {
-        const columns = Object.keys(record);
-        const values = Object.values(record).map((val) =>
-          this.escapeSqlValue(val),
+      for (let i = 0; i < records.length; i += this.BATCH_SIZE) {
+        const batch = records.slice(i, i + this.BATCH_SIZE);
+        const valueRows = batch.map((record) =>
+          `(${Object.values(record).map((val) => this.escapeSqlValue(val)).join(', ')})`,
         );
-
-        sql += `INSERT INTO "${meta.tableName}" (${columns.map((c) => `"${c}"`).join(', ')}) VALUES (${values.join(', ')});\n`;
+        sql += `INSERT INTO "${meta.tableName}" (${columnList}) VALUES\n  ${valueRows.join(',\n  ')};\n`;
       }
+
       sql += '\n';
     }
+
+    for (const meta of sortedMetadatas) {
+      sql += `ALTER TABLE "${meta.tableName}" ENABLE TRIGGER ALL;\n`;
+    }
+    sql += '\nCOMMIT;\n';
 
     return sql;
   }
