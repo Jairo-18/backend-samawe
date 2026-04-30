@@ -30,6 +30,7 @@ import {
   SignOutDocs,
 } from '../decorators/auth.decorators';
 import { GoogleBusinessService } from '../../organizational/services/google-business.service';
+import { SkipApiKey } from '../../shared/decorators/skip-api-key.decorator';
 
 @Controller('auth')
 @ApiTags('Autenticación')
@@ -48,7 +49,7 @@ export class AuthController {
     const data = await this._authUC.login(body);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Bienvenid@',
+      message: 'api.auth.welcome',
       data: {
         tokens: data.tokens,
         user: data.user,
@@ -87,7 +88,7 @@ export class AuthController {
     await this._authUC.signOut(body);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Sesión finalizada correctamente',
+      message: 'api.auth.sign_out',
     };
   }
 
@@ -99,11 +100,12 @@ export class AuthController {
     await this._authUC.recoveryPassword(body);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Correo enviado correctamente',
+      message: 'api.auth.recovery_sent',
     };
   }
 
   @Get('/google')
+  @SkipApiKey()
   @UseGuards(AuthGuard('google'))
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async googleAuth(@Req() _req: any) {
@@ -111,6 +113,7 @@ export class AuthController {
   }
 
   @Get('/google-business/callback')
+  @SkipApiKey()
   async googleBusinessCallback(
     @Query('code') code: string,
     @Query('state') organizationalId: string,
@@ -131,6 +134,7 @@ export class AuthController {
   }
 
   @Get('/google/callback')
+  @SkipApiKey()
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(@Req() req: any, @Res() res: any) {
     const data = await this._authService.googleSignIn(req.user);

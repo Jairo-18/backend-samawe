@@ -13,7 +13,7 @@ import {
   DeleteReCordResponseDto,
   UpdateRecordResponseDto,
 } from '../../shared/dtos/response.dto';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   GetPaginatedPartialDocs,
   PaginatedPhoneCodeSelectDocs,
@@ -54,6 +54,19 @@ import { Throttle } from '@nestjs/throttler';
 import { IsNotEmpty, IsString } from 'class-validator';
 import { AuthGuard } from '@nestjs/passport';
 import { ResponsePaginationDto } from 'src/shared/dtos/pagination.dto';
+import { SkipApiKey } from '../../shared/decorators/skip-api-key.decorator';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
+
+const STAFF_ROLES = [
+  RolesUser.SUPERADMIN,
+  RolesUser.ADMIN,
+  RolesUser.EMP,
+  RolesUser.MES,
+  RolesUser.CHE,
+];
+const ALL_ROLES = [...STAFF_ROLES, RolesUser.USER, RolesUser.PRO];
 
 class VerifyEmailQueryDto {
   @IsString()
@@ -74,7 +87,8 @@ export class UserController {
   ) {}
 
   @Get('paginated-partial')
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...STAFF_ROLES)
   @GetPaginatedPartialDocs()
   async getPaginatedPartial(
     @Query() params: PaginatedUserSelectParamsDto,
@@ -92,7 +106,8 @@ export class UserController {
   }
 
   @Get('paginated-list')
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...STAFF_ROLES)
   @GetPaginatedListDocs()
   async getPaginatedList(
     @Query() params: PaginatedListUsersParamsDto,
@@ -101,25 +116,27 @@ export class UserController {
   }
 
   @Post()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...STAFF_ROLES)
   @CreateUserDocs()
   async create(@Body() user: CreateUserDto): Promise<CreatedRecordResponseDto> {
     const rowId = await this._userUC.create(user);
     return {
-      message: 'Usuario creado correctamente',
+      message: 'api.user.created',
       statusCode: HttpStatus.CREATED,
       data: rowId,
     };
   }
 
   @Get('verify-email')
+  @SkipApiKey()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   async verifyEmail(
     @Query() query: VerifyEmailQueryDto,
   ): Promise<{ message: string; statusCode: number }> {
     await this._userUC.verifyEmail(query.token, query.userId);
     return {
-      message: 'Correo verificado correctamente',
+      message: '',
       statusCode: HttpStatus.OK,
     };
   }
@@ -152,7 +169,8 @@ export class UserController {
   }
 
   @Post('change-password')
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...ALL_ROLES)
   @ChangePasswordDocs()
   async changePassword(
     @Body() body: ChangePasswordDto,
@@ -166,7 +184,8 @@ export class UserController {
   }
 
   @Get(':id')
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...ALL_ROLES)
   @FindOneUserDocs()
   async findOne(@Param('id') id: string): Promise<GetUserResponseDto> {
     const user = await this._userUC.findOne(id);
@@ -177,7 +196,8 @@ export class UserController {
   }
 
   @Patch(':id')
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...ALL_ROLES)
   @UpdateUserDocs()
   async update(
     @Param('id') id: string,
@@ -185,13 +205,15 @@ export class UserController {
   ): Promise<UpdateRecordResponseDto> {
     await this._userUC.update(id, userData);
     return {
-      message: 'Información almacenada correctamente',
+      message: 'api.user.updated',
       statusCode: HttpStatus.OK,
     };
   }
 
   @Patch(':id/avatar')
-  @UseGuards(AuthGuard())
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...ALL_ROLES)
   @UseInterceptors(FileInterceptor('file'))
   async uploadAvatar(
     @Param('id') id: string,
@@ -199,31 +221,34 @@ export class UserController {
   ): Promise<UpdateRecordResponseDto> {
     await this._userUC.uploadAvatar(id, file);
     return {
-      message: 'Foto de perfil actualizada correctamente',
+      message: 'api.user.avatar_updated',
       statusCode: HttpStatus.OK,
     };
   }
 
   @Delete(':id/avatar')
-  @UseGuards(AuthGuard())
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...ALL_ROLES)
   async deleteAvatar(
     @Param('id') id: string,
   ): Promise<UpdateRecordResponseDto> {
     await this._userUC.deleteAvatar(id);
     return {
-      message: 'Foto de perfil eliminada correctamente',
+      message: 'api.user.avatar_deleted',
       statusCode: HttpStatus.OK,
     };
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...STAFF_ROLES)
   @DeleteUserDocs()
   async delete(@Param('id') id: string): Promise<DeleteReCordResponseDto> {
     await this._userUC.delete(id);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Usuario eliminado exitosamente',
+      message: 'api.user.deleted',
     };
   }
 }

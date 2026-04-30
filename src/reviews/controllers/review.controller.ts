@@ -27,6 +27,20 @@ import {
   UpdateReviewReplyDto,
 } from '../dtos/review.dto';
 import { GoogleBusinessService } from '../../organizational/services/google-business.service';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
+import { Throttle } from '@nestjs/throttler';
+
+const ALL_ROLES = [
+  RolesUser.SUPERADMIN,
+  RolesUser.ADMIN,
+  RolesUser.EMP,
+  RolesUser.MES,
+  RolesUser.CHE,
+  RolesUser.USER,
+  RolesUser.PRO,
+];
 
 @Controller('reviews')
 @ApiTags('Reseñas')
@@ -41,7 +55,9 @@ export class ReviewController {
   async findGoogleReviews(@Query('organizationalId') organizationalId: string) {
     return {
       statusCode: HttpStatus.OK,
-      data: await this._googleBusinessService.getGoogleReviews(organizationalId),
+      data: await this._googleBusinessService.getGoogleReviews(
+        organizationalId,
+      ),
     };
   }
 
@@ -55,7 +71,14 @@ export class ReviewController {
     @Query('filter') filter?: 'all' | '1' | '2' | '3' | '4' | '5',
     @Query('sort') sort?: 'newest' | 'oldest',
   ) {
-    return this._reviewUC.findPaginated(organizationalId, Number(page), Number(perPage), search, filter, sort);
+    return this._reviewUC.findPaginated(
+      organizationalId,
+      Number(page),
+      Number(perPage),
+      search,
+      filter,
+      sort,
+    );
   }
 
   @Get()
@@ -114,7 +137,8 @@ export class ReviewController {
   }
 
   @Get(':id')
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...ALL_ROLES)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtener una reseña por ID' })
   async findOne(@Param('id', ParseIntPipe) reviewId: number) {
@@ -125,20 +149,24 @@ export class ReviewController {
   }
 
   @Post()
-  @UseGuards(AuthGuard())
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...ALL_ROLES)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Crear una reseña' })
   async create(@Request() req: any, @Body() dto: CreateReviewDto) {
     const review = await this._reviewUC.create(req.user.userId, dto);
     return {
-      message: 'Reseña creada exitosamente',
+      message: 'api.review.created',
       statusCode: HttpStatus.CREATED,
       data: review,
     };
   }
 
   @Patch(':id')
-  @UseGuards(AuthGuard())
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...ALL_ROLES)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Editar una reseña propia' })
   async update(
@@ -148,14 +176,15 @@ export class ReviewController {
   ) {
     const review = await this._reviewUC.update(reviewId, req.user.userId, dto);
     return {
-      message: 'Reseña actualizada correctamente',
+      message: 'api.review.updated',
       statusCode: HttpStatus.OK,
       data: review,
     };
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...ALL_ROLES)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Eliminar una reseña propia' })
   async remove(
@@ -164,13 +193,15 @@ export class ReviewController {
   ) {
     await this._reviewUC.remove(reviewId, req.user.userId);
     return {
-      message: 'Reseña eliminada correctamente',
+      message: 'api.review.deleted',
       statusCode: HttpStatus.OK,
     };
   }
 
   @Post(':id/replies')
-  @UseGuards(AuthGuard())
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...ALL_ROLES)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Responder a una reseña' })
   async createReply(
@@ -184,15 +215,17 @@ export class ReviewController {
       dto,
     );
     return {
-      message: 'Respuesta agregada exitosamente',
+      message: 'api.review.reply_added',
       statusCode: HttpStatus.CREATED,
       data: reply,
     };
   }
 
   @Patch(':reviewId/replies/:replyId')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Editar una respuesta propia' })
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...ALL_ROLES)
   @ApiBearerAuth()
   async updateReply(
     @Param('replyId', ParseIntPipe) reviewReplyId: number,
@@ -205,7 +238,7 @@ export class ReviewController {
       dto,
     );
     return {
-      message: 'Respuesta actualizada correctamente',
+      message: 'api.review.reply_updated',
       statusCode: HttpStatus.OK,
       data: reply,
     };
@@ -213,7 +246,8 @@ export class ReviewController {
 
   @Delete(':reviewId/replies/:replyId')
   @ApiOperation({ summary: 'Eliminar una respuesta propia' })
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...ALL_ROLES)
   @ApiBearerAuth()
   async removeReply(
     @Param('replyId', ParseIntPipe) reviewReplyId: number,
@@ -221,7 +255,7 @@ export class ReviewController {
   ) {
     await this._reviewUC.removeReply(reviewReplyId, req.user.userId);
     return {
-      message: 'Respuesta eliminada correctamente',
+      message: 'api.review.reply_deleted',
       statusCode: HttpStatus.OK,
     };
   }

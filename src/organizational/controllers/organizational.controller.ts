@@ -21,6 +21,9 @@ import {
   UpdateCorporateValueDto,
 } from '../dtos/organizational.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import {
   CreateOrganizationalDocs,
   FindAllOrganizationalDocs,
@@ -41,6 +44,7 @@ import { CreatedRecordResponseDto } from 'src/shared/dtos/response.dto';
 
 @Controller('organizational')
 @ApiTags('Organizacion')
+@Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN, RolesUser.EMP)
 export class OrganizationalController {
   constructor(
     private readonly _organizationalUC: OrganizationalUC,
@@ -50,7 +54,7 @@ export class OrganizationalController {
   @Post()
   @ApiBearerAuth()
   @CreateOrganizationalDocs()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async create(@Body() dto: CreateOrganizationalDto) {
     return await this._organizationalUC.create(dto);
   }
@@ -58,7 +62,7 @@ export class OrganizationalController {
   @Get()
   @ApiBearerAuth()
   @FindAllOrganizationalDocs()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async findAll() {
     const orgs = await this._organizationalUC.findAll();
     return {
@@ -70,7 +74,7 @@ export class OrganizationalController {
   @Get('media-types')
   @ApiBearerAuth()
   @FindAllMediaTypesDocs()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async findAllMediaTypes() {
     const types = await this._organizationalUC.findAllMediaTypes();
     return {
@@ -111,11 +115,11 @@ export class OrganizationalController {
   @Patch(':id')
   @ApiBearerAuth()
   @UpdateOrganizationalDocs()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async update(@Param('id') id: string, @Body() dto: UpdateOrganizationalDto) {
     await this._organizationalUC.update(id, dto);
     return {
-      message: 'Organización actualizada correctamente',
+      message: 'api.organizational.updated',
       statusCode: HttpStatus.OK,
     };
   }
@@ -123,11 +127,11 @@ export class OrganizationalController {
   @Delete(':id')
   @ApiBearerAuth()
   @DeleteOrganizationalDocs()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async delete(@Param('id') id: string) {
     await this._organizationalUC.delete(id);
     return {
-      message: 'Organización eliminada correctamente',
+      message: 'api.organizational.deleted',
       statusCode: HttpStatus.OK,
     };
   }
@@ -135,7 +139,7 @@ export class OrganizationalController {
   @Post(':id/media')
   @ApiBearerAuth()
   @AddMediaDocs()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async addMedia(
     @Param('id') id: string,
     @Body() dto: CreateOrganizationalMediaDto,
@@ -147,7 +151,7 @@ export class OrganizationalController {
   @ApiBearerAuth()
   @UploadMediaDocs()
   @UseInterceptors(FileInterceptor('file'))
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async uploadMedia(
     @Param('id') id: string,
     @Body('mediaTypeId') mediaTypeId: string,
@@ -164,7 +168,7 @@ export class OrganizationalController {
       label: file.originalname,
     });
     return {
-      message: 'Se ha subido el archivo correctamente',
+      message: 'api.organizational.file_uploaded',
       statusCode: HttpStatus.CREATED,
       data,
     };
@@ -173,14 +177,14 @@ export class OrganizationalController {
   @Patch('media/:mediaId')
   @ApiBearerAuth()
   @UpdateMediaDocs()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async updateMedia(
     @Param('mediaId') mediaId: string,
     @Body() dto: UpdateOrganizationalMediaDto,
   ) {
     await this._organizationalUC.updateMedia(mediaId, dto);
     return {
-      message: 'Se ha actualizado el archivo correctamente',
+      message: 'api.organizational.file_updated',
       statusCode: HttpStatus.OK,
     };
   }
@@ -188,11 +192,11 @@ export class OrganizationalController {
   @Delete('media/:mediaId')
   @ApiBearerAuth()
   @DeleteMediaDocs()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async deleteMedia(@Param('mediaId') mediaId: string) {
     await this._organizationalUC.deleteMedia(mediaId);
     return {
-      message: 'Se ha eliminado el archivo correctamente',
+      message: 'api.organizational.file_deleted',
       statusCode: HttpStatus.OK,
     };
   }
@@ -205,7 +209,7 @@ export class OrganizationalController {
 
   @Post(':id/corporate-values')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async createCorporateValue(
     @Param('id') id: string,
     @Body() dto: CreateCorporateValueDto,
@@ -216,32 +220,32 @@ export class OrganizationalController {
 
   @Patch('corporate-values/:valueId')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async updateCorporateValue(
     @Param('valueId') valueId: string,
     @Body() dto: UpdateCorporateValueDto,
   ) {
     await this._organizationalUC.updateCorporateValue(valueId, dto);
     return {
-      message: 'Valor corporativo actualizado',
+      message: 'api.organizational.value_updated',
       statusCode: HttpStatus.OK,
     };
   }
 
   @Delete('corporate-values/:valueId')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async deleteCorporateValue(@Param('valueId') valueId: string) {
     await this._organizationalUC.deleteCorporateValue(valueId);
     return {
-      message: 'Valor corporativo eliminado',
+      message: 'api.organizational.value_deleted',
       statusCode: HttpStatus.OK,
     };
   }
 
   @Post('corporate-values/:valueId/upload-image')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   @UseInterceptors(FileInterceptor('file'))
   async uploadCorporateValueImage(
     @Param('valueId') valueId: string,
@@ -261,7 +265,7 @@ export class OrganizationalController {
 
   @Delete('corporate-values/:valueId/image')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async deleteCorporateValueImage(@Param('valueId') valueId: string) {
     const publicId =
       await this._organizationalUC.deleteCorporateValueImage(valueId);
@@ -269,7 +273,7 @@ export class OrganizationalController {
       await this._localStorageService.deleteImage(publicId);
     }
     return {
-      message: 'Imagen eliminada correctamente',
+      message: 'api.organizational.image_deleted',
       statusCode: HttpStatus.OK,
     };
   }

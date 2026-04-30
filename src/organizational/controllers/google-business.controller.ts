@@ -11,11 +11,15 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { GoogleBusinessService } from '../services/google-business.service';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
 
 @Controller('organizational/google-business')
 @ApiTags('Google Business')
 @ApiBearerAuth()
-@UseGuards(AuthGuard())
+@UseGuards(AuthGuard(), RolesGuard)
+@Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN, RolesUser.EMP)
 export class GoogleBusinessController {
   constructor(private readonly _gbService: GoogleBusinessService) {}
 
@@ -64,7 +68,7 @@ export class GoogleBusinessController {
       body.locationName,
     );
     return {
-      message: 'Ubicación guardada correctamente',
+      message: 'api.google_business.saved',
       statusCode: HttpStatus.OK,
     };
   }
@@ -73,7 +77,7 @@ export class GoogleBusinessController {
   async disconnect(@Query('organizationalId') organizationalId: string) {
     await this._gbService.disconnect(organizationalId);
     return {
-      message: 'Google Business desconectado',
+      message: 'api.google_business.disconnected',
       statusCode: HttpStatus.OK,
     };
   }

@@ -1,16 +1,14 @@
-﻿export const CREATED_MESSAGE = 'Información almacenada correctamente';
-export const UPDATED_MESSAGE = 'Información actualizada correctamente';
-export const DELETED_MESSAGE = 'Registro eliminado con éxito';
-export const DUPLICATED_MESSAGE = 'Registro duplicado';
-export const VALIDATION_MESSAGE = 'Error de validación';
-export const NOT_FOUND_MESSAGE = 'Registro no encontrado';
-export const UNAUTHORIZED_MESSAGE = 'Tu sesión caducó';
-export const SERVICE_ERROR_MESSAGE = 'Error de servicio';
-export const DELETE_RELATED_MESSAGE =
-  'No es posible eliminar el registro, debido a que se encuentra en uso';
-export const GET_MESSAGE = 'Información recuperada correctamente';
-export const UPLOADED_MESSAGE = 'Archivo subido correctamente';
-export const PASSWORDS_NOT_MATCH = 'Las contraseñas no coinciden';
-export const UNAUTHORIZED_PASSWORD_MESSAGE =
-  'No tienes acceso para modificar las contraseñas de otro usuario.';
-export const PASSWORD_CHANGED_MESSAGE = 'Contraseña cambiada correctamente';
+﻿export const CREATED_MESSAGE = 'api.common.created';
+export const UPDATED_MESSAGE = 'api.common.updated';
+export const DELETED_MESSAGE = 'api.common.deleted';
+export const DUPLICATED_MESSAGE = 'api.common.duplicated';
+export const VALIDATION_MESSAGE = 'api.common.validation';
+export const NOT_FOUND_MESSAGE = 'api.common.not_found';
+export const UNAUTHORIZED_MESSAGE = 'api.common.unauthorized';
+export const SERVICE_ERROR_MESSAGE = 'api.common.service_error';
+export const DELETE_RELATED_MESSAGE = 'api.common.delete_related';
+export const GET_MESSAGE = 'api.common.retrieved';
+export const UPLOADED_MESSAGE = 'api.common.uploaded';
+export const PASSWORDS_NOT_MATCH = 'api.common.passwords_not_match';
+export const UNAUTHORIZED_PASSWORD_MESSAGE = 'api.common.unauthorized_password';
+export const PASSWORD_CHANGED_MESSAGE = 'api.common.password_changed';

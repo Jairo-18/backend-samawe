@@ -9,13 +9,26 @@ import {
   Query,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { NotificationUC } from '../useCases/notificationUC.uc';
 import { PaginatedNotificationParamsDto } from '../dtos/notification.dto';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
 
 @ApiTags('notifications')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard(), RolesGuard)
+@Roles(
+  RolesUser.SUPERADMIN,
+  RolesUser.ADMIN,
+  RolesUser.EMP,
+  RolesUser.MES,
+  RolesUser.CHE,
+  RolesUser.USER,
+  RolesUser.PRO,
+)
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly _notificationUC: NotificationUC) {}
@@ -34,6 +47,7 @@ export class NotificationsController {
   }
 
   @Get('unread-count')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @ApiOperation({
     summary:
       'Obtener el contador global de notificaciones no leídas del usuario',
@@ -43,7 +57,7 @@ export class NotificationsController {
     const count = await this._notificationUC.getUnreadCount(userId);
     return {
       statusCode: 200,
-      message: 'Contador obtenido',
+      message: 'api.notifications.count',
       data: { count },
     };
   }
@@ -58,12 +72,13 @@ export class NotificationsController {
     const result = await this._notificationUC.getInitialNotifications(userId);
     return {
       statusCode: 200,
-      message: 'Carga inicial obtenida',
+      message: 'api.notifications.initial',
       data: result,
     };
   }
 
   @Patch('mark-all-read')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({
     summary: 'Marcar TODAS las notificaciones del usuario como leídas',
   })
@@ -72,12 +87,13 @@ export class NotificationsController {
     const result = await this._notificationUC.markAllAsRead(userId);
     return {
       statusCode: 200,
-      message: 'Notificaciones marcadas como leídas',
+      message: 'api.notifications.marked_read',
       data: result,
     };
   }
 
   @Patch('mark-all-unread')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({
     summary: 'Marcar TODAS las notificaciones del usuario como no leídas',
   })
@@ -86,7 +102,7 @@ export class NotificationsController {
     const result = await this._notificationUC.markAllAsUnread(userId);
     return {
       statusCode: 200,
-      message: 'Notificaciones marcadas como no leídas',
+      message: 'api.notifications.marked_unread',
       data: result,
     };
   }
@@ -101,8 +117,8 @@ export class NotificationsController {
     return {
       statusCode: 200,
       message: notification.read
-        ? 'Notificación marcada como leída'
-        : 'Notificación marcada como no leída',
+        ? 'api.notifications.toggled_read'
+        : 'api.notifications.toggled_unread',
       data: notification,
     };
   }
@@ -114,7 +130,7 @@ export class NotificationsController {
     const result = await this._notificationUC.deleteAllNotifications(userId);
     return {
       statusCode: 200,
-      message: 'Todas las notificaciones han sido eliminadas',
+      message: 'api.notifications.all_deleted',
       data: result,
     };
   }
@@ -126,7 +142,7 @@ export class NotificationsController {
     const result = await this._notificationUC.deleteNotification(id, userId);
     return {
       statusCode: 200,
-      message: 'Notificación eliminada',
+      message: 'api.notifications.deleted',
       data: result,
     };
   }

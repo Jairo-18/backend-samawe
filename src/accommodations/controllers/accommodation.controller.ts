@@ -47,10 +47,20 @@ import {
   GetImagesDocs,
   DeleteImageDocs,
 } from '../decorators/accommodation.decorators';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
+import { RolesGuard } from '../../shared/guards/roles.guard';
 
 @Controller('accommodation')
 @ApiTags('Hospedajes')
-@UseGuards(AuthGuard())
+@UseGuards(AuthGuard(), RolesGuard)
+@Roles(
+  RolesUser.SUPERADMIN,
+  RolesUser.ADMIN,
+  RolesUser.EMP,
+  RolesUser.MES,
+  RolesUser.CHE,
+)
 export class AccommodationController {
   constructor(
     private readonly _accommodationUC: AccommodationUC,
@@ -76,7 +86,7 @@ export class AccommodationController {
       await this._accommodationUC.create(accommodationDto);
 
     return {
-      message: 'Registro de hospedaje exitoso',
+      message: 'api.accommodation.created',
       statusCode: HttpStatus.CREATED,
       data: {
         rowId: createAccommodation.accommodationId.toString(),
@@ -94,7 +104,7 @@ export class AccommodationController {
     await this._accommodationUC.update(accommodationId, accommodationData);
 
     return {
-      message: 'Hospedaje actualizado correctamente',
+      message: 'api.accommodation.updated',
       statusCode: HttpStatus.OK,
     };
   }
@@ -127,7 +137,7 @@ export class AccommodationController {
     await this._accommodationUC.delete(accommodationId);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Hospedaje eliminado exitosamente',
+      message: 'api.accommodation.deleted',
     };
   }
 
@@ -150,7 +160,7 @@ export class AccommodationController {
       );
 
     return {
-      message: 'Imagen subida correctamente',
+      message: 'api.accommodation.image_uploaded',
       data: addedImage,
     };
   }
@@ -181,7 +191,7 @@ export class AccommodationController {
     );
     return {
       statusCode: HttpStatus.OK,
-      message: 'Imagen eliminada exitosamente',
+      message: 'api.accommodation.image_deleted',
     };
   }
 }

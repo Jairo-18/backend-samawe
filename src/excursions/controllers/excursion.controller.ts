@@ -34,7 +34,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { LocalStorageService } from './../../local-storage/services/local-storage.service';
 import { ExcursionImageService } from '../services/excursionImage.service';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ExcursionInterfacePaginatedList } from '../interface/excursion.interface';
 import {
   GetPaginatedPartialDocs,
@@ -47,10 +47,21 @@ import {
   GetImagesDocs,
   DeleteImageDocs,
 } from './../decorators/excursion.decorators';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
 
 @Controller('excursion')
 @ApiTags('Pasadías')
-@UseGuards(AuthGuard())
+@ApiBearerAuth()
+@UseGuards(AuthGuard(), RolesGuard)
+@Roles(
+  RolesUser.SUPERADMIN,
+  RolesUser.ADMIN,
+  RolesUser.EMP,
+  RolesUser.MES,
+  RolesUser.CHE,
+)
 export class ExcursionController {
   constructor(
     private readonly _excursionUC: ExcursionUC,
@@ -74,7 +85,7 @@ export class ExcursionController {
   ): Promise<CreatedRecordResponseDto> {
     const createExcursion = await this._excursionUC.create(excursionDto);
     return {
-      message: 'Registro exitoso',
+      message: 'api.excursion.created',
       statusCode: HttpStatus.CREATED,
       data: {
         rowId: createExcursion.excursionId.toString(),
@@ -92,7 +103,7 @@ export class ExcursionController {
     await this._excursionUC.update(excursionId, excursionData);
 
     return {
-      message: 'Actualizado correctamente',
+      message: 'api.excursion.updated',
       statusCode: HttpStatus.OK,
     };
   }
@@ -128,7 +139,7 @@ export class ExcursionController {
     await this._excursionUC.delete(excursionId);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Eliminado correctamente',
+      message: 'api.excursion.deleted',
     };
   }
 
@@ -150,7 +161,7 @@ export class ExcursionController {
     );
 
     return {
-      message: 'Imagen subida correctamente',
+      message: 'api.excursion.image_uploaded',
       data: addedImage,
     };
   }
@@ -179,7 +190,7 @@ export class ExcursionController {
     );
     return {
       statusCode: HttpStatus.OK,
-      message: 'Imagen eliminada exitosamente',
+      message: 'api.excursion.image_deleted',
     };
   }
 }

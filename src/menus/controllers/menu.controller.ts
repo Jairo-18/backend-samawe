@@ -26,10 +26,20 @@ import {
   DeleteMenuDocs,
   RemoveProductFromMenuDocs,
 } from '../decorators/menu.decorators';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
 
 @Controller('menus')
 @ApiTags('Menús')
-@UseGuards(AuthGuard())
+@UseGuards(AuthGuard(), RolesGuard)
+@Roles(
+  RolesUser.SUPERADMIN,
+  RolesUser.ADMIN,
+  RolesUser.EMP,
+  RolesUser.MES,
+  RolesUser.CHE,
+)
 export class MenuController {
   constructor(private readonly _menuUC: MenuUC) {}
 
@@ -38,7 +48,7 @@ export class MenuController {
   async create(@Body() createDto: CreateMenuDto) {
     const menu = await this._menuUC.create(createDto);
     return {
-      message: 'Menú creado exitosamente',
+      message: 'api.menu.created',
       statusCode: HttpStatus.CREATED,
       data: menu,
     };
@@ -49,7 +59,7 @@ export class MenuController {
   async update(@Param('id') menuId: string, @Body() updateDto: UpdateMenuDto) {
     const menu = await this._menuUC.update(parseInt(menuId), updateDto);
     return {
-      message: 'Menú actualizado exitosamente',
+      message: 'api.menu.updated',
       statusCode: HttpStatus.OK,
       data: menu,
     };
@@ -82,7 +92,7 @@ export class MenuController {
       parseInt(productId),
     );
     return {
-      message: 'Platillo removido del menú exitosamente',
+      message: 'api.menu.dish_removed',
       statusCode: HttpStatus.OK,
       data: menu,
     };
@@ -93,7 +103,7 @@ export class MenuController {
   async delete(@Param('id') menuId: string) {
     await this._menuUC.delete(parseInt(menuId));
     return {
-      message: 'Menú eliminado exitosamente',
+      message: 'api.menu.deleted',
       statusCode: HttpStatus.OK,
     };
   }

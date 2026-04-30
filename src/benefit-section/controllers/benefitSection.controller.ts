@@ -18,9 +18,19 @@ import {
   CreateBenefitItemDto,
   UpdateBenefitItemDto,
 } from '../dtos/benefitSection.dto';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
 
 @Controller('benefit-section')
 @ApiTags('Beneficios y Servicios')
+@Roles(
+  RolesUser.SUPERADMIN,
+  RolesUser.ADMIN,
+  RolesUser.EMP,
+  RolesUser.MES,
+  RolesUser.CHE,
+)
 export class BenefitSectionController {
   constructor(private readonly _benefitSectionUC: BenefitSectionUC) {}
 
@@ -32,7 +42,7 @@ export class BenefitSectionController {
 
   @Post('organizational/:organizationalId')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async createSection(
     @Param('organizationalId') organizationalId: string,
     @Body() dto: CreateBenefitSectionDto,
@@ -46,7 +56,7 @@ export class BenefitSectionController {
 
   @Patch(':benefitSectionId')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async updateSection(
     @Param('benefitSectionId') benefitSectionId: string,
     @Body() dto: UpdateBenefitSectionDto,
@@ -54,24 +64,24 @@ export class BenefitSectionController {
     await this._benefitSectionUC.updateSection(benefitSectionId, dto);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Sección actualizada correctamente',
+      message: 'api.benefit_section.section_updated',
     };
   }
 
   @Delete(':benefitSectionId')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async deleteSection(@Param('benefitSectionId') benefitSectionId: string) {
     await this._benefitSectionUC.deleteSection(benefitSectionId);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Sección eliminada correctamente',
+      message: 'api.benefit_section.section_deleted',
     };
   }
 
   @Post(':benefitSectionId/items')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async addItem(
     @Param('benefitSectionId') benefitSectionId: string,
     @Body() dto: CreateBenefitItemDto,
@@ -82,7 +92,7 @@ export class BenefitSectionController {
 
   @Patch('items/:benefitItemId')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async updateItem(
     @Param('benefitItemId') benefitItemId: string,
     @Body() dto: UpdateBenefitItemDto,
@@ -90,18 +100,18 @@ export class BenefitSectionController {
     await this._benefitSectionUC.updateItem(benefitItemId, dto);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Item actualizado correctamente',
+      message: 'api.benefit_section.item_updated',
     };
   }
 
   @Delete('items/:benefitItemId')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async deleteItem(@Param('benefitItemId') benefitItemId: string) {
     await this._benefitSectionUC.deleteItem(benefitItemId);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Item eliminado correctamente',
+      message: 'api.benefit_section.item_deleted',
     };
   }
 }

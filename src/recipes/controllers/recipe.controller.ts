@@ -11,7 +11,7 @@
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   CreateRecipeDocs,
   UpdateRecipeDocs,
@@ -30,20 +30,32 @@ import {
   CheckIngredientsAvailabilityDto,
   PaginatedRecipesParamsDto,
 } from '../dtos/recipe.dto';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
 
 @Controller('recipes')
 @ApiTags('Recetas')
-@UseGuards(AuthGuard())
+@ApiBearerAuth()
+@UseGuards(AuthGuard(), RolesGuard)
+@Roles(
+  RolesUser.SUPERADMIN,
+  RolesUser.ADMIN,
+  RolesUser.EMP,
+  RolesUser.MES,
+  RolesUser.CHE,
+)
 export class RecipeController {
   constructor(private readonly _recipeUC: RecipeUC) {}
 
   @Post()
   @CreateRecipeDocs()
   async create(@Body() createDto: CreateRecipeDto, @Req() req: any) {
-    createDto.organizationalId = req.user?.organizationalId ?? createDto.organizationalId;
+    createDto.organizationalId =
+      req.user?.organizationalId ?? createDto.organizationalId;
     const recipes = await this._recipeUC.create(createDto);
     return {
-      message: 'Receta creada exitosamente',
+      message: 'api.recipe.created',
       statusCode: HttpStatus.CREATED,
       data: recipes,
     };
@@ -56,13 +68,14 @@ export class RecipeController {
     @Body() updateDto: UpdateRecipeDto,
     @Req() req: any,
   ) {
-    updateDto.organizationalId = req.user?.organizationalId ?? updateDto.organizationalId;
+    updateDto.organizationalId =
+      req.user?.organizationalId ?? updateDto.organizationalId;
     const recipes = await this._recipeUC.updateByProduct(
       parseInt(productId),
       updateDto,
     );
     return {
-      message: 'Receta actualizada exitosamente',
+      message: 'api.recipe.updated',
       statusCode: HttpStatus.OK,
       data: recipes,
     };
@@ -79,7 +92,7 @@ export class RecipeController {
       updateDto,
     );
     return {
-      message: 'Ingrediente actualizado exitosamente',
+      message: 'api.recipe.ingredient_updated',
       statusCode: HttpStatus.OK,
       data: recipe,
     };
@@ -115,7 +128,7 @@ export class RecipeController {
   async deleteByProduct(@Param('productId') productId: string) {
     await this._recipeUC.deleteByProduct(parseInt(productId));
     return {
-      message: 'Receta eliminada exitosamente',
+      message: 'api.recipe.deleted',
       statusCode: HttpStatus.OK,
     };
   }
@@ -125,7 +138,7 @@ export class RecipeController {
   async deleteIngredient(@Param('recipeId') recipeId: string) {
     await this._recipeUC.deleteIngredient(parseInt(recipeId));
     return {
-      message: 'Ingrediente eliminado de la receta',
+      message: 'api.recipe.ingredient_deleted',
       statusCode: HttpStatus.OK,
     };
   }

@@ -7,6 +7,7 @@ import {
   GetServerInfoDocs,
   GetRelatedDataDocs,
 } from './app.decorators';
+import { SkipApiKey } from './shared/decorators/skip-api-key.decorator';
 
 @ApiTags('System')
 @Controller()
@@ -19,6 +20,7 @@ export class AppController {
   }
 
   @Get('health')
+  @SkipApiKey()
   @HealthDocs()
   health() {
     return { status: 'ok', timestamp: new Date().toISOString() };

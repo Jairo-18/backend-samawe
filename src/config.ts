@@ -17,6 +17,7 @@ export const config = async () => {
       port: parseInt(process.env.APP_PORT as string, 10) || 3000,
       env: process.env.APP_ENV || 'development',
       baseUrl: process.env.APP_BASE_URL || '',
+      clientApiKey: process.env.APP_CLIENT_API_KEY || '',
       cors: {
         origin,
         allowedHeaders: allowedHeaders.length ? allowedHeaders : ['*'],

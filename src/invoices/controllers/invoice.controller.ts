@@ -49,14 +49,29 @@ import {
 } from '../decorators/invoice.decorators';
 import { InvoiceUC } from '../useCases/invoiceUC.uc';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle } from '@nestjs/throttler';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
+
+const STAFF_ROLES = [
+  RolesUser.SUPERADMIN,
+  RolesUser.ADMIN,
+  RolesUser.EMP,
+  RolesUser.MES,
+  RolesUser.CHE,
+];
+const ALL_ROLES = [...STAFF_ROLES, RolesUser.USER, RolesUser.PRO];
 
 @Controller('invoices')
 @ApiTags('Facturas')
-@UseGuards(AuthGuard())
+@UseGuards(AuthGuard(), RolesGuard)
+@Roles(...ALL_ROLES)
 export class InvoiceController {
   constructor(private readonly _invoiceUC: InvoiceUC) {}
 
   @Get('/paginated-list')
+  @Roles(...STAFF_ROLES)
   @GetPaginatedListDocs()
   async getPaginatedList(
     @Query() params: PaginatedListInvoicesParamsDto,
@@ -65,6 +80,7 @@ export class InvoiceController {
   }
 
   @Post()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @CreateInvoiceDocs()
   async create(
     @Body() createInvoiceDto: CreateInvoiceDto,
@@ -76,8 +92,8 @@ export class InvoiceController {
       employeeId,
     );
     return {
-      title: 'Factura creada',
-      message: 'Factura registrada',
+      title: 'api.invoice.created_title',
+      message: 'api.invoice.created',
       statusCode: HttpStatus.CREATED,
       data: { rowId: rowId.invoiceId.toString() },
     };
@@ -99,9 +115,9 @@ export class InvoiceController {
   ): Promise<DeleteReCordResponseDto> {
     await this._invoiceUC.delete(invoiceId);
     return {
-      title: 'Factura eliminada',
+      title: 'api.invoice.deleted_title',
       statusCode: HttpStatus.OK,
-      message: 'Factura eliminada exitosamente',
+      message: 'api.invoice.deleted',
     };
   }
 
@@ -114,8 +130,8 @@ export class InvoiceController {
   ): Promise<CreatedRecordResponseDto> {
     await this._invoiceUC.addDetails(invoiceId, dtos);
     return {
-      title: 'Items agregados',
-      message: 'Items agregados exitosamente',
+      title: 'api.invoice.items_added_title',
+      message: 'api.invoice.items_added',
       statusCode: HttpStatus.CREATED,
       data: null,
     };
@@ -129,8 +145,8 @@ export class InvoiceController {
   ): Promise<UpdateRecordResponseDto> {
     await this._invoiceUC.update({ invoiceId, ...invoiceData });
     return {
-      title: 'Factura editada',
-      message: 'Factura editada exitosamente',
+      title: 'api.invoice.updated_title',
+      message: 'api.invoice.updated',
       statusCode: HttpStatus.CREATED,
     };
   }
@@ -142,13 +158,14 @@ export class InvoiceController {
   ): Promise<DeleteReCordResponseDto> {
     await this._invoiceUC.deleteDetail(deleteDetailDto);
     return {
-      title: 'Item eliminado',
-      message: 'Item eliminado correctamente',
+      title: 'api.invoice.item_deleted_title',
+      message: 'api.invoice.item_deleted',
       statusCode: HttpStatus.OK,
     };
   }
 
   @Patch('invoice/:invoiceId/detail/:detailId/toggle-payment')
+  @Roles(...STAFF_ROLES)
   @ToggleDetailPaymentDocs()
   async toggleDetailPayment(
     @Param('invoiceId') invoiceId: number,
@@ -164,16 +181,18 @@ export class InvoiceController {
       detailId,
     );
     return {
-      title: 'Estado de pago actualizado',
+      title: 'api.invoice.payment_title',
       message: result.isPaid
-        ? 'Item marcado como pagado'
-        : 'Item marcado como pendiente',
+        ? 'api.invoice.payment_paid'
+        : 'api.invoice.payment_pending',
       statusCode: HttpStatus.OK,
       data: result,
     };
   }
 
   @Patch('invoice/:invoiceId/details/toggle-payment-bulk')
+  @Roles(...STAFF_ROLES)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ToggleDetailPaymentBulkDocs()
   async toggleDetailPaymentBulk(
     @Param('invoiceId') invoiceId: number,
@@ -190,14 +209,16 @@ export class InvoiceController {
       body.isPaid,
     );
     return {
-      title: 'Estados de pago actualizados',
-      message: 'Items actualizados exitosamente',
+      title: 'api.invoice.items_updated_title',
+      message: 'api.invoice.items_updated',
       statusCode: HttpStatus.OK,
       data: result,
     };
   }
 
   @Get('transfer/excel')
+  @Roles(...STAFF_ROLES)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ExportTransferInvoicesExcelDocs()
   async exportTransferInvoicesExcel(
     @Res() res: Response,
@@ -222,6 +243,8 @@ export class InvoiceController {
   }
 
   @Post('selected/excel')
+  @Roles(...STAFF_ROLES)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ExportSelectedInvoicesExcelDocs()
   async exportSelectedInvoicesExcel(
     @Body() body: { invoiceIds: number[] },

@@ -35,10 +35,14 @@ import {
   UpdateTypeDto,
 } from '../dtos/genericType.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
 
 @Controller('type')
 @ApiTags('Tipos')
-@UseGuards(AuthGuard())
+@UseGuards(AuthGuard(), RolesGuard)
+@Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN, RolesUser.EMP)
 export class GenericTypeController {
   constructor(
     private readonly repoService: RepositoryService,
@@ -121,7 +125,7 @@ export class GenericTypeController {
     await this.genericTypeUC.update(type, id, updateTypeDto);
 
     return {
-      message: 'Registro actualizado correctamente',
+      message: 'api.types.updated',
       statusCode: HttpStatus.OK,
     };
   }
@@ -138,7 +142,7 @@ export class GenericTypeController {
 
     return {
       statusCode: HttpStatus.OK,
-      message: 'Registro eliminado exitosamente',
+      message: 'api.types.deleted',
     };
   }
 }
