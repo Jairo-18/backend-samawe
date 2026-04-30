@@ -3,22 +3,29 @@ import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BackupUC } from '../useCases/backup.uc';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
 
 @ApiBearerAuth()
 @Controller('backup')
 @ApiTags('Backup')
+@UseGuards(AuthGuard(), RolesGuard)
+@Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN)
 export class BackupController {
   constructor(private readonly _backupUC: BackupUC) {}
 
   @Get('generate')
-  @UseGuards(AuthGuard())
   @ApiOperation({ summary: 'Generar y descargar un backup completo' })
   async generateBackup(@Res() res: Response) {
     try {
       const { archive, filename } = await this._backupUC.generateManualBackup();
 
       res.setHeader('Content-Type', 'application/zip');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${filename}"`,
+      );
 
       archive.on('error', (err) => {
         if (!res.headersSent) res.status(500).json({ message: err.message });
@@ -34,13 +41,12 @@ export class BackupController {
   }
 
   @Get('test-upload')
-  @UseGuards(AuthGuard())
   @ApiOperation({ summary: 'Probar subida manual a Google Drive' })
   async testUpload() {
     const fileId = await this._backupUC.performBackupAndUpload();
     return {
       statusCode: HttpStatus.OK,
-      message: 'Backup manual subido exitosamente',
+      message: 'api.backup.uploaded',
       data: { fileId },
     };
   }

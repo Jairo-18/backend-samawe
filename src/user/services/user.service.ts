@@ -623,11 +623,14 @@ export class UserService {
       where: { userId: body.userId, resetToken: body.resetToken },
     });
     if (!user) {
-      throw new HttpException(NOT_FOUND_MESSAGE, HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        'El enlace ha expirado o ya fue utilizado',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     if (user.resetTokenExpiry < new Date()) {
       throw new HttpException(
-        'Token inválido o expirado',
+        'El enlace ha expirado o ya fue utilizado',
         HttpStatus.BAD_REQUEST,
       );
     }

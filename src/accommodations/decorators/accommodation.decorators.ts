@@ -48,6 +48,7 @@ export function UpdateAccommodationDocs() {
 
 export function GetPaginatedListDocs() {
   return applyDecorators(
+    ApiBearerAuth(),
     ApiOperation({
       summary: 'Obtiene una lista paginada detallada de hospedajes',
     }),

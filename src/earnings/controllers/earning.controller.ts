@@ -22,10 +22,20 @@ import {
   GetInvoiceChartListDocs,
   GetInventoryAmountDocs,
 } from '../decorators/earning.decorators';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
 
 @Controller('balance')
 @ApiTags('Ganancias / Reportes')
-@UseGuards(AuthGuard())
+@UseGuards(AuthGuard(), RolesGuard)
+@Roles(
+  RolesUser.SUPERADMIN,
+  RolesUser.ADMIN,
+  RolesUser.EMP,
+  RolesUser.MES,
+  RolesUser.CHE,
+)
 export class EarningController {
   constructor(private readonly _earningUC: EarningUC) {}
 

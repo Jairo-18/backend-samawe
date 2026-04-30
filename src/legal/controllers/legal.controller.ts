@@ -20,9 +20,19 @@ import {
   UpdateLegalItemChildDto,
   ReorderDto,
 } from '../dtos/legal.dto';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
 
 @Controller('legal')
 @ApiTags('Términos y Privacidad')
+@Roles(
+  RolesUser.SUPERADMIN,
+  RolesUser.ADMIN,
+  RolesUser.EMP,
+  RolesUser.MES,
+  RolesUser.CHE,
+)
 export class LegalController {
   constructor(private readonly _legalUC: LegalUC) {}
 
@@ -34,7 +44,7 @@ export class LegalController {
 
   @Post('organizational/:organizationalId')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async createSection(
     @Param('organizationalId') organizationalId: string,
     @Body() dto: CreateLegalSectionDto,
@@ -45,18 +55,18 @@ export class LegalController {
 
   @Delete(':legalSectionId')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async deleteSection(@Param('legalSectionId') legalSectionId: string) {
     await this._legalUC.deleteSection(legalSectionId);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Sección eliminada correctamente',
+      message: 'api.legal.section_deleted',
     };
   }
 
   @Post(':legalSectionId/items')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async addItem(
     @Param('legalSectionId') legalSectionId: string,
     @Body() dto: CreateLegalItemDto,
@@ -67,7 +77,7 @@ export class LegalController {
 
   @Patch('items/:legalItemId')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async updateItem(
     @Param('legalItemId') legalItemId: string,
     @Body() dto: UpdateLegalItemDto,
@@ -75,24 +85,24 @@ export class LegalController {
     await this._legalUC.updateItem(legalItemId, dto);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Item actualizado correctamente',
+      message: 'api.legal.item_updated',
     };
   }
 
   @Delete('items/:legalItemId')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async deleteItem(@Param('legalItemId') legalItemId: string) {
     await this._legalUC.deleteItem(legalItemId);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Item eliminado correctamente',
+      message: 'api.legal.item_deleted',
     };
   }
 
   @Post('items/:legalItemId/children')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async addChild(
     @Param('legalItemId') legalItemId: string,
     @Body() dto: CreateLegalItemChildDto,
@@ -103,7 +113,7 @@ export class LegalController {
 
   @Patch('children/:legalItemChildId')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async updateChild(
     @Param('legalItemChildId') legalItemChildId: string,
     @Body() dto: UpdateLegalItemChildDto,
@@ -111,24 +121,24 @@ export class LegalController {
     await this._legalUC.updateChild(legalItemChildId, dto);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Sub-item actualizado correctamente',
+      message: 'api.legal.subitem_updated',
     };
   }
 
   @Delete('children/:legalItemChildId')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async deleteChild(@Param('legalItemChildId') legalItemChildId: string) {
     await this._legalUC.deleteChild(legalItemChildId);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Sub-item eliminado correctamente',
+      message: 'api.legal.subitem_deleted',
     };
   }
 
   @Patch(':legalSectionId/items/reorder')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async reorderItems(
     @Param('legalSectionId') legalSectionId: string,
     @Body() dto: ReorderDto,
@@ -139,7 +149,7 @@ export class LegalController {
 
   @Patch('items/:legalItemId/children/reorder')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
   async reorderChildren(
     @Param('legalItemId') legalItemId: string,
     @Body() dto: ReorderDto,

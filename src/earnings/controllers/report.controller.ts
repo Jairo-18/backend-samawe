@@ -14,12 +14,22 @@ import {
   ExportSalesByCategoryExcelDocs,
   ExportSalesByCategoryWithDetailsExcelDocs,
 } from '../decorators/report.decorators';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
 
 import * as ExcelJS from 'exceljs';
 
 @Controller('reports')
 @ApiTags('Reportes de Facturas')
-@UseGuards(AuthGuard())
+@UseGuards(AuthGuard(), RolesGuard)
+@Roles(
+  RolesUser.SUPERADMIN,
+  RolesUser.ADMIN,
+  RolesUser.EMP,
+  RolesUser.MES,
+  RolesUser.CHE,
+)
 export class ReportController {
   constructor(private readonly _reportUC: ReportUC) {}
 

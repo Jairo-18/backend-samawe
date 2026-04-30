@@ -31,7 +31,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { LocalStorageService } from './../../local-storage/services/local-storage.service';
 import { ProductImageService } from '../services/productImage.service';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ProductUC } from '../useCases/productUC.uc';
 import { AuthGuard } from '@nestjs/passport';
 import { CrudProductUC } from '../useCases/crudProductUC.uc';
@@ -47,9 +47,21 @@ import {
   GetImagesDocs,
   DeleteImageDocs,
 } from '../decorators/product.decorators';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
 
 @Controller('product')
 @ApiTags('Productos')
+@ApiBearerAuth()
+@UseGuards(AuthGuard(), RolesGuard)
+@Roles(
+  RolesUser.SUPERADMIN,
+  RolesUser.ADMIN,
+  RolesUser.EMP,
+  RolesUser.MES,
+  RolesUser.CHE,
+)
 export class ProductController {
   constructor(
     private readonly _productUC: ProductUC,
@@ -59,7 +71,6 @@ export class ProductController {
   ) {}
 
   @Get('/paginated-partial')
-  @UseGuards(AuthGuard())
   @GetPaginatedPartialDocs()
   async getPaginatedPartial(
     @Query() params: PaginatedProductSelectParamsDto,
@@ -68,7 +79,6 @@ export class ProductController {
   }
 
   @Post('create')
-  @UseGuards(AuthGuard())
   @CreateProductDocs()
   async create(
     @Body() productDto: CreateProductDto,
@@ -76,7 +86,7 @@ export class ProductController {
     const createdProduct = await this._productUC.create(productDto);
 
     return {
-      message: 'Registro de producto exitoso',
+      message: 'api.product.created',
       statusCode: HttpStatus.CREATED,
       data: {
         rowId: createdProduct.productId.toString(),
@@ -86,7 +96,6 @@ export class ProductController {
   }
 
   @Patch(':id')
-  @UseGuards(AuthGuard())
   @UpdateProductDocs()
   async update(
     @Param('id') productId: string,
@@ -95,7 +104,7 @@ export class ProductController {
     await this._productUC.update(productId, productData);
 
     return {
-      message: 'Producto actualizado correctamente',
+      message: 'api.product.updated',
       statusCode: HttpStatus.OK,
     };
   }
@@ -109,7 +118,6 @@ export class ProductController {
   }
 
   @Get(':id')
-  @UseGuards(AuthGuard())
   @FindOneProductDocs()
   async findOne(@Param('id') productId: string): Promise<GetProductDto> {
     const user = await this._productUC.findOne(productId);
@@ -120,7 +128,6 @@ export class ProductController {
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard())
   @DeleteProductDocs()
   async delete(
     @Param('id') producId: number,
@@ -128,12 +135,11 @@ export class ProductController {
     await this._productUC.delete(producId);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Producto eliminado exitosamente',
+      message: 'api.product.deleted',
     };
   }
 
   @Post(':id/images')
-  @UseGuards(AuthGuard())
   @UploadImageDocs()
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(
@@ -151,13 +157,12 @@ export class ProductController {
     );
 
     return {
-      message: 'Imagen subida correctamente',
+      message: 'api.product.image_uploaded',
       data: addedImage,
     };
   }
 
   @Get(':id/images')
-  @UseGuards(AuthGuard())
   @GetImagesDocs()
   async getImages(@Param('id') productId: number) {
     const images = await this._productImageService.getProductImages(productId);
@@ -167,7 +172,6 @@ export class ProductController {
   }
 
   @Delete(':id/images/*publicId')
-  @UseGuards(AuthGuard())
   @DeleteImageDocs()
   async deleteImage(
     @Param('id') productId: number,
@@ -181,7 +185,7 @@ export class ProductController {
     );
     return {
       statusCode: HttpStatus.OK,
-      message: 'Imagen eliminada exitosamente',
+      message: 'api.product.image_deleted',
     };
   }
 }

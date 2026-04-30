@@ -91,6 +91,7 @@ import { Review } from './entities/review.entity';
 import { ReviewReply } from './entities/reviewReply.entity';
 import { ReviewRepository } from './repositories/review.repository';
 import { ReviewReplyRepository } from './repositories/reviewReply.repository';
+import { RolesGuard } from './guards/roles.guard';
 
 @Module({})
 export class SharedModule {
@@ -267,8 +268,10 @@ export class SharedModule {
         LegalItemChildRepository,
         ReviewRepository,
         ReviewReplyRepository,
+        RolesGuard,
       ],
       exports: [
+        JwtModule,
         TypeOrmModule,
         AccessSessionsRepository,
         AccommodationRepository,
@@ -316,6 +319,7 @@ export class SharedModule {
         LegalItemChildRepository,
         ReviewRepository,
         ReviewReplyRepository,
+        RolesGuard,
       ],
     };
   }

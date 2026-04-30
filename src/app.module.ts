@@ -4,6 +4,7 @@ import { ExcursionModule } from './excursions/excursion.module';
 import { ProductModule } from './products/product.module';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ApiKeyGuard } from './shared/guards/api-key.guard';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PassportModule } from '@nestjs/passport';
 import { AppController } from './app.controller';
@@ -83,6 +84,10 @@ import { ReviewModule } from './reviews/review.module';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ApiKeyGuard,
     },
   ],
 })
