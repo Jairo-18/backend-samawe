@@ -119,8 +119,12 @@ export class UserController {
   @UseGuards(AuthGuard(), RolesGuard)
   @Roles(...STAFF_ROLES)
   @CreateUserDocs()
-  async create(@Body() user: CreateUserDto): Promise<CreatedRecordResponseDto> {
-    const rowId = await this._userUC.create(user);
+  async create(
+    @Body() user: CreateUserDto,
+    @Req() req: any,
+  ): Promise<CreatedRecordResponseDto> {
+    const creatorRole: string = req.user?.roleType?.code ?? '';
+    const rowId = await this._userUC.create(user, creatorRole);
     return {
       message: 'api.user.created',
       statusCode: HttpStatus.CREATED,

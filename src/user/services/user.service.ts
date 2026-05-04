@@ -54,7 +54,24 @@ export class UserService {
     private readonly _localStorageService: LocalStorageService,
   ) {}
 
-  async create(user: CreateUserDto): Promise<{ rowId: string }> {
+  async create(user: CreateUserDto, creatorRole: string): Promise<{ rowId: string }> {
+    const RESTRICTED_ROLES = ['ADMIN', 'SUPERADMIN'];
+    const PRIVILEGED_CREATORS = ['ADMIN', 'SUPERADMIN'];
+
+    const targetRole = await this._roleTypeRepository.findOne({
+      where: { roleTypeId: user.roleType },
+    });
+
+    if (
+      targetRole &&
+      RESTRICTED_ROLES.includes(targetRole.code) &&
+      !PRIVILEGED_CREATORS.includes(creatorRole)
+    ) {
+      throw new HttpException(
+        'No tienes permisos para crear usuarios con este rol',
+        HttpStatus.FORBIDDEN,
+      );
+    }
     if (user.email) {
       const existingUserByEmail = await this._userRepository.findOne({
         where: { email: user.email },
@@ -245,14 +262,9 @@ export class UserService {
 
     this.validatePasswordMatch(user.password, user.confirmPassword);
 
-    const roleType =
-      user.roleType && user.roleType.trim() !== ''
-        ? await this._roleTypeRepository.findOne({
-            where: { roleTypeId: user.roleType },
-          })
-        : await this._roleTypeRepository.findOne({
-            where: { roleTypeId: '4a96be8d-308f-434f-9846-54e5db3e7d95' },
-          });
+    const roleType = await this._roleTypeRepository.findOne({
+      where: { code: 'USER' },
+    });
 
     const identificationType =
       typeof user.identificationType === 'string'

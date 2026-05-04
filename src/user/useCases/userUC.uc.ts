@@ -11,8 +11,8 @@ import { Injectable } from '@nestjs/common';
 export class UserUC {
   constructor(private readonly _userService: UserService) {}
 
-  async create(user: CreateUserDto) {
-    return await this._userService.create(user);
+  async create(user: CreateUserDto, creatorRole: string) {
+    return await this._userService.create(user, creatorRole);
   }
 
   async register(user: CreateUserDto) {

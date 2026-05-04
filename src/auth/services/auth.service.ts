@@ -88,6 +88,7 @@ export class AuthService {
         roleType: {
           roleTypeId: user.roleType.roleTypeId,
           name: user.roleType.name,
+          code: user.roleType.code,
         },
         organizationalId: user.organizational?.organizationalId ?? null,
       },
@@ -271,6 +272,7 @@ export class AuthService {
         roleType: {
           roleTypeId: user.roleType?.roleTypeId,
           name: user.roleType?.name,
+          code: user.roleType?.code,
         },
         organizationalId: user.organizational?.organizationalId ?? null,
         avatarUrl: user.avatarUrl ?? null,
