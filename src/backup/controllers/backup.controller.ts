@@ -6,10 +6,12 @@ import { BackupUC } from '../useCases/backup.uc';
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
+import { SkipApiKey } from '../../shared/decorators/skip-api-key.decorator';
 
 @ApiBearerAuth()
 @Controller('backup')
 @ApiTags('Backup')
+@SkipApiKey()
 @UseGuards(AuthGuard(), RolesGuard)
 @Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN)
 export class BackupController {
