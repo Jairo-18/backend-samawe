@@ -89,10 +89,10 @@ export class PaginatedExcursionSelectParamsDto extends ParamsPaginationDto {
 
 export class PartialExcursionDto {
   @ApiProperty({
-    example: 'Paseo rio',
+    example: { es: 'Paseo rio', en: 'River walk' },
     description: 'Nombre de la excursion',
   })
-  name: string;
+  name: Record<string, string>;
 }
 
 /**
@@ -122,11 +122,11 @@ export class ExcursionWithImagesDto {
   @ApiProperty({ example: 'ACM-001' })
   code?: string;
 
-  @ApiProperty({ example: 'Pasadía Playa Bonita' })
-  name: string;
+  @ApiProperty({ example: { es: 'Pasadía Playa Bonita', en: 'Beautiful Beach Day Trip' } })
+  name: Record<string, string>;
 
-  @ApiProperty({ example: 'Pasadía frente al mar con todas las comodidades' })
-  description?: string;
+  @ApiProperty({ example: { es: 'Pasadía frente al mar con todas las comodidades', en: 'Beach day trip with all amenities' } })
+  description?: Record<string, string>;
 
   @ApiProperty({ example: 12000 })
   priceBuy: number;

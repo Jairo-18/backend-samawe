@@ -226,7 +226,7 @@ export class ExcursionService {
 
     if (count > 0) {
       throw new BadRequestException(
-        `La excursión ${excursion.name} está asociada a una factura y no puede eliminarse.`,
+        `La excursión ${excursion.name?.['es'] ?? JSON.stringify(excursion.name)} está asociada a una factura y no puede eliminarse.`,
       );
     }
 

@@ -12,10 +12,9 @@ export class LowAmountProductDto {
 
   @ApiProperty({
     description: 'Nombre del producto',
-    example: 'Coca Cola 2L',
+    example: { es: 'Coca Cola 2L', en: 'Coca Cola 2L' },
   })
-  @IsString()
-  name: string;
+  name: Record<string, string>;
 
   @ApiProperty({
     description: 'Cantidad del producto',

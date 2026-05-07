@@ -15,8 +15,8 @@ export interface UnitOfMeasureClean {
 export interface ProductInterfacePaginatedList {
   productId: number;
   code?: string;
-  name: string;
-  description?: string;
+  name: Record<string, string>;
+  description?: Record<string, string>;
   amount?: number;
   priceBuy: number;
   priceSale: number;
@@ -30,8 +30,8 @@ export interface ProductInterfacePaginatedList {
 export interface ProductComplete {
   productId: number;
   code?: string;
-  name?: string;
-  description?: string;
+  name?: Record<string, string>;
+  description?: Record<string, string>;
   amount?: number;
   taxe?: number;
   priceBuy?: number;

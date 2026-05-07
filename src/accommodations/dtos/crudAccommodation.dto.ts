@@ -167,8 +167,8 @@ export class PaginatedAccommodationSelectParamsDto extends ParamsPaginationDto {
  * DTO para un hospedaje parcial (solo nombre)
  */
 export class PartialAccommodationDto {
-  @ApiProperty({ example: 'Cabaña', description: 'Nombre del hospedaje' })
-  name: string;
+  @ApiProperty({ example: { es: 'Cabaña', en: 'Cabin' }, description: 'Nombre del hospedaje' })
+  name: Record<string, string>;
 }
 
 /**
@@ -198,11 +198,11 @@ export class AccommodationWithImagesDto {
   @ApiProperty({ example: 'ACM-001' })
   code?: string;
 
-  @ApiProperty({ example: 'Hotel Playa Bonita' })
-  name: string;
+  @ApiProperty({ example: { es: 'Hotel Playa Bonita', en: 'Hotel Beautiful Beach' } })
+  name: Record<string, string>;
 
-  @ApiProperty({ example: 'Hospedaje frente al mar con todas las comodidades' })
-  description?: string;
+  @ApiProperty({ example: { es: 'Hospedaje frente al mar con todas las comodidades', en: 'Accommodation on the beach with all amenities' } })
+  description?: Record<string, string>;
 
   @ApiProperty({ example: 4 })
   amountPerson?: number;

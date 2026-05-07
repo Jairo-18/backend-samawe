@@ -9,6 +9,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsNotEmpty,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   Min,
@@ -26,21 +27,21 @@ export class CreateExcursionDto {
   code: string;
 
   @ApiProperty({
-    example: 'Tour Montaña',
+    example: { es: 'Tour Montaña', en: 'Mountain Tour' },
     description: 'Nombre de la excursión',
   })
-  @IsString()
+  @IsObject()
   @IsNotEmpty({ message: 'El nombre es requerido' })
-  name: string;
+  name: Record<string, string>;
 
   @ApiProperty({
-    example: 'Excursión a la montaña con guía y refrigerios',
+    example: { es: 'Excursión a la montaña con guía y refrigerios', en: 'Mountain excursion with guide and snacks' },
     description: 'Descripción de la excursión',
     required: false,
   })
   @IsOptional()
-  @IsString()
-  description?: string;
+  @IsObject()
+  description?: Record<string, string>;
 
   @ApiProperty({
     example: 150000,
@@ -107,22 +108,22 @@ export class UpdateExcursionDto {
   code?: string;
 
   @ApiProperty({
-    example: 'Tour Lago Azul',
+    example: { es: 'Tour Lago Azul', en: 'Blue Lake Tour' },
     description: 'Nombre de la excursión',
     required: false,
   })
   @IsOptional()
-  @IsString()
-  name?: string;
+  @IsObject()
+  name?: Record<string, string>;
 
   @ApiProperty({
-    example: 'Excursión al Lago Azul con guía turística',
+    example: { es: 'Excursión al Lago Azul con guía turística', en: 'Blue Lake excursion with tourist guide' },
     description: 'Descripción de la excursión',
     required: false,
   })
   @IsOptional()
-  @IsString()
-  description?: string;
+  @IsObject()
+  description?: Record<string, string>;
 
   @ApiProperty({
     example: 150000,

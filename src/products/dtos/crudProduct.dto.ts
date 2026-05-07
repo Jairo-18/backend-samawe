@@ -126,8 +126,8 @@ export class PaginatedProductSelectParamsDto extends ParamsPaginationDto {
 
 export class PartialProductDto {
   @ApiProperty({
-    example: 'Coca Cola',
+    example: { es: 'Coca Cola', en: 'Coca Cola' },
     description: 'Nombre del producto',
   })
-  name: string;
+  name: Record<string, string>;
 }

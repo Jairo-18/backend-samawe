@@ -1,6 +1,5 @@
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
-import { Accommodation } from './../../shared/entities/accommodation.entity';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { RepositoryService } from '../../shared/services/repositoriry.service';
 import { Injectable } from '@nestjs/common';
@@ -10,7 +9,6 @@ import {
   PartialAccommodationDto,
 } from '../dtos/crudAccommodation.dto';
 import { ParamsPaginationDto } from '../../shared/dtos/pagination.dto';
-import { Equal, FindOptionsWhere, ILike } from 'typeorm';
 import {
   AccommodationInterfacePaginatedList,
   AccommodationPublicListItem,
@@ -25,114 +23,103 @@ export class CrudAccommodationService {
 
   async paginatedList(params: PaginatedListAccommodationsParamsDto) {
     const skip = (params.page - 1) * params.perPage;
-    const where: FindOptionsWhere<Accommodation>[] = [];
+    const query = this._accommodationRepository
+      .createQueryBuilder('accommodation')
+      .leftJoinAndSelect('accommodation.categoryType', 'categoryType')
+      .leftJoinAndSelect('accommodation.bedType', 'bedType')
+      .leftJoinAndSelect('accommodation.stateType', 'stateType')
+      .leftJoinAndSelect('accommodation.taxeType', 'taxeType')
+      .addSelect(`"accommodation"."name"->>'es'`, 'acc_name_sort')
+      .skip(skip)
+      .take(params.perPage)
+      .orderBy('acc_name_sort', 'ASC');
 
-    const baseConditions: FindOptionsWhere<Accommodation> = {};
-
-    if (params.code !== undefined) {
-      baseConditions.code = ILike(`%${params.code}%`);
+    if (params.code) {
+      query.andWhere('accommodation.code ILIKE :code', { code: `%${params.code}%` });
     }
 
     if (params.name) {
-      baseConditions.name = ILike(`%${params.name}%`);
+      query.andWhere(
+        `("accommodation"."name"->>'es' ILIKE :name OR "accommodation"."name"->>'en' ILIKE :name)`,
+        { name: `%${params.name}%` },
+      );
     }
 
     if (params.description) {
-      baseConditions.description = ILike(`%${params.description}%`);
+      query.andWhere(
+        `("accommodation"."description"->>'es' ILIKE :description OR "accommodation"."description"->>'en' ILIKE :description)`,
+        { description: `%${params.description}%` },
+      );
     }
 
     if (params.amountPerson !== undefined) {
-      baseConditions.amountPerson = Equal(params.amountPerson);
+      query.andWhere('accommodation.amountPerson = :amountPerson', { amountPerson: params.amountPerson });
     }
 
     if (params.jacuzzi !== undefined) {
-      baseConditions.jacuzzi = params.jacuzzi;
+      query.andWhere('accommodation.jacuzzi = :jacuzzi', { jacuzzi: params.jacuzzi });
     }
 
     if (params.amountRoom !== undefined) {
-      baseConditions.amountRoom = Equal(params.amountRoom);
+      query.andWhere('accommodation.amountRoom = :amountRoom', { amountRoom: params.amountRoom });
     }
 
     if (params.amountBathroom !== undefined) {
-      baseConditions.amountBathroom = Equal(params.amountBathroom);
+      query.andWhere('accommodation.amountBathroom = :amountBathroom', { amountBathroom: params.amountBathroom });
     }
 
     if (params.priceBuy !== undefined) {
-      baseConditions.priceBuy = Equal(params.priceBuy);
+      query.andWhere('accommodation.priceBuy = :priceBuy', { priceBuy: params.priceBuy });
     }
 
     if (params.priceSale !== undefined) {
-      baseConditions.priceSale = Equal(params.priceSale);
+      query.andWhere('accommodation.priceSale = :priceSale', { priceSale: params.priceSale });
     }
 
     if (params.categoryType) {
-      baseConditions.categoryType = {
-        categoryTypeId: params.categoryType,
-      };
-    }
-
-    if (params.organizationalId) {
-      baseConditions.organizational = {
-        organizationalId: params.organizationalId,
-      };
+      query.andWhere('categoryType.categoryTypeId = :categoryTypeId', { categoryTypeId: params.categoryType });
     }
 
     if (params.bedType) {
-      baseConditions.bedType = {
-        bedTypeId: params.bedType,
-      };
+      query.andWhere('bedType.bedTypeId = :bedTypeId', { bedTypeId: params.bedType });
     }
 
     if (params.stateType) {
-      baseConditions.stateType = {
-        stateTypeId: params.stateType,
-      };
+      query.andWhere('stateType.stateTypeId = :stateTypeId', { stateTypeId: params.stateType });
     }
+
+    if (params.organizationalId) {
+      query.andWhere('accommodation.organizationalId = :organizationalId', { organizationalId: params.organizationalId });
+    }
+
     if (params.search) {
       const search = params.search.trim();
-      const searchConditions: FindOptionsWhere<Accommodation>[] = [
-        { name: ILike(`%${search}%`) },
-        { description: ILike(`%${search}%`) },
-        { code: ILike(`%${search}%`) },
-      ];
-
       const searchNumber = Number(search);
+      const searchClauses = [
+        `"accommodation"."name"->>'es' ILIKE :search`,
+        `"accommodation"."name"->>'en' ILIKE :search`,
+        `"accommodation"."description"->>'es' ILIKE :search`,
+        `"accommodation"."description"->>'en' ILIKE :search`,
+        `"accommodation"."code" ILIKE :search`,
+      ];
       if (!isNaN(searchNumber)) {
-        searchConditions.push(
-          { amountPerson: Equal(searchNumber) },
-          { amountRoom: Equal(searchNumber) },
-          { amountBathroom: Equal(searchNumber) },
-          { priceBuy: Equal(searchNumber) },
-          { priceSale: Equal(searchNumber) },
+        searchClauses.push(
+          `accommodation.amountPerson = :searchNum`,
+          `accommodation.amountRoom = :searchNum`,
+          `accommodation.amountBathroom = :searchNum`,
+          `accommodation.priceBuy = :searchNum`,
+          `accommodation.priceSale = :searchNum`,
         );
+        query.andWhere(
+          `(${searchClauses.join(' OR ')})`,
+          { search: `%${search}%`, searchNum: searchNumber },
+        );
+      } else {
+        query.andWhere(`(${searchClauses.join(' OR ')})`, { search: `%${search}%` });
       }
-
-      searchConditions.forEach((condition) => {
-        where.push({
-          ...baseConditions,
-          ...condition,
-          ...(params.organizationalId && {
-            organizational: { organizationalId: params.organizationalId },
-          }),
-        });
-      });
-    } else {
-      where.push({
-        ...baseConditions,
-        ...(params.organizationalId && {
-          organizational: { organizationalId: params.organizationalId },
-        }),
-      });
     }
 
-    const [entities, itemCount] =
-      await this._accommodationRepository.findAndCount({
-        where,
-        skip,
-        take: params.perPage,
-        order: { name: 'ASC' },
-        relations: ['categoryType', 'bedType', 'stateType', 'taxeType'],
-      });
+    const [entities, itemCount] = await query.getManyAndCount();
 
     const accommodations: AccommodationInterfacePaginatedList[] = entities.map(
       (accommodation) => ({
@@ -183,11 +170,7 @@ export class CrudAccommodationService {
       }),
     );
 
-    const pageMetaDto = new PageMetaDto({
-      itemCount,
-      pageOptionsDto: params,
-    });
-
+    const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto: params });
     return new ResponsePaginationDto(accommodations, pageMetaDto);
   }
 
@@ -195,14 +178,18 @@ export class CrudAccommodationService {
     params: ParamsPaginationDto,
   ): Promise<ResponsePaginationDto<AccommodationPublicListItem>> {
     const skip = (params.page - 1) * params.perPage;
+    const query = this._accommodationRepository
+      .createQueryBuilder('accommodation')
+      .leftJoinAndSelect('accommodation.categoryType', 'categoryType')
+      .leftJoinAndSelect('accommodation.bedType', 'bedType')
+      .leftJoinAndSelect('accommodation.stateType', 'stateType')
+      .leftJoinAndSelect('accommodation.images', 'images')
+      .addSelect(`"accommodation"."name"->>'es'`, 'acc_name_sort')
+      .skip(skip)
+      .take(params.perPage)
+      .orderBy('acc_name_sort', params.order ?? 'ASC');
 
-    const [entities, itemCount] =
-      await this._accommodationRepository.findAndCount({
-        skip,
-        take: params.perPage,
-        order: { name: params.order ?? 'ASC' },
-        relations: ['categoryType', 'bedType', 'stateType', 'images'],
-      });
+    const [entities, itemCount] = await query.getManyAndCount();
 
     const items: AccommodationPublicListItem[] = entities.map((a) => ({
       accommodationId: a.accommodationId,
@@ -250,42 +237,35 @@ export class CrudAccommodationService {
     params: PaginatedAccommodationSelectParamsDto,
   ): Promise<ResponsePaginationDto<PartialAccommodationDto>> {
     const skip = (params.page - 1) * params.perPage;
-    const where = [];
+    const query = this._accommodationRepository
+      .createQueryBuilder('accommodation')
+      .select(["accommodation.accommodationId", "accommodation.name"])
+      .addSelect(`"accommodation"."name"->>'es'`, 'acc_name_sort')
+      .skip(skip)
+      .take(params.perPage)
+      .orderBy('acc_name_sort', params.order ?? 'ASC');
 
-    if (params.search) {
-      const search = params.search.trim();
-      where.push({
-        name: ILike(`%${search}%`),
-        ...(params.organizationalId && {
-          organizational: { organizationalId: params.organizationalId },
-        }),
-      });
-    } else {
-      where.push({
-        ...(params.organizationalId && {
-          organizational: { organizationalId: params.organizationalId },
-        }),
+    if (params.organizationalId) {
+      query.andWhere('accommodation.organizationalId = :organizationalId', {
+        organizationalId: params.organizationalId,
       });
     }
 
-    const [entities, itemCount] =
-      await this._accommodationRepository.findAndCount({
-        where,
-        skip,
-        take: params.perPage,
-        order: { name: params.order ?? 'ASC' },
-        select: ['name'],
-      });
+    if (params.search) {
+      const search = params.search.trim();
+      query.andWhere(
+        `("accommodation"."name"->>'es' ILIKE :search OR "accommodation"."name"->>'en' ILIKE :search)`,
+        { search: `%${search}%` },
+      );
+    }
+
+    const [entities, itemCount] = await query.getManyAndCount();
 
     const items: PartialAccommodationDto[] = entities.map((e) => ({
-      name: e.name!,
+      name: e.name,
     }));
 
-    const pageMetaDto = new PageMetaDto({
-      itemCount,
-      pageOptionsDto: params,
-    });
-
+    const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto: params });
     return new ResponsePaginationDto(items, pageMetaDto);
   }
 }
