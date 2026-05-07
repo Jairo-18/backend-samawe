@@ -285,17 +285,16 @@ export class InvoiceExcelService {
             itemType = '';
           if (detail.product) {
             itemCode = detail.product.code ?? '';
-            itemName = detail.product.name ?? '';
-            itemType = detail.product.categoryType?.name ?? 'Producto';
+            itemName = (detail.product.name as any)?.['es'] ?? detail.product.name?.toString() ?? '';
+            itemType = (detail.product.categoryType?.name as any)?.['es'] ?? detail.product.categoryType?.name?.toString() ?? 'Producto';
           } else if (detail.accommodation) {
             itemCode = detail.accommodation.code ?? '';
-            itemName = detail.accommodation.name ?? '';
-            itemType = detail.accommodation.categoryType?.name ?? 'Hospedaje';
+            itemName = (detail.accommodation.name as any)?.['es'] ?? detail.accommodation.name?.toString() ?? '';
+            itemType = (detail.accommodation.categoryType?.name as any)?.['es'] ?? detail.accommodation.categoryType?.name?.toString() ?? 'Hospedaje';
           } else if (detail.excursion) {
             itemCode = detail.excursion.code ?? '';
-            itemName = detail.excursion.name ?? '';
-            itemType =
-              detail.excursion.categoryType?.name ?? 'Pasadía/Servicio';
+            itemName = (detail.excursion.name as any)?.['es'] ?? detail.excursion.name?.toString() ?? '';
+            itemType = (detail.excursion.categoryType?.name as any)?.['es'] ?? detail.excursion.categoryType?.name?.toString() ?? 'Pasadía/Servicio';
           }
 
           const b = this.getDetailBreakdown(detail);

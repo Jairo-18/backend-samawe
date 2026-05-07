@@ -209,9 +209,9 @@ export class ReportService {
               'detail.amount as amount',
               'invoice.invoiceId as invoiceId',
               'invoice.createdAt as invoiceDate',
-              'CASE WHEN product.productId IS NOT NULL THEN product.name ELSE NULL END as productName',
-              'CASE WHEN accommodation.accommodationId IS NOT NULL THEN accommodation.name ELSE NULL END as accommodationName',
-              'CASE WHEN excursion.excursionId IS NOT NULL THEN excursion.name ELSE NULL END as excursionName',
+              `CASE WHEN product.productId IS NOT NULL THEN product.name->>'es' ELSE NULL END as productName`,
+              `CASE WHEN accommodation.accommodationId IS NOT NULL THEN accommodation.name->>'es' ELSE NULL END as accommodationName`,
+              `CASE WHEN excursion.excursionId IS NOT NULL THEN excursion.name->>'es' ELSE NULL END as excursionName`,
               `CASE
                 WHEN product.productId IS NOT NULL THEN 'PRODUCT'
                 WHEN accommodation.accommodationId IS NOT NULL THEN 'ACCOMMODATION'
@@ -339,9 +339,9 @@ export class ReportService {
         'detail.amount as amount',
         'invoice.invoiceId as invoiceId',
         'invoice.createdAt as invoiceDate',
-        'CASE WHEN product.productId IS NOT NULL THEN product.name ELSE NULL END as productName',
-        'CASE WHEN accommodation.accommodationId IS NOT NULL THEN accommodation.name ELSE NULL END as accommodationName',
-        'CASE WHEN excursion.excursionId IS NOT NULL THEN excursion.name ELSE NULL END as excursionName',
+        `CASE WHEN product.productId IS NOT NULL THEN product.name->>'es' ELSE NULL END as productName`,
+        `CASE WHEN accommodation.accommodationId IS NOT NULL THEN accommodation.name->>'es' ELSE NULL END as accommodationName`,
+        `CASE WHEN excursion.excursionId IS NOT NULL THEN excursion.name->>'es' ELSE NULL END as excursionName`,
         `CASE
           WHEN product.productId IS NOT NULL THEN 'PRODUCT'
           WHEN accommodation.accommodationId IS NOT NULL THEN 'ACCOMMODATION'

@@ -323,10 +323,10 @@ export class ProductMiniDto {
   code: string;
 
   @ApiProperty({
-    example: 'Coca Cola 500ml',
+    example: { es: 'Coca Cola 500ml' },
     description: 'Nombre del producto',
   })
-  name: string;
+  name: Record<string, string>;
 }
 
 export class AccommodationMiniDto {
@@ -343,10 +343,10 @@ export class AccommodationMiniDto {
   code: string;
 
   @ApiProperty({
-    example: 'Cabaña 1',
+    example: { es: 'Cabaña 1' },
     description: 'Nombre del hospedaje',
   })
-  name: string;
+  name: Record<string, string>;
 }
 
 export class ExcursionMiniDto {
@@ -363,10 +363,10 @@ export class ExcursionMiniDto {
   code: string;
 
   @ApiProperty({
-    example: 'Pasadía niños',
+    example: { es: 'Pasadía niños' },
     description: 'Nombre del servicio o pasadía',
   })
-  name: string;
+  name: Record<string, string>;
 }
 
 export class InvoiceDetailDto {

@@ -13,6 +13,7 @@ import {
   IsInt,
   IsNumber,
   IsBoolean,
+  IsObject,
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -28,19 +29,19 @@ export class CreateAccommodationDto {
   @IsNotEmpty({ message: 'El código de hospedaje es requerido' })
   code: string;
 
-  @ApiProperty({ example: 'Cabaña Sur', description: 'Nombre del hospedaje' })
-  @IsString()
+  @ApiProperty({ example: { es: 'Cabaña Sur', en: 'South Cabin' }, description: 'Nombre del hospedaje' })
+  @IsObject()
   @IsNotEmpty({ message: 'El nombre es requerido' })
-  name: string;
+  name: Record<string, string>;
 
   @ApiProperty({
-    example: 'Cabaña familiar con vista al lago',
+    example: { es: 'Cabaña familiar con vista al lago', en: 'Family cabin with lake view' },
     description: 'Descripción del hospedaje',
     required: false,
   })
   @IsOptional()
-  @IsString()
-  description?: string;
+  @IsObject()
+  description?: Record<string, string>;
 
   @ApiProperty({ example: 4, description: 'Cantidad de personas' })
   @IsInt()
@@ -133,18 +134,18 @@ export class UpdateAccommodationDto {
   @IsNotEmpty({ message: 'El código es requerido' })
   code?: string;
 
-  @ApiProperty({ example: 'Cabaña Sur', description: 'Nombre del hospedaje' })
-  @IsString()
+  @ApiProperty({ example: { es: 'Cabaña Sur', en: 'South Cabin' }, description: 'Nombre del hospedaje' })
+  @IsObject()
   @IsOptional()
-  name?: string;
+  name?: Record<string, string>;
 
   @ApiProperty({
-    example: 'Hospedaje con vista al lago',
+    example: { es: 'Hospedaje con vista al lago', en: 'Accommodation with lake view' },
     description: 'Descripción',
   })
-  @IsString()
+  @IsObject()
   @IsOptional()
-  description?: string;
+  description?: Record<string, string>;
 
   @ApiProperty({ example: 4, description: 'Cantidad de personas permitidas' })
   @IsInt()

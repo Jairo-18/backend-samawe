@@ -14,8 +14,8 @@ export interface AccommodationImage {
 export interface AccommodationInterfacePaginatedList {
   accommodationId: number;
   code?: string;
-  name: string;
-  description?: string;
+  name: Record<string, string>;
+  description?: Record<string, string>;
   amountPerson?: number;
   jacuzzi: boolean;
   amountRoom?: number;
@@ -32,8 +32,8 @@ export interface AccommodationInterfacePaginatedList {
 export interface AccommodationComplete {
   accommodationId: number;
   code?: string;
-  name?: string;
-  description?: string;
+  name?: Record<string, string>;
+  description?: Record<string, string>;
   amountPerson?: number;
   jacuzzi?: boolean;
   amountRoom?: number;
@@ -52,8 +52,8 @@ export interface AccommodationComplete {
 
 export interface AccommodationPublicListItem {
   accommodationId: number;
-  name: string;
-  description?: string;
+  name: Record<string, string>;
+  description?: Record<string, string>;
   amountPerson: number;
   amountRoom: number;
   amountBathroom: number;

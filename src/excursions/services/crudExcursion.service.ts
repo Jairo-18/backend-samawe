@@ -9,7 +9,7 @@ import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { RepositoryService } from './../../shared/services/repositoriry.service';
 import { Injectable } from '@nestjs/common';
-import { Equal, FindOptionsWhere, ILike } from 'typeorm';
+import { FindOptionsWhere } from 'typeorm';
 
 @Injectable()
 export class CrudExcursionService {
@@ -19,15 +19,19 @@ export class CrudExcursionService {
   ) {}
 
   async findAll(organizationalId?: string) {
-    const where: FindOptionsWhere<Excursion> = {};
+    const query = this._excursionRepository
+      .createQueryBuilder('excursion')
+      .leftJoinAndSelect('excursion.categoryType', 'categoryType')
+      .leftJoinAndSelect('excursion.stateType', 'stateType')
+      .leftJoinAndSelect('excursion.taxeType', 'taxeType')
+      .addSelect(`"categoryType"."name"->>'es'`, 'cat_name_sort')
+      .addSelect(`"excursion"."name"->>'es'`, 'exc_name_sort')
+      .orderBy('cat_name_sort', 'ASC')
+      .addOrderBy('exc_name_sort', 'ASC');
     if (organizationalId) {
-      where.organizational = { organizationalId };
+      query.andWhere('excursion.organizationalId = :organizationalId', { organizationalId });
     }
-    const entities = await this._excursionRepository.find({
-      where,
-      order: { categoryType: { name: 'ASC' }, name: 'ASC' },
-      relations: ['categoryType', 'stateType', 'taxeType'],
-    });
+    const entities = await query.getMany();
     return {
       data: {
         excursions: entities.map((e) => ({
@@ -52,87 +56,76 @@ export class CrudExcursionService {
 
   async paginatedList(params: PaginatedListExcursionsParamsDto) {
     const skip = (params.page - 1) * params.perPage;
-    const where: FindOptionsWhere<Excursion>[] = [];
-
-    const baseConditions: FindOptionsWhere<Excursion> = {};
+    const query = this._excursionRepository
+      .createQueryBuilder('excursion')
+      .leftJoinAndSelect('excursion.categoryType', 'categoryType')
+      .leftJoinAndSelect('excursion.stateType', 'stateType')
+      .leftJoinAndSelect('excursion.taxeType', 'taxeType')
+      .addSelect(`"excursion"."name"->>'es'`, 'exc_name_sort')
+      .skip(skip)
+      .take(params.perPage)
+      .orderBy('exc_name_sort', 'ASC');
 
     if (params.code) {
-      baseConditions.code = ILike(`%${params.code}%`);
+      query.andWhere('excursion.code ILIKE :code', { code: `%${params.code}%` });
     }
 
     if (params.name) {
-      baseConditions.name = ILike(`%${params.name}%`);
+      query.andWhere(
+        `("excursion"."name"->>'es' ILIKE :name OR "excursion"."name"->>'en' ILIKE :name)`,
+        { name: `%${params.name}%` },
+      );
     }
 
     if (params.description) {
-      baseConditions.description = ILike(`%${params.description}%`);
+      query.andWhere(
+        `("excursion"."description"->>'es' ILIKE :description OR "excursion"."description"->>'en' ILIKE :description)`,
+        { description: `%${params.description}%` },
+      );
     }
 
     if (params.priceBuy !== undefined) {
-      baseConditions.priceBuy = Equal(params.priceBuy);
+      query.andWhere('excursion.priceBuy = :priceBuy', { priceBuy: params.priceBuy });
     }
 
     if (params.priceSale !== undefined) {
-      baseConditions.priceSale = Equal(params.priceSale);
+      query.andWhere('excursion.priceSale = :priceSale', { priceSale: params.priceSale });
     }
 
     if (params.stateType) {
-      baseConditions.stateType = { stateTypeId: params.stateType };
+      query.andWhere('stateType.stateTypeId = :stateTypeId', { stateTypeId: params.stateType });
     }
 
     if (params.categoryType) {
-      baseConditions.categoryType = {
-        categoryTypeId: params.categoryType,
-      };
+      query.andWhere('categoryType.categoryTypeId = :categoryTypeId', { categoryTypeId: params.categoryType });
     }
 
     if (params.organizationalId) {
-      baseConditions.organizational = {
-        organizationalId: params.organizationalId,
-      };
+      query.andWhere('excursion.organizationalId = :organizationalId', { organizationalId: params.organizationalId });
     }
 
     if (params.search) {
       const search = params.search.trim();
-      const searchConditions: FindOptionsWhere<Excursion>[] = [
-        { name: ILike(`%${search}%`) },
-        { description: ILike(`%${search}%`) },
-        { code: ILike(`%${search}%`) },
-      ];
-
       const searchNumber = Number(search);
+      const searchClauses = [
+        `"excursion"."name"->>'es' ILIKE :search`,
+        `"excursion"."name"->>'en' ILIKE :search`,
+        `"excursion"."description"->>'es' ILIKE :search`,
+        `"excursion"."description"->>'en' ILIKE :search`,
+        `"excursion"."code" ILIKE :search`,
+      ];
       if (!isNaN(searchNumber)) {
-        searchConditions.push(
-          { priceBuy: Equal(searchNumber) },
-          { priceSale: Equal(searchNumber) },
+        searchClauses.push(
+          `excursion.priceBuy = :searchNum`,
+          `excursion.priceSale = :searchNum`,
         );
+        query.andWhere(`(${searchClauses.join(' OR ')})`, { search: `%${search}%`, searchNum: searchNumber });
+      } else {
+        query.andWhere(`(${searchClauses.join(' OR ')})`, { search: `%${search}%` });
       }
-
-      searchConditions.forEach((condition) => {
-        where.push({
-          ...baseConditions,
-          ...condition,
-          ...(params.organizationalId && {
-            organizational: { organizationalId: params.organizationalId },
-          }),
-        });
-      });
-    } else {
-      where.push({
-        ...baseConditions,
-        ...(params.organizationalId && {
-          organizational: { organizationalId: params.organizationalId },
-        }),
-      });
     }
 
-    const [entities, itemCount] = await this._excursionRepository.findAndCount({
-      where,
-      skip,
-      take: params.perPage,
-      order: { name: 'ASC' },
-      relations: ['categoryType', 'stateType', 'taxeType'],
-    });
+    const [entities, itemCount] = await query.getManyAndCount();
 
     const excursions = entities.map((excursion) => ({
       excursionId: excursion.excursionId,
@@ -170,11 +163,7 @@ export class CrudExcursionService {
         })) || [],
     }));
 
-    const pageMetaDto = new PageMetaDto({
-      itemCount,
-      pageOptionsDto: params,
-    });
-
+    const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto: params });
     return new ResponsePaginationDto(excursions, pageMetaDto);
   }
 
@@ -182,41 +171,35 @@ export class CrudExcursionService {
     params: PaginatedExcursionSelectParamsDto,
   ): Promise<ResponsePaginationDto<PartialExcursionDto>> {
     const skip = (params.page - 1) * params.perPage;
-    const where = [];
+    const query = this._excursionRepository
+      .createQueryBuilder('excursion')
+      .select(['excursion.excursionId', 'excursion.name'])
+      .addSelect(`"excursion"."name"->>'es'`, 'exc_name_sort')
+      .skip(skip)
+      .take(params.perPage)
+      .orderBy('exc_name_sort', params.order ?? 'ASC');
 
-    if (params.search) {
-      const search = params.search.trim();
-      where.push({
-        name: ILike(`%${search}%`),
-        ...(params.organizationalId && {
-          organizational: { organizationalId: params.organizationalId },
-        }),
-      });
-    } else {
-      where.push({
-        ...(params.organizationalId && {
-          organizational: { organizationalId: params.organizationalId },
-        }),
+    if (params.organizationalId) {
+      query.andWhere('excursion.organizationalId = :organizationalId', {
+        organizationalId: params.organizationalId,
       });
     }
 
-    const [entities, itemCount] = await this._excursionRepository.findAndCount({
-      where,
-      skip,
-      take: params.perPage,
-      order: { name: params.order ?? 'ASC' },
-      select: ['name'],
-    });
+    if (params.search) {
+      const search = params.search.trim();
+      query.andWhere(
+        `("excursion"."name"->>'es' ILIKE :search OR "excursion"."name"->>'en' ILIKE :search)`,
+        { search: `%${search}%` },
+      );
+    }
+
+    const [entities, itemCount] = await query.getManyAndCount();
 
     const items: PartialExcursionDto[] = entities.map((e) => ({
-      name: e.name!,
+      name: e.name,
     }));
 
-    const pageMetaDto = new PageMetaDto({
-      itemCount,
-      pageOptionsDto: params,
-    });
-
+    const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto: params });
     return new ResponsePaginationDto(items, pageMetaDto);
   }
 }

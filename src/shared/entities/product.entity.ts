@@ -24,11 +24,11 @@ export class Product {
   @Column('varchar', { length: 255, nullable: true })
   code?: string;
 
-  @Column('varchar', { length: 255, nullable: true })
-  name: string;
+  @Column({ type: 'jsonb', nullable: true })
+  name: Record<string, string>;
 
-  @Column('varchar', { length: 500, nullable: true })
-  description?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  description?: Record<string, string>;
 
   @Column('decimal', { precision: 10, scale: 3 })
   amount?: number;

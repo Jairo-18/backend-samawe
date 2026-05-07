@@ -12,8 +12,8 @@ export interface TypeCleanDto {
 export interface ProductDetailDto {
   productId: number;
   code: string;
-  name: string;
-  description?: string;
+  name: Record<string, string>;
+  description?: Record<string, string>;
   amount: number;
   priceBuy: number;
   priceSale: number;
@@ -69,8 +69,8 @@ export function mapProductDetail(product: Product): ProductDetailDto {
 export interface AccommodationDetailDto {
   accommodationId: number;
   code: string;
-  name: string;
-  description?: string;
+  name: Record<string, string>;
+  description?: Record<string, string>;
   amountPerson: number;
   amountRoom: number;
   amountBathroom: number;
@@ -144,8 +144,8 @@ export function mapAccommodationDetail(
 export interface MostRequestedAccommodationDto {
   accommodationId: number;
   code: string;
-  name: string;
-  description?: string;
+  name: Record<string, string>;
+  description?: Record<string, string>;
   amountPerson: number;
   amountRoom: number;
   amountBathroom: number;
@@ -209,8 +209,8 @@ export function mapMostRequestedAccommodation(
 export interface ExcursionDetailDto {
   excursionId: number;
   code: string;
-  name: string;
-  description?: string;
+  name: Record<string, string>;
+  description?: Record<string, string>;
   priceBuy: number;
   priceSale: number;
   categoryType: { categoryTypeId: number; code: string; name: Record<string, string> } | null;

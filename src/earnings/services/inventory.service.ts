@@ -3,7 +3,7 @@ import { InventoryLowParamsDto } from './../dtos/inventoryAmount.dto';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { Injectable } from '@nestjs/common';
-import { IsNull, LessThan, Like } from 'typeorm';
+import { IsNull, LessThan } from 'typeorm';
 import { LowAmountProductDto } from '../dtos/inventoryAmount.dto';
 
 @Injectable()
@@ -22,29 +22,33 @@ export class InventoryService {
       const { page, perPage, search, order, amount, organizationalId } = params;
       const skip = (page - 1) * perPage;
 
-      const where: any = {};
+      const query = this.productRepository
+        .createQueryBuilder('product')
+        .select(['product.productId', 'product.name', 'product.amount'])
+        .skip(skip)
+        .take(perPage)
+        .orderBy('product.amount', order || 'ASC');
 
       if (amount !== undefined && amount !== null) {
-        where.amount = amount;
+        query.andWhere('product.amount = :amount', { amount });
       } else {
-        where.amount = LessThan(10);
+        query.andWhere('product.amount < :maxAmount', { maxAmount: 10 });
       }
 
       if (search && search.trim()) {
-        where.name = Like(`%${search.trim()}%`);
+        query.andWhere(
+          `(product.name->>'es' ILIKE :search OR product.name->>'en' ILIKE :search)`,
+          { search: `%${search.trim()}%` },
+        );
       }
 
-      where.organizational = organizationalId ? { organizationalId } : IsNull();
+      if (organizationalId) {
+        query.andWhere('product.organizationalId = :organizationalId', { organizationalId });
+      } else {
+        query.andWhere('product.organizationalId IS NULL');
+      }
 
-      const [products, total] = await this.productRepository.findAndCount({
-        where,
-        select: ['productId', 'name', 'amount'],
-        order: {
-          amount: order || 'ASC',
-        },
-        skip,
-        take: perPage,
-      });
+      const [products, total] = await query.getManyAndCount();
 
       const data: LowAmountProductDto[] = products.map((product) => ({
         productId: product.productId,

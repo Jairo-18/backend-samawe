@@ -900,7 +900,7 @@ export class InvoiceService {
         );
 
         const grouped = resDetails.reduce<Record<string, number>>((acc, d) => {
-          const name = d.product!.name;
+          const name = d.product!.name?.['es'] ?? JSON.stringify(d.product!.name);
           acc[name] = (acc[name] ?? 0) + Number(d.amount);
           return acc;
         }, {});

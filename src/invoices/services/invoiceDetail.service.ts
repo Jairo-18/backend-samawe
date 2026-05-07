@@ -355,7 +355,7 @@ export class InvoiceDetailService {
       ) {
         this._eventEmitter.emit('invoice.recipe_item.added', {
           invoiceId: invoice.invoiceId,
-          productName: product.name,
+          productName: product.name?.['es'] ?? JSON.stringify(product.name),
         });
       }
 
@@ -366,7 +366,7 @@ export class InvoiceDetailService {
         const currentStock = product.amount;
 
         stockInfo = {
-          productName: product.name,
+          productName: product.name?.['es'] ?? JSON.stringify(product.name),
           previousStock,
           currentStock,
           requestedAmount: amount,
@@ -709,7 +709,7 @@ export class InvoiceDetailService {
         } else if (isSale) {
           if (hasRecipe) {
             hasResProduct = true;
-            if (!firstResProductName) firstResProductName = product.name;
+            if (!firstResProductName) firstResProductName = product.name?.['es'] ?? JSON.stringify(product.name);
             recipeConsumeItems.push({ productId: product.productId, amount });
           } else {
             stockOps.push(
@@ -846,7 +846,7 @@ export class InvoiceDetailService {
           const newAmount = currentAmount - amt;
           if (newAmount < 0) {
             throw new BadRequestException(
-              `No se puede eliminar: dejaría el stock del producto ${product.name} en negativo`,
+              `No se puede eliminar: dejaría el stock del producto ${product.name?.['es'] ?? JSON.stringify(product.name)} en negativo`,
             );
           }
           product.amount = newAmount;

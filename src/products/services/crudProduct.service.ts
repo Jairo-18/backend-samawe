@@ -7,7 +7,6 @@ import {
   PartialProductDto,
 } from './../dtos/crudProduct.dto';
 import { Injectable } from '@nestjs/common';
-import { ILike } from 'typeorm';
 import { ProductInterfacePaginatedList } from '../interface/product.interface';
 
 @Injectable()
@@ -27,22 +26,27 @@ export class CrudProductService {
       )
       .leftJoinAndSelect('Product.images', 'images')
       .leftJoinAndSelect('Product.taxeType', 'taxeType')
+      .addSelect(`"Product"."name"->>'es'`, 'prod_name_sort')
       .skip(skip)
       .take(params.perPage)
-      .orderBy('Product.name', 'ASC');
+      .orderBy('prod_name_sort', 'ASC');
 
     if (params.name) {
-      query.andWhere('Product.name ILIKE :name', { name: `%${params.name}%` });
+      query.andWhere(
+        `("Product"."name"->>'es' ILIKE :name OR "Product"."name"->>'en' ILIKE :name)`,
+        { name: `%${params.name}%` },
+      );
     }
 
     if (params.code) {
-      query.andWhere('Product.code ILIKE :code', { name: `%${params.code}%` });
+      query.andWhere('Product.code ILIKE :code', { code: `%${params.code}%` });
     }
 
     if (params.description) {
-      query.andWhere('Product.description ILIKE :description', {
-        description: `%${params.description}%`,
-      });
+      query.andWhere(
+        `("Product"."description"->>'es' ILIKE :description OR "Product"."description"->>'en' ILIKE :description)`,
+        { description: `%${params.description}%` },
+      );
     }
 
     if (params.amount !== undefined) {
@@ -123,7 +127,7 @@ export class CrudProductService {
     if (params.search) {
       const search = params.search.trim();
       query.andWhere(
-        '(Product.name ILIKE :search OR Product.code ILIKE :search OR Product.description ILIKE :search)',
+        `("Product"."name"->>'es' ILIKE :search OR "Product"."name"->>'en' ILIKE :search OR "Product"."code" ILIKE :search OR "Product"."description"->>'es' ILIKE :search OR "Product"."description"->>'en' ILIKE :search)`,
         { search: `%${search}%` },
       );
     }
@@ -264,41 +268,35 @@ export class CrudProductService {
     params: PaginatedProductSelectParamsDto,
   ): Promise<ResponsePaginationDto<PartialProductDto>> {
     const skip = (params.page - 1) * params.perPage;
-    const where = [];
+    const query = this._productRepository
+      .createQueryBuilder('Product')
+      .select(['Product.productId', 'Product.name'])
+      .addSelect(`"Product"."name"->>'es'`, 'prod_name_sort')
+      .skip(skip)
+      .take(params.perPage)
+      .orderBy('prod_name_sort', params.order ?? 'ASC');
 
-    if (params.search) {
-      const search = params.search.trim();
-      where.push({
-        name: ILike(`%${search}%`),
-        ...(params.organizationalId && {
-          organizational: { organizationalId: params.organizationalId },
-        }),
-      });
-    } else {
-      where.push({
-        ...(params.organizationalId && {
-          organizational: { organizationalId: params.organizationalId },
-        }),
+    if (params.organizationalId) {
+      query.andWhere('Product.organizationalId = :organizationalId', {
+        organizationalId: params.organizationalId,
       });
     }
 
-    const [entities, itemCount] = await this._productRepository.findAndCount({
-      where,
-      skip,
-      take: params.perPage,
-      order: { name: params.order ?? 'ASC' },
-      select: ['productId', 'name'],
-    });
+    if (params.search) {
+      const search = params.search.trim();
+      query.andWhere(
+        `(Product.name->>'es' ILIKE :search OR Product.name->>'en' ILIKE :search)`,
+        { search: `%${search}%` },
+      );
+    }
+
+    const [entities, itemCount] = await query.getManyAndCount();
 
     const items: PartialProductDto[] = entities.map((e) => ({
-      name: e.name!,
+      name: e.name,
     }));
 
-    const pageMetaDto = new PageMetaDto({
-      itemCount,
-      pageOptionsDto: params,
-    });
-
+    const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto: params });
     return new ResponsePaginationDto(items, pageMetaDto);
   }
 }

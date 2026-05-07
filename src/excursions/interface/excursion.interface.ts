@@ -13,8 +13,8 @@ export interface ExcursionImage {
 export interface ExcursionInterfacePaginatedList {
   excursionId: number;
   code?: string;
-  name: string;
-  description?: string;
+  name: Record<string, string>;
+  description?: Record<string, string>;
   priceBuy: number;
   priceSale: number;
   stateType: StateTypeClean;
@@ -26,8 +26,8 @@ export interface ExcursionInterfacePaginatedList {
 export interface ExcursionComplete {
   excursionId: number;
   code?: string;
-  name?: string;
-  description?: string;
+  name?: Record<string, string>;
+  description?: Record<string, string>;
   priceBuy?: number;
   priceSale?: number;
   taxe?: number;

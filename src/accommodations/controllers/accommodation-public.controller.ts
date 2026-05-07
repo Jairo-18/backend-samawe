@@ -46,11 +46,11 @@ class MostRequestedAccommodationSwaggerDto {
   @ApiProperty({ example: 'CAB1' })
   code: string;
 
-  @ApiProperty({ example: 'CABAÑA 1' })
-  name: string;
+  @ApiProperty({ example: { es: 'CABAÑA 1' } })
+  name: Record<string, string>;
 
-  @ApiProperty({ example: '' })
-  description?: string;
+  @ApiProperty({ example: { es: '' } })
+  description?: Record<string, string>;
 
   @ApiProperty({ example: 2 })
   amountPerson: number;

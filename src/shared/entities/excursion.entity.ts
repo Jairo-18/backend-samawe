@@ -23,11 +23,11 @@ export class Excursion {
   @Column('varchar', { length: 255, nullable: false })
   code?: string;
 
-  @Column('varchar', { length: 255, nullable: false })
-  name: string;
+  @Column({ type: 'jsonb', nullable: false })
+  name: Record<string, string>;
 
-  @Column('varchar', { length: 500, nullable: true })
-  description?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  description?: Record<string, string>;
 
   @Column('decimal', { precision: 10, scale: 2 })
   priceBuy: number;

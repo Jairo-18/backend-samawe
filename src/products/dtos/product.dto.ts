@@ -9,6 +9,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsNotEmpty,
   IsString,
+  IsObject,
   IsOptional,
   IsNumber,
   IsBoolean,
@@ -31,22 +32,22 @@ export class CreateProductDto {
   code: string;
 
   @ApiProperty({
-    example: 'Coca Cola 1L',
+    example: { es: 'Coca Cola 1L', en: 'Coca Cola 1L' },
     description: 'Nombre del producto',
     required: true,
   })
-  @IsString()
+  @IsObject()
   @IsNotEmpty({ message: 'El nombre del producto es requerido' })
-  name: string;
+  name: Record<string, string>;
 
   @ApiProperty({
-    example: 'Bebida gaseosa de 1 litro',
+    example: { es: 'Bebida gaseosa de 1 litro', en: 'Sparkling drink of 1 liter' },
     description: 'Descripción del producto',
     required: false,
   })
-  @IsString()
+  @IsObject()
   @IsOptional()
-  description?: string;
+  description?: Record<string, string>;
 
   @ApiProperty({
     example: 10,
@@ -135,20 +136,20 @@ export class UpdateProductDto {
   code: string;
 
   @ApiProperty({
-    example: 'Coca Cola 1L',
+    example: { es: 'Coca Cola 1L', en: 'Coca Cola 1L' },
     description: 'Nombre del producto',
   })
-  @IsString()
+  @IsObject()
   @IsOptional()
-  name?: string;
+  name?: Record<string, string>;
 
   @ApiProperty({
-    example: 'Bebida gaseosa de 1 litro',
+    example: { es: 'Bebida gaseosa de 1 litro', en: 'Sparkling drink of 1 liter' },
     description: 'Descripción del producto',
   })
-  @IsString()
+  @IsObject()
   @IsOptional()
-  description?: string;
+  description?: Record<string, string>;
 
   @ApiProperty({ example: 10, description: 'Cantidad disponible' })
   @IsOptional()

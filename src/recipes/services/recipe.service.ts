@@ -88,7 +88,7 @@ export class RecipeService {
       if (!grouped.has(pid)) {
         grouped.set(pid, {
           productId: pid,
-          productName: row.product.name,
+          productName: row.product.name?.['es'] ?? Object.values(row.product.name ?? {})[0] ?? '',
           images:
             row.product.images?.map((img) => ({
               productImageId: img.productImageId,
@@ -153,7 +153,7 @@ export class RecipeService {
       );
       entry.ingredients.push({
         ingredientProductId: row.ingredient.productId,
-        ingredientProductName: row.ingredient.name,
+        ingredientProductName: row.ingredient.name?.['es'] ?? Object.values(row.ingredient.name ?? {})[0] ?? '',
         unit: row.ingredient.unitOfMeasure?.code ?? 'N/A',
         quantity: reqQty,
         cost: Number(effectivePriceBuy.toFixed(2)),
@@ -326,7 +326,7 @@ export class RecipeService {
     if (!recipes || recipes.length === 0) {
       return {
         productId: product.productId,
-        productName: product.name,
+        productName: product.name?.['es'] ?? Object.values(product.name ?? {})[0] ?? '',
         images:
           product.images?.map((img) => ({
             productImageId: img.productImageId,
@@ -347,7 +347,7 @@ export class RecipeService {
 
       return {
         ingredientProductId: recipe.ingredient.productId,
-        ingredientProductName: recipe.ingredient.name,
+        ingredientProductName: recipe.ingredient.name?.['es'] ?? Object.values(recipe.ingredient.name ?? {})[0] ?? '',
         unit: recipe.ingredient.unitOfMeasure
           ? recipe.ingredient.unitOfMeasure.code
           : 'N/A',
@@ -361,7 +361,7 @@ export class RecipeService {
 
     return {
       productId: product.productId,
-      productName: product.name,
+      productName: product.name?.['es'] ?? Object.values(product.name ?? {})[0] ?? '',
       images:
         product.images?.map((img) => ({
           productImageId: img.productImageId,
@@ -444,7 +444,7 @@ export class RecipeService {
         } else {
           ingredientsAvailability.push({
             ingredientProductId: ingredient.productId,
-            ingredientProductName: ingredient.name,
+            ingredientProductName: ingredient.name?.['es'] ?? Object.values(ingredient.name ?? {})[0] ?? '',
             required: Number(required.toFixed(3)),
             available: Number(available.toFixed(3)),
             unit: ingredient.unitOfMeasure

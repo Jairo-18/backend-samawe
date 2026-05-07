@@ -277,7 +277,7 @@ export class AccommodationService {
 
     if (count > 0) {
       throw new BadRequestException(
-        `El hospedaje ${accommodation.name} está asociado a una factura y no puede eliminarse.`,
+        `El hospedaje ${accommodation.name?.['es'] ?? JSON.stringify(accommodation.name)} está asociado a una factura y no puede eliminarse.`,
       );
     }
 
