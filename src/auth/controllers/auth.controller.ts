@@ -43,6 +43,7 @@ export class AuthController {
   ) {}
 
   @Post('/sign-in')
+  @SkipApiKey()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @SignInDocs()
   async signIn(@Body() body: LoginDto): Promise<SignInResponseDto> {
@@ -93,6 +94,7 @@ export class AuthController {
   }
 
   @Post('/recovery-password')
+  @SkipApiKey()
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   async recoveryPassword(
     @Body() body: RecoveryPasswordBodyDto,
