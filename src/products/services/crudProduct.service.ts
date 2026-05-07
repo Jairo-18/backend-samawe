@@ -136,7 +136,7 @@ export class CrudProductService {
         let dynamicPriceBuy = Number(product.priceBuy || 0);
         const dynamicPriceSale = Number(product.priceSale || 0);
 
-        const catName = product.categoryType?.name?.toUpperCase();
+        const catName = product.categoryType?.name?.['es']?.toUpperCase();
         const hasRecipes =
           product.productRecipes && product.productRecipes.length > 0;
 

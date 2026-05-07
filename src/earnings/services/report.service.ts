@@ -84,8 +84,8 @@ export class ReportService {
               'COUNT(*) as count',
               'COALESCE(SUM(invoice.total), 0) as total',
             ])
-            .where('payType.name = :paymentTypeName', { paymentTypeName })
-            .andWhere('paidType.name IN (:...paidTypes)', {
+            .where(`"payType"."name"->>'es' = :paymentTypeName`, { paymentTypeName })
+            .andWhere(`"paidType"."name"->>'es' IN (:...paidTypes)`, {
               paidTypes: ['PAGADO', 'RESERVADO - PAGADO'],
             })
             .andWhere(

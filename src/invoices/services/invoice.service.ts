@@ -590,7 +590,7 @@ export class InvoiceService {
           const message =
             stateCodeUpper === 'ENT'
               ? `Orden de la mesa ${invoice.tableNumber || 'N/A'} (Factura #${invoice.code}) entregada completamente.`
-              : `La orden de la mesa ${invoice.tableNumber || 'N/A'} (Factura #${invoice.code}) cambió a ${invoice.stateType.name}.`;
+              : `La orden de la mesa ${invoice.tableNumber || 'N/A'} (Factura #${invoice.code}) cambió a ${invoice.stateType.name?.['es'] ?? ''}.`;
           await this._sendOrderNotification(
             queryRunner.manager,
             invoice,
@@ -718,9 +718,11 @@ export class InvoiceService {
           })
         : Promise.resolve([]),
       hasAccommodations
-        ? this._invoiceRepository.manager.findOne(StateType, {
-            where: { name: In(['Disponible', 'DISPONIBLE']) },
-          })
+        ? this._invoiceRepository.manager
+            .getRepository(StateType)
+            .createQueryBuilder('s')
+            .where(`s.name->>'es' IN (:...names)`, { names: ['Disponible', 'DISPONIBLE'] })
+            .getOne()
         : Promise.resolve(null),
     ]);
 
@@ -829,14 +831,12 @@ export class InvoiceService {
       'RECEPCIONISTA',
       'Recepcionista',
     ];
-    const usersToNotify = await manager.find(User, {
-      where: {
-        roleType: {
-          name: In(roleNames),
-        },
-      },
-      relations: ['roleType'],
-    });
+    const usersToNotify = await manager
+      .getRepository(User)
+      .createQueryBuilder('u')
+      .leftJoinAndSelect('u.roleType', 'roleType')
+      .where(`roleType.name->>'es' IN (:...roleNames)`, { roleNames })
+      .getMany();
 
     if (usersToNotify.length > 0) {
       const notificationsToInsert = usersToNotify.map((user) => {
@@ -849,7 +849,7 @@ export class InvoiceService {
           invoiceId: invoice.invoiceId,
           code: invoice.code,
           tableNumber: invoice.tableNumber,
-          state: invoice.stateType.name,
+          state: invoice.stateType.name?.['es'] ?? '',
           stateCode: invoice.stateType.code,
           orderTime: invoice.orderTime,
           readyTime: invoice.readyTime,
@@ -865,7 +865,7 @@ export class InvoiceService {
           notificationId: notif.notificationId,
           invoiceId: invoice.invoiceId,
           code: invoice.code,
-          state: invoice.stateType.name,
+          state: invoice.stateType.name?.['es'] ?? '',
           stateCode: invoice.stateType.code,
           tableNumber: invoice.tableNumber,
           updatedAt: new Date(),

@@ -12,8 +12,8 @@ export class TaxeType {
   @PrimaryGeneratedColumn()
   taxeTypeId: number;
 
-  @Column('varchar', { length: 255, nullable: false })
-  name: string;
+  @Column({ type: 'jsonb', nullable: true })
+  name: Record<string, string>;
 
   @Column('float', { nullable: false })
   percentage: number;

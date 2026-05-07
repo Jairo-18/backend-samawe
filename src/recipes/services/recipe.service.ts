@@ -168,7 +168,7 @@ export class RecipeService {
       if (!productCategoryMap.has(row.product.productId)) {
         productCategoryMap.set(
           row.product.productId,
-          row.product.categoryType?.name?.toUpperCase() || '',
+          row.product.categoryType?.name?.['es']?.toUpperCase() || '',
         );
       }
     }

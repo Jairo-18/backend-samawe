@@ -6,7 +6,7 @@ import { User } from '../entities/user.entity';
 export interface TypeCleanDto {
   id: number | string;
   code: string;
-  name: string;
+  name: Record<string, string>;
 }
 
 export interface ProductDetailDto {
@@ -18,9 +18,9 @@ export interface ProductDetailDto {
   priceBuy: number;
   priceSale: number;
   isActive: boolean;
-  categoryType: { categoryTypeId: number; code: string; name: string } | null;
-  unitOfMeasure: { unitOfMeasureId: number; code: string; name: string } | null;
-  taxeType: { taxeTypeId: number; percentage: number; name: string } | null;
+  categoryType: { categoryTypeId: number; code: string; name: Record<string, string> } | null;
+  unitOfMeasure: { unitOfMeasureId: number; code: string; name: Record<string, string> } | null;
+  taxeType: { taxeTypeId: number; percentage: number; name: Record<string, string> } | null;
   images: { productImageId: number; imageUrl: string; publicId: string }[];
   organizationalId: string | null;
 }
@@ -77,10 +77,10 @@ export interface AccommodationDetailDto {
   jacuzzi: boolean;
   priceBuy: number;
   priceSale: number;
-  categoryType: { categoryTypeId: number; code: string; name: string } | null;
-  bedType: { bedTypeId: number; code: string; name: string } | null;
-  stateType: { stateTypeId: number; code: string; name: string } | null;
-  taxeType: { taxeTypeId: number; percentage: number; name: string } | null;
+  categoryType: { categoryTypeId: number; code: string; name: Record<string, string> } | null;
+  bedType: { bedTypeId: number; code: string; name: Record<string, string> } | null;
+  stateType: { stateTypeId: number; code: string; name: Record<string, string> } | null;
+  taxeType: { taxeTypeId: number; percentage: number; name: Record<string, string> } | null;
   images: {
     accommodationImageId: number;
     imageUrl: string;
@@ -151,9 +151,9 @@ export interface MostRequestedAccommodationDto {
   amountBathroom: number;
   jacuzzi: boolean;
   priceSale: number;
-  categoryType: { categoryTypeId: number; code: string; name: string } | null;
-  bedType: { bedTypeId: number; code: string; name: string } | null;
-  stateType: { stateTypeId: number; code: string; name: string } | null;
+  categoryType: { categoryTypeId: number; code: string; name: Record<string, string> } | null;
+  bedType: { bedTypeId: number; code: string; name: Record<string, string> } | null;
+  stateType: { stateTypeId: number; code: string; name: Record<string, string> } | null;
   images: {
     accommodationImageId: number;
     imageUrl: string;
@@ -213,9 +213,9 @@ export interface ExcursionDetailDto {
   description?: string;
   priceBuy: number;
   priceSale: number;
-  categoryType: { categoryTypeId: number; code: string; name: string } | null;
-  stateType: { stateTypeId: number; code: string; name: string } | null;
-  taxeType: { taxeTypeId: number; percentage: number; name: string } | null;
+  categoryType: { categoryTypeId: number; code: string; name: Record<string, string> } | null;
+  stateType: { stateTypeId: number; code: string; name: Record<string, string> } | null;
+  taxeType: { taxeTypeId: number; percentage: number; name: Record<string, string> } | null;
   images: { excursionImageId: number; imageUrl: string; publicId: string }[];
   organizationalId: string | null;
 }
@@ -268,14 +268,14 @@ export interface UserDetailDto {
   identificationNumber: string;
   isActive: boolean;
   avatarUrl?: string;
-  roleType: { roleTypeId: string; code: string; name: string } | null;
+  roleType: { roleTypeId: string; code: string; name: Record<string, string> } | null;
   identificationType: {
     identificationTypeId: string;
     code: string;
-    name: string;
+    name: Record<string, string>;
   } | null;
   phoneCode: { phoneCodeId: string; code: string; name: string } | null;
-  personType: { personTypeId: number; code: string; name: string } | null;
+  personType: { personTypeId: number; code: string; name: Record<string, string> } | null;
   organizationalId: string | null;
 }
 

@@ -9,7 +9,7 @@ export interface ProductImageClean {
 export interface UnitOfMeasureClean {
   unitOfMeasureId: number;
   code?: string;
-  name?: string;
+  name?: Record<string, string>;
 }
 
 export interface ProductInterfacePaginatedList {

@@ -35,23 +35,18 @@ export class StatisticsService {
     const query = this._accommodationRepository
       .createQueryBuilder('accommodation')
       .leftJoin('accommodation.stateType', 'stateType')
-      .select('stateType.name', 'state')
+      .select(`"stateType"."name"->>'es'`, 'state')
       .addSelect('COUNT(*)', 'count')
-      .where('stateType.name IN (:...names)', {
+      .where(`"stateType"."name"->>'es' IN (:...names)`, {
         names: [
           'Disponible',
-          'DISPONIBLE',
           'Mantenimiento',
-          'MANTENIMIENTO',
           'Fuera de Servicio',
-          'FUERA DE SERVICIO',
           'Ocupado',
-          'OCUPADO',
           'Reservado',
-          'RESERVADO',
         ],
       })
-      .groupBy('stateType.name');
+      .groupBy(`"stateType"."name"->>'es'`);
 
     if (organizationalId) {
       query.andWhere('accommodation.organizationalId = :organizationalId', {
@@ -68,19 +63,12 @@ export class StatisticsService {
     const query = this._excursionRepository
       .createQueryBuilder('excursion')
       .leftJoin('excursion.stateType', 'stateType')
-      .select('stateType.name', 'state')
+      .select(`"stateType"."name"->>'es'`, 'state')
       .addSelect('COUNT(*)', 'count')
-      .where('stateType.name IN (:...names)', {
-        names: [
-          'Disponible',
-          'Mantenimiento',
-          'Fuera de Servicio',
-          'DISPONIBLE',
-          'MANTENIMIENTO',
-          'FUERA DE SERVICIO',
-        ],
+      .where(`"stateType"."name"->>'es' IN (:...names)`, {
+        names: ['Disponible', 'Mantenimiento', 'Fuera de Servicio', 'Ocupado', 'Reservado'],
       })
-      .groupBy('stateType.name');
+      .groupBy(`"stateType"."name"->>'es'`);
 
     if (organizationalId) {
       query.andWhere('excursion.organizationalId = :organizationalId', {
@@ -103,13 +91,8 @@ export class StatisticsService {
         'invoice.invoiceId AS "invoiceId"',
       ])
       .where('detail.accommodationId IS NOT NULL')
-      .andWhere('paidType.name IN (:...names)', {
-        names: [
-          'Reservado - Pagado',
-          'Reservado - Pendiente',
-          'RESERVADO - PAGADO',
-          'RESERVADO - PENDIENTE',
-        ],
+      .andWhere(`"paidType"."name"->>'es' IN (:...names)`, {
+        names: ['Reservado - Pagado', 'Reservado - Pendiente'],
       });
 
     if (organizationalId) {

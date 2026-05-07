@@ -17,8 +17,8 @@ export class IdentificationType {
   @Column('varchar', { length: 255, nullable: true })
   code: string;
 
-  @Column('varchar', { length: 255, nullable: true })
-  name: string;
+  @Column({ type: 'jsonb', nullable: true })
+  name: Record<string, string>;
 
   @OneToMany(() => User, (user) => user.identificationType)
   user: User[];

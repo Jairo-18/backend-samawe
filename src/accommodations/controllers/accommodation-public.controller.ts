@@ -35,8 +35,8 @@ class AccommodationTypeSwaggerDto {
   @ApiProperty({ example: 'HOS' })
   code: string;
 
-  @ApiProperty({ example: 'HOSPEDAJE' })
-  name: string;
+  @ApiProperty({ example: { es: 'Hospedaje', en: 'Lodging' } })
+  name: Record<string, string>;
 }
 
 class MostRequestedAccommodationSwaggerDto {

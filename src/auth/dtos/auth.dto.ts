@@ -62,7 +62,7 @@ export class SignOutBodyDto {
 
 export interface RoleType {
   roleTypeId: string;
-  name: string;
+  name: Record<string, string>;
 }
 
 export interface SignInResponse {
@@ -121,7 +121,7 @@ export class AuthTokenResponseDto {
     userId: string;
     roleType: {
       roleTypeId: string;
-      name: string;
+      name: Record<string, string>;
     };
     organizationalId: string | null;
   };

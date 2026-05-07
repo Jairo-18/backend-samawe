@@ -23,7 +23,7 @@
     identificationType?: {
       identificationTypeId: number;
       code: string;
-      name: string;
+      name: Record<string, string>;
     };
   };
   employee?: {
@@ -34,35 +34,35 @@
     identificationType?: {
       identificationTypeId: number;
       code: string;
-      name: string;
+      name: Record<string, string>;
     };
   };
   invoiceDetails?: Array<{
     invoiceDetailId: number;
     taxeType?: {
       taxeTypeId: number;
-      name: string;
+      name: Record<string, string>;
       percentage: number;
     };
   }>;
   payType?: {
     payTypeId: number;
     code: string;
-    name: string;
+    name: Record<string, string>;
   };
   paidType?: {
     paidTypeId: number;
     code: string;
-    name: string;
+    name: Record<string, string>;
   };
   invoiceType?: {
     invoiceTypeId: number;
     code: string;
-    name: string;
+    name: Record<string, string>;
   };
   stateType?: {
     stateTypeId: number;
     code: string;
-    name: string;
+    name: Record<string, string>;
   };
 }
