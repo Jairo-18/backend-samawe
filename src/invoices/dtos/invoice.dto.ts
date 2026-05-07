@@ -427,7 +427,7 @@ export class InvoiceDetailDto {
   @ApiProperty({ required: false })
   taxeType?: {
     taxeTypeId: number;
-    name: string;
+    name: Record<string, string>;
     percentage: number;
   };
 
@@ -443,7 +443,7 @@ export class StateTypeDto {
   code: string;
 
   @ApiProperty()
-  name: string;
+  name: Record<string, string>;
 }
 
 export class GetInvoiceWithDetailsDto {

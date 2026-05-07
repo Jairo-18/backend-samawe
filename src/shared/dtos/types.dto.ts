@@ -14,10 +14,10 @@ export class PayTypeDto {
   code?: string;
 
   @ApiProperty({
-    example: 'PAGADO',
+    example: { es: 'PAGADO' },
     description: 'Nombre del tipo de pago',
   })
-  name?: string;
+  name?: Record<string, string>;
 }
 
 export class InvoiceTypeDto {
@@ -34,10 +34,10 @@ export class InvoiceTypeDto {
   code?: string;
 
   @ApiProperty({
-    example: 'FACTURA DE VENTA',
+    example: { es: 'FACTURA DE VENTA' },
     description: 'Nombre del tipo de factura',
   })
-  name?: string;
+  name?: Record<string, string>;
 }
 
 export class PaidTypeDto {
@@ -54,10 +54,10 @@ export class PaidTypeDto {
   code?: string;
 
   @ApiProperty({
-    example: 'EFECTIVO',
+    example: { es: 'EFECTIVO' },
     description: 'Nombre del tipo de estado de pago',
   })
-  name?: string;
+  name?: Record<string, string>;
 }
 
 export class CategoryTypeDto {
@@ -74,10 +74,10 @@ export class CategoryTypeDto {
   code?: string;
 
   @ApiProperty({
-    example: 'MECATO',
+    example: { es: 'MECATO' },
     description: 'Nombre del tipo de categoría',
   })
-  name?: string;
+  name?: Record<string, string>;
 }
 
 export class BedTypeDto {
@@ -94,10 +94,10 @@ export class BedTypeDto {
   code?: string;
 
   @ApiProperty({
-    example: 'CAMA DOBLE',
+    example: { es: 'CAMA DOBLE' },
     description: 'Nombre del tipo de cama',
   })
-  name?: string;
+  name?: Record<string, string>;
 }
 
 export class IdentificationTypeDto {
@@ -114,10 +114,10 @@ export class IdentificationTypeDto {
   code?: string;
 
   @ApiProperty({
-    example: 'CEDULA DE CIUDADANIA',
+    example: { es: 'CEDULA DE CIUDADANIA' },
     description: 'Nombre del tipo de identificación',
   })
-  name?: string;
+  name?: Record<string, string>;
 }
 
 export class PhoneCodeDto {
@@ -145,7 +145,7 @@ export class TaxeTypeDto {
   taxeTypeId: number;
 
   @ApiProperty()
-  name: string;
+  name: Record<string, string>;
 
   @ApiProperty()
   percentage?: number;

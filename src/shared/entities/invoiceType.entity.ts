@@ -15,8 +15,8 @@ export class InvoiceType {
   @Column('varchar', { length: 255, nullable: true })
   code?: string;
 
-  @Column('varchar', { length: 255, nullable: true })
-  name: string;
+  @Column({ type: 'jsonb', nullable: true })
+  name: Record<string, string>;
 
   @CreateDateColumn({
     type: 'timestamp',

@@ -17,8 +17,8 @@ export class UnitOfMeasure {
   @Column('varchar', { length: 50, nullable: false })
   code: string;
 
-  @Column('varchar', { length: 255, nullable: false })
-  name: string;
+  @Column({ type: 'jsonb', nullable: true })
+  name: Record<string, string>;
 
   @OneToMany(() => Product, (product) => product.unitOfMeasure)
   products: Product[];

@@ -1,5 +1,5 @@
 ﻿import { BaseResponseDto } from '../../shared/dtos/response.dto';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { HttpStatus } from '@nestjs/common';
 import { GET_ALL_TYPES_EXAMPLE } from '../constants/examplesTypes.conts';
@@ -12,10 +12,10 @@ export class CreateTypeDto {
   @IsNotEmpty()
   code: string;
 
-  @ApiProperty({ example: 'Ingresa el nombre' })
-  @IsString()
+  @ApiProperty({ example: { es: 'Alojamiento', en: 'Accommodation' } })
+  @IsObject()
   @IsNotEmpty()
-  name: string;
+  name: Record<string, string>;
 }
 
 export interface Type {
@@ -65,10 +65,10 @@ export class UpdateTypeDto {
   @IsOptional()
   code: string;
 
-  @ApiProperty({ example: 'Ingresa el nombre' })
-  @IsString()
+  @ApiProperty({ example: { es: 'Alojamiento', en: 'Accommodation' }, required: false })
+  @IsObject()
   @IsOptional()
-  name: string;
+  name?: Record<string, string>;
 }
 
 export class ParamsPaginationGenericDto extends ParamsPaginationDto {

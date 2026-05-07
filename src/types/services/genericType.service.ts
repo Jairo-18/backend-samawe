@@ -11,6 +11,13 @@ import {
 
 import { ParamsPaginationGenericDto, Type } from '../dtos/genericType.dto';
 
+const JSONB_NAME_TYPES = new Set([
+  'categoryType', 'stateType', 'bedType', 'roleType', 'identificationType',
+  'invoiceType', 'taxeType', 'payType', 'paidType', 'discountType',
+  'personType', 'mediaType', 'unitOfMeasure',
+  // discountType excluded: name stays as varchar
+]);
+
 @Injectable()
 export class GenericTypeService<T extends object> {
   constructor(private readonly repositoryService: RepositoryService) {}
@@ -320,11 +327,16 @@ export class GenericTypeService<T extends object> {
         ? params.orderBy
         : (validOrderFields[0] ?? idField);
 
+    const isJsonbName = JSONB_NAME_TYPES.has(type);
     const qb = repository.createQueryBuilder('entity');
-    this.applyFilters(qb, params, idField);
+    this.applyFilters(qb, params, idField, isJsonbName);
 
     qb.skip(skip).take(take);
-    qb.orderBy(`entity.${orderField}`, params.order ?? OrderConst.DESC);
+    if (orderField === 'name' && isJsonbName) {
+      qb.orderBy(`entity.name->>'es'`, params.order ?? OrderConst.DESC);
+    } else {
+      qb.orderBy(`entity.${orderField}`, params.order ?? OrderConst.DESC);
+    }
 
     const [items, total] = await qb.getManyAndCount();
     const meta = new PageMetaDto({ itemCount: total, pageOptionsDto: params });
@@ -336,12 +348,17 @@ export class GenericTypeService<T extends object> {
     qb: any,
     params: ParamsPaginationGenericDto,
     idField: string,
+    isJsonbName = false,
   ): void {
     const filters: string[] = [];
     const paramsWhere: Record<string, any> = {};
 
     if (params.name?.trim()) {
-      filters.push('entity.name ILIKE :name');
+      if (isJsonbName) {
+        filters.push(`(entity.name->>'es' ILIKE :name OR entity.name->>'en' ILIKE :name)`);
+      } else {
+        filters.push('entity.name ILIKE :name');
+      }
       paramsWhere.name = `%${params.name.trim()}%`;
     }
 
@@ -351,7 +368,11 @@ export class GenericTypeService<T extends object> {
     }
 
     if (params.search?.trim() && !params.name && !params.code) {
-      filters.push('(entity.name ILIKE :search OR entity.code ILIKE :search)');
+      if (isJsonbName) {
+        filters.push(`(entity.name->>'es' ILIKE :search OR entity.name->>'en' ILIKE :search OR entity.code ILIKE :search)`);
+      } else {
+        filters.push('(entity.name ILIKE :search OR entity.code ILIKE :search)');
+      }
       paramsWhere.search = `%${params.search.trim()}%`;
 
       if (!isNaN(Number(params.search.trim()))) {

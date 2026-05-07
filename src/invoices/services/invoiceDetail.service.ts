@@ -195,7 +195,7 @@ export class InvoiceDetailService {
           );
         }
 
-        const stateName = accommodation.stateType.name?.toString().trim();
+        const stateName = accommodation.stateType.name?.['es']?.trim();
         if (!stateName) {
           throw new BadRequestException(
             'El nombre del estado no está definido',
@@ -230,7 +230,7 @@ export class InvoiceDetailService {
               'Reservado - Pendiente',
               'RESERVADO - PAGADO',
               'RESERVADO - PENDIENTE',
-            ].includes(overlappingDetail.invoice.paidType.name.trim())
+            ].includes(overlappingDetail.invoice.paidType.name?.['es']?.trim() ?? '')
           ) {
             throw new BadRequestException(
               `El hospedaje ya está reservado entre ${createInvoiceDetailDto.startDate} y ${createInvoiceDetailDto.endDate}`,
@@ -254,11 +254,10 @@ export class InvoiceDetailService {
           );
 
           if (diffDays <= 2) {
-            const ocupadoState = await this._stateTypeRepository.findOne({
-              where: {
-                name: In(['Ocupado', 'OCUPADO']),
-              },
-            });
+            const ocupadoState = await this._stateTypeRepository
+              .createQueryBuilder('s')
+              .where(`s.name->>'es' IN (:...names)`, { names: ['Ocupado', 'OCUPADO'] })
+              .getOne();
             if (!ocupadoState) {
               throw new NotFoundException('No se encontró el estado "Ocupado"');
             }
@@ -501,9 +500,10 @@ export class InvoiceDetailService {
             .getRawMany<{ productId: number }>()
         : Promise.resolve([]),
       accommodationIds.length
-        ? this._stateTypeRepository.findOne({
-            where: { name: In(['Ocupado', 'OCUPADO']) },
-          })
+        ? this._stateTypeRepository
+            .createQueryBuilder('s')
+            .where(`s.name->>'es' IN (:...names)`, { names: ['Ocupado', 'OCUPADO'] })
+            .getOne()
         : Promise.resolve(null),
 
       Promise.all(
@@ -526,7 +526,7 @@ export class InvoiceDetailService {
                   'Reservado - Pendiente',
                   'RESERVADO - PAGADO',
                   'RESERVADO - PENDIENTE',
-                ].includes(ov.invoice.paidType.name.trim())
+                ].includes(ov.invoice.paidType.name?.['es']?.trim() ?? '')
               ) {
                 throw new BadRequestException(
                   `El hospedaje ya está reservado entre ${dto.startDate} y ${dto.endDate}`,
@@ -654,7 +654,7 @@ export class InvoiceDetailService {
           throw new BadRequestException(
             'El alojamiento no tiene un estado definido',
           );
-        const stateName = accommodation.stateType.name?.toString().trim();
+        const stateName = accommodation.stateType.name?.['es']?.trim();
         if (!stateName)
           throw new BadRequestException(
             'El nombre del estado no está definido',
@@ -857,11 +857,10 @@ export class InvoiceDetailService {
     }
 
     if (accommodation && !isQuote) {
-      const disponibleState = await this._stateTypeRepository.findOne({
-        where: {
-          name: In(['Disponible', 'DISPONIBLE']),
-        },
-      });
+      const disponibleState = await this._stateTypeRepository
+        .createQueryBuilder('s')
+        .where(`s.name->>'es' IN (:...names)`, { names: ['Disponible', 'DISPONIBLE'] })
+        .getOne();
 
       if (disponibleState) {
         accommodation.stateType = disponibleState;
@@ -904,18 +903,17 @@ export class InvoiceDetailService {
       if (
         reservation.invoice?.paidType?.name &&
         ['RESERVADO - PAGADO', 'RESERVADO - PENDIENTE'].includes(
-          reservation.invoice.paidType.name.trim(),
+          reservation.invoice.paidType.name?.['es']?.trim() ?? '',
         )
       ) {
         if (
           reservation.accommodation &&
-          reservation.accommodation.stateType?.name === 'DISPONIBLE'
+          reservation.accommodation.stateType?.name?.['es'] === 'DISPONIBLE'
         ) {
-          const ocupadoState = await this._stateTypeRepository.findOne({
-            where: {
-              name: In(['OCUPADO']),
-            },
-          });
+          const ocupadoState = await this._stateTypeRepository
+            .createQueryBuilder('s')
+            .where(`s.name->>'es' IN (:...names)`, { names: ['OCUPADO'] })
+            .getOne();
           if (ocupadoState) {
             reservation.accommodation.stateType = ocupadoState;
             await this._accommodationRepository.save(reservation.accommodation);
@@ -934,13 +932,12 @@ export class InvoiceDetailService {
     for (const reservation of expiredReservations) {
       if (
         reservation.accommodation &&
-        reservation.accommodation.stateType?.name === 'OCUPADO'
+        reservation.accommodation.stateType?.name?.['es'] === 'OCUPADO'
       ) {
-        const mantenimientoState = await this._stateTypeRepository.findOne({
-          where: {
-            name: In(['MANTENIMIENTO']),
-          },
-        });
+        const mantenimientoState = await this._stateTypeRepository
+          .createQueryBuilder('s')
+          .where(`s.name->>'es' IN (:...names)`, { names: ['MANTENIMIENTO'] })
+          .getOne();
 
         if (mantenimientoState) {
           reservation.accommodation.stateType = mantenimientoState;

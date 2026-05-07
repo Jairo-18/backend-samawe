@@ -1,23 +1,23 @@
 ﻿export interface StateTypeClean {
   stateTypeId: number;
-  name?: string;
+  name?: Record<string, string>;
   code?: string;
 }
 
 export interface CategoryTypeClean {
   categoryTypeId: number;
-  name?: string;
+  name?: Record<string, string>;
   code?: string;
 }
 
 export interface BedTypeClean {
   bedTypeId: number;
-  name?: string;
+  name?: Record<string, string>;
   code?: string;
 }
 
 export interface TaxeTypeClean {
   taxeTypeId: number;
-  name?: string;
+  name?: Record<string, string>;
   percentage?: number;
 }

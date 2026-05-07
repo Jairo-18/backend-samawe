@@ -16,8 +16,8 @@ export class MediaType {
   @Column('varchar', { length: 50, unique: true, nullable: false })
   code: string;
 
-  @Column('varchar', { length: 100, nullable: false })
-  name: string;
+  @Column({ type: 'jsonb', nullable: true })
+  name: Record<string, string>;
 
   @Column({ type: 'boolean', default: false })
   allowsMultiple: boolean;

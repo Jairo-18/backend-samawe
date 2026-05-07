@@ -147,7 +147,7 @@ export class AuthController {
       refreshToken: data.tokens.refreshToken,
       userId: data.user.userId,
       roleTypeId: data.user.roleType?.roleTypeId || '',
-      roleTypeName: data.user.roleType?.name || '',
+      roleTypeName: data.user.roleType?.name?.['es'] || '',
       accessSessionId: data.session.accessSessionId,
       organizationalId: data.user.organizationalId || '',
       avatarUrl: data.user.avatarUrl || '',

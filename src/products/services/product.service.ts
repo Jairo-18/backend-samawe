@@ -219,7 +219,7 @@ export class ProductService {
       throw new HttpException('El producto no existe', HttpStatus.NOT_FOUND);
     }
 
-    const catName = product.categoryType?.name?.toUpperCase();
+    const catName = product.categoryType?.name?.['es']?.toUpperCase();
     const hasRecipes =
       product.productRecipes && product.productRecipes.length > 0;
 
