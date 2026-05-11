@@ -13,9 +13,11 @@ export class TranslationService {
 
   async toTranslatedField(
     input: TranslatedInput,
+    existing?: Record<string, string>,
   ): Promise<Record<string, string>> {
     const es = input.es?.trim() ?? '';
     if (!es) return { es: '' };
+    if (existing && existing['es'] === es && existing['en']) return existing;
     const en = await this.translateText(es, 'en');
     return { es, en };
   }
@@ -50,13 +52,17 @@ export class TranslationService {
   async translateFields<T extends object>(
     dto: T,
     fields: (keyof T)[],
+    existing?: Partial<Record<string, Record<string, string>>>,
   ): Promise<Record<string, Record<string, string>>> {
     const result: Record<string, Record<string, string>> = {};
     await Promise.all(
       fields.map(async (field) => {
         const val = dto[field] as TranslatedInput | undefined;
         if (val?.es !== undefined) {
-          result[field as string] = await this.toTranslatedField(val);
+          result[field as string] = await this.toTranslatedField(
+            val,
+            existing?.[field as string],
+          );
         }
       }),
     );

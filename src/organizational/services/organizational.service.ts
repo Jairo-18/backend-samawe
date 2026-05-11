@@ -156,7 +156,7 @@ export class OrganizationalService {
   }
 
   async update(organizationalId: string, dto: UpdateOrganizationalDto) {
-    await this.findOne(organizationalId);
+    const current = await this.findOne(organizationalId);
 
     if (dto.slug) {
       const slugExists = await this._organizationalRepository.findOne({
@@ -188,7 +188,11 @@ export class OrganizationalService {
         })
       : undefined;
 
-    const translations = await this._translationService.translateFields(dto, TRANSLATABLE_FIELDS);
+    const translations = await this._translationService.translateFields(
+      dto,
+      TRANSLATABLE_FIELDS,
+      current as unknown as Record<string, Record<string, string>>,
+    );
 
     await this._organizationalRepository.update(
       { organizationalId },

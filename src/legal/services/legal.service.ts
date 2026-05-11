@@ -3,6 +3,9 @@ import { LegalSectionRepository } from '../../shared/repositories/legalSection.r
 import { LegalItemRepository } from '../../shared/repositories/legalItem.repository';
 import { LegalItemChildRepository } from '../../shared/repositories/legalItemChild.repository';
 import { OrganizationalRepository } from '../../shared/repositories/organizational.repository';
+import { CorporateValueRepository } from '../../shared/repositories/corporateValue.repository';
+import { BenefitSectionRepository } from '../../shared/repositories/benefitSection.repository';
+import { BenefitItemRepository } from '../../shared/repositories/benefitItem.repository';
 import {
   CreateLegalSectionDto,
   CreateLegalItemDto,
@@ -22,6 +25,9 @@ export class LegalService {
     private readonly _legalItemRepository: LegalItemRepository,
     private readonly _legalItemChildRepository: LegalItemChildRepository,
     private readonly _organizationalRepository: OrganizationalRepository,
+    private readonly _corporateValueRepository: CorporateValueRepository,
+    private readonly _benefitSectionRepository: BenefitSectionRepository,
+    private readonly _benefitItemRepository: BenefitItemRepository,
     private readonly _translationService: TranslationService,
   ) {}
 
@@ -214,5 +220,74 @@ export class LegalService {
         this._legalItemChildRepository.update({ legalItemChildId: id }, { order }),
       ),
     );
+  }
+
+  async backfillTranslations(): Promise<{ translated: number }> {
+    let count = 0;
+
+    const legalItems = await this._legalItemRepository.find();
+    for (const item of legalItems) {
+      let changed = false;
+      const update: Record<string, unknown> = {};
+      if (item.title?.['es'] && !item.title['en']) {
+        update['title'] = await this._translationService.toTranslatedField({ es: item.title['es'] });
+        changed = true;
+      }
+      if (item.description?.['es'] && !item.description['en']) {
+        update['description'] = await this._translationService.toTranslatedField({ es: item.description['es'] });
+        changed = true;
+      }
+      if (changed) {
+        await this._legalItemRepository.update({ legalItemId: item.legalItemId }, update);
+        count++;
+      }
+    }
+
+    const legalChildren = await this._legalItemChildRepository.find();
+    for (const child of legalChildren) {
+      if (child.content?.['es'] && !child.content['en']) {
+        const content = await this._translationService.toTranslatedField({ es: child.content['es'] });
+        await this._legalItemChildRepository.update({ legalItemChildId: child.legalItemChildId }, { content });
+        count++;
+      }
+    }
+
+    const corporateValues = await this._corporateValueRepository.find();
+    for (const cv of corporateValues) {
+      let changed = false;
+      const update: Record<string, unknown> = {};
+      if (cv.title?.['es'] && !cv.title['en']) {
+        update['title'] = await this._translationService.toTranslatedField({ es: cv.title['es'] });
+        changed = true;
+      }
+      if (cv.description?.['es'] && !cv.description['en']) {
+        update['description'] = await this._translationService.toTranslatedField({ es: cv.description['es'] });
+        changed = true;
+      }
+      if (changed) {
+        await this._corporateValueRepository.update({ corporateValueId: cv.corporateValueId }, update);
+        count++;
+      }
+    }
+
+    const benefitSections = await this._benefitSectionRepository.find();
+    for (const section of benefitSections) {
+      if (section.title?.['es'] && !section.title['en']) {
+        const title = await this._translationService.toTranslatedField({ es: section.title['es'] });
+        await this._benefitSectionRepository.update({ benefitSectionId: section.benefitSectionId }, { title });
+        count++;
+      }
+    }
+
+    const benefitItems = await this._benefitItemRepository.find();
+    for (const item of benefitItems) {
+      if (item.name?.['es'] && !item.name['en']) {
+        const name = await this._translationService.toTranslatedField({ es: item.name['es'] });
+        await this._benefitItemRepository.update({ benefitItemId: item.benefitItemId }, { name });
+        count++;
+      }
+    }
+
+    return { translated: count };
   }
 }
