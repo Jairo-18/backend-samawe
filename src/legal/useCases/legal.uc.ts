@@ -57,4 +57,8 @@ export class LegalUC {
   async reorderChildren(legalItemId: string, dto: ReorderDto) {
     return this._legalService.reorderChildren(legalItemId, dto);
   }
+
+  async backfillTranslations() {
+    return this._legalService.backfillTranslations();
+  }
 }

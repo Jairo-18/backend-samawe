@@ -157,4 +157,12 @@ export class LegalController {
     await this._legalUC.reorderChildren(legalItemId, dto);
     return { statusCode: HttpStatus.OK };
   }
+
+  @Post('backfill-translations')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard(), RolesGuard)
+  async backfillTranslations() {
+    const data = await this._legalUC.backfillTranslations();
+    return { statusCode: HttpStatus.OK, data };
+  }
 }
