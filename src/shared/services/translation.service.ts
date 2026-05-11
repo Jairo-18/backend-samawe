@@ -1,31 +1,46 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { translate } from '@vitalets/google-translate-api';
+import { ConfigService } from '@nestjs/config';
 import { TranslatedInput } from '../types/translated-field.type';
 
 @Injectable()
 export class TranslationService {
   private readonly logger = new Logger(TranslationService.name);
+  private readonly _apiKey: string;
+
+  constructor(private readonly _config: ConfigService) {
+    this._apiKey = this._config.get<string>('google.translateApiKey') ?? '';
+  }
 
   async toTranslatedField(
     input: TranslatedInput,
   ): Promise<Record<string, string>> {
     const es = input.es?.trim() ?? '';
     if (!es) return { es: '' };
-    try {
-      const { text } = await translate(es, { from: 'es', to: 'en' });
-      return { es, en: text };
-    } catch (err) {
-      this.logger.warn(`Translation failed, saving ES only: ${err}`);
-      return { es };
-    }
+    const en = await this.translateText(es, 'en');
+    return { es, en };
   }
 
   async translateText(text: string, to: string): Promise<string> {
     const trimmed = text?.trim();
     if (!trimmed) return '';
+    if (!this._apiKey) {
+      this.logger.warn('GOOGLE_TRANSLATE_API_KEY not set, returning original text');
+      return text;
+    }
     try {
-      const { text: translated } = await translate(trimmed, { to });
-      return translated;
+      const url = `https://translation.googleapis.com/language/translate/v2?key=${this._apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q: trimmed, source: 'es', target: to, format: 'text' }),
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        this.logger.warn(`Google Translate API error ${res.status}: ${err}`);
+        return text;
+      }
+      const data = await res.json() as { data: { translations: { translatedText: string }[] } };
+      return data.data.translations[0]?.translatedText ?? text;
     } catch (err) {
       this.logger.warn(`translateText failed: ${err}`);
       return text;
