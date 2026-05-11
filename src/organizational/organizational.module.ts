@@ -5,14 +5,12 @@ import { OrganizationalController } from './controllers/organizational.controlle
 import { GoogleBusinessController } from './controllers/google-business.controller';
 import { OrganizationalService } from './services/organizational.service';
 import { OrganizationalUC } from './useCases/organizational.uc';
-import { LocalStorageModule } from '../local-storage/local-storage.module';
 import { GoogleBusinessService } from './services/google-business.service';
 
 @Module({
   imports: [
     SharedModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    LocalStorageModule,
   ],
   controllers: [OrganizationalController, GoogleBusinessController],
   providers: [OrganizationalUC, OrganizationalService, GoogleBusinessService],

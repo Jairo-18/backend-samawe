@@ -25,6 +25,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { LocalStorageService } from '../../local-storage/services/local-storage.service';
+import { TranslationService } from '../../shared/services/translation.service';
 
 @Injectable()
 export class AccommodationService {
@@ -37,6 +38,7 @@ export class AccommodationService {
     private readonly _organizationalRepository: OrganizationalRepository,
     private readonly _localStorageService: LocalStorageService,
     private readonly _taxeTypeRepository: TaxeTypeRepository,
+    private readonly _translationService: TranslationService,
   ) {}
 
   async create(
@@ -104,8 +106,15 @@ export class AccommodationService {
         }
       }
 
+      const name = await this._translationService.toTranslatedField(createAccommodationDto.name);
+      const description = createAccommodationDto.description
+        ? await this._translationService.toTranslatedField(createAccommodationDto.description)
+        : undefined;
+
       const newAccommodation = this._accommodationRepository.create({
         ...accommodationData,
+        name,
+        ...(description && { description }),
         categoryType,
         bedType,
         stateType,
@@ -213,7 +222,9 @@ export class AccommodationService {
       }
     }
 
-    const { taxeTypeId: _t, ...updateData } = updateAccommodationDto;
+    const { taxeTypeId: _t, name: rawName, description: rawDesc, ...updateData } = updateAccommodationDto;
+    if (rawName) updateData['name'] = await this._translationService.toTranslatedField(rawName);
+    if (rawDesc) updateData['description'] = await this._translationService.toTranslatedField(rawDesc);
     Object.assign(accommodation, updateData);
 
     return await this._accommodationRepository.save(accommodation);
@@ -241,12 +252,19 @@ export class AccommodationService {
     return mapAccommodationDetail(accommodation);
   }
 
-  async getMostRequested(): Promise<MostRequestedAccommodationDto[]> {
-    const topTwo = await this._invoiceDetaillRepository
+  async getMostRequested(organizationalId?: string): Promise<MostRequestedAccommodationDto[]> {
+    const query = this._invoiceDetaillRepository
       .createQueryBuilder('detail')
       .select('detail.accommodationId', 'accommodationId')
       .addSelect('COUNT(detail.accommodationId)', 'count')
-      .where('detail.accommodationId IS NOT NULL')
+      .innerJoin('detail.accommodation', 'accommodation')
+      .where('detail.accommodationId IS NOT NULL');
+
+    if (organizationalId) {
+      query.andWhere('accommodation.organizationalId = :organizationalId', { organizationalId });
+    }
+
+    const topTwo = await query
       .groupBy('detail.accommodationId')
       .orderBy('count', 'DESC')
       .limit(2)
@@ -256,7 +274,7 @@ export class AccommodationService {
       topTwo.map(({ accommodationId }) =>
         this._accommodationRepository.findOne({
           where: { accommodationId: Number(accommodationId) },
-          relations: ['categoryType', 'bedType', 'stateType', 'images'],
+          relations: ['categoryType', 'bedType', 'stateType', 'images', 'organizational'],
         }),
       ),
     );

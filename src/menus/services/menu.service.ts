@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
+import { TranslationService } from '../../shared/services/translation.service';
 
 @Injectable()
 export class MenuService {
@@ -21,13 +22,9 @@ export class MenuService {
     private readonly _menuRepository: MenuRepository,
     private readonly _recipeRepository: RecipeRepository,
     private readonly _organizationalRepository: OrganizationalRepository,
+    private readonly _translationService: TranslationService,
   ) {}
 
-  /**
-   * Finds all Recipe rows that belong to the given product IDs.
-   * A "recipe" in this system is one ingredient row per product,
-   * so a single product may have multiple Recipe rows.
-   */
   private async _findRecipesByProductIds(productIds: number[]) {
     const recipes = await this._recipeRepository
       .createQueryBuilder('recipe')
@@ -52,11 +49,13 @@ export class MenuService {
     return recipes;
   }
 
-  /**
-   * Crear un menú con recetas asociadas a los productos indicados
-   */
   async create(createMenuDto: CreateMenuDto): Promise<Menu> {
-    const { name, description, productIds, organizationalId } = createMenuDto;
+    const { name: rawName, description: rawDesc, productIds, organizationalId } = createMenuDto;
+
+    const [name, description] = await Promise.all([
+      this._translationService.toTranslatedField(rawName),
+      rawDesc ? this._translationService.toTranslatedField(rawDesc) : Promise.resolve(undefined),
+    ]);
 
     const recipes = await this._findRecipesByProductIds(productIds);
 
@@ -80,9 +79,6 @@ export class MenuService {
     return await this._menuRepository.save(menu);
   }
 
-  /**
-   * Actualizar un menú existente
-   */
   async update(menuId: number, updateMenuDto: UpdateMenuDto): Promise<Menu> {
     const menu = await this._menuRepository.findOne({
       where: { menuId },
@@ -94,17 +90,15 @@ export class MenuService {
     }
 
     if (updateMenuDto.name !== undefined) {
-      menu.name = updateMenuDto.name;
+      menu.name = await this._translationService.toTranslatedField(updateMenuDto.name);
     }
 
     if (updateMenuDto.description !== undefined) {
-      menu.description = updateMenuDto.description;
+      menu.description = await this._translationService.toTranslatedField(updateMenuDto.description);
     }
 
     if (updateMenuDto.productIds !== undefined) {
-      menu.recipes = await this._findRecipesByProductIds(
-        updateMenuDto.productIds,
-      );
+      menu.recipes = await this._findRecipesByProductIds(updateMenuDto.productIds);
     }
 
     if (updateMenuDto.organizationalId !== undefined) {
@@ -121,9 +115,6 @@ export class MenuService {
     return await this._menuRepository.save(menu);
   }
 
-  /**
-   * Obtener un menú por ID con sus recetas e ingredientes
-   */
   async findById(menuId: number): Promise<Menu> {
     const menu = await this._menuRepository
       .createQueryBuilder('menu')
@@ -144,9 +135,6 @@ export class MenuService {
     return menu;
   }
 
-  /**
-   * Listar menús paginados con búsqueda por nombre
-   */
   async findAllPaginated(
     params: PaginatedMenuParamsDto,
   ): Promise<ResponsePaginationDto<Menu>> {
@@ -160,7 +148,7 @@ export class MenuService {
       .where('menu.deletedAt IS NULL');
 
     if (params.search) {
-      qb.andWhere('LOWER(menu.name) LIKE LOWER(:search)', {
+      qb.andWhere(`LOWER(menu.name->>'es') LIKE LOWER(:search)`, {
         search: `%${params.search.trim()}%`,
       });
     }
@@ -172,7 +160,7 @@ export class MenuService {
     }
 
     const order = params.order === 'DESC' ? 'DESC' : 'ASC';
-    qb.orderBy('menu.name', order);
+    qb.orderBy(`menu.name->>'es'`, order);
 
     const itemCount = await qb
       .clone()
@@ -186,7 +174,7 @@ export class MenuService {
     const menuIds = await qb
       .clone()
       .select('menu.menuId', 'menuId')
-      .addSelect('menu.name', 'name')
+      .addSelect(`menu.name->>'es'`, 'name')
       .distinct(true)
       .offset(skip)
       .limit(params.perPage ?? 10)
@@ -203,7 +191,7 @@ export class MenuService {
         .leftJoinAndSelect('recipe.ingredient', 'ingredient')
         .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
         .where('menu.menuId IN (:...menuIds)', { menuIds })
-        .orderBy('menu.name', order)
+        .orderBy(`menu.name->>'es'`, order)
         .getMany();
     }
 
@@ -211,14 +199,7 @@ export class MenuService {
     return new ResponsePaginationDto(data, pageMetaDto);
   }
 
-  /**
-   * Quitar un platillo (producto) específico del menú sin eliminar el menú.
-   * Remueve todas las filas de Recipe asociadas a ese productId.
-   */
-  async removeProductFromMenu(
-    menuId: number,
-    productId: number,
-  ): Promise<Menu> {
+  async removeProductFromMenu(menuId: number, productId: number): Promise<Menu> {
     const menu = await this._menuRepository.findOne({
       where: { menuId },
       relations: ['recipes', 'recipes.product'],
@@ -242,13 +223,8 @@ export class MenuService {
     return await this._menuRepository.save(menu);
   }
 
-  /**
-   * Eliminar un menú (soft delete)
-   */
   async delete(menuId: number): Promise<void> {
-    const menu = await this._menuRepository.findOne({
-      where: { menuId },
-    });
+    const menu = await this._menuRepository.findOne({ where: { menuId } });
 
     if (!menu) {
       throw new NotFoundException(`Menú con ID ${menuId} no encontrado`);

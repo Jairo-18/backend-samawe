@@ -15,6 +15,7 @@ import {
   IsBoolean,
   Min,
 } from 'class-validator';
+import { TranslatedInput } from '../../shared/types/translated-field.type';
 
 export class CreateProductDto {
   @ApiProperty({ example: 1, description: 'ID del producto', required: false })
@@ -32,22 +33,22 @@ export class CreateProductDto {
   code: string;
 
   @ApiProperty({
-    example: { es: 'Coca Cola 1L', en: 'Coca Cola 1L' },
+    example: { es: 'Coca Cola 1L' },
     description: 'Nombre del producto',
     required: true,
   })
   @IsObject()
   @IsNotEmpty({ message: 'El nombre del producto es requerido' })
-  name: Record<string, string>;
+  name: TranslatedInput;
 
   @ApiProperty({
-    example: { es: 'Bebida gaseosa de 1 litro', en: 'Sparkling drink of 1 liter' },
+    example: { es: 'Bebida gaseosa de 1 litro' },
     description: 'Descripción del producto',
     required: false,
   })
   @IsObject()
   @IsOptional()
-  description?: Record<string, string>;
+  description?: TranslatedInput;
 
   @ApiProperty({
     example: 10,
@@ -135,21 +136,15 @@ export class UpdateProductDto {
   @IsNotEmpty({ message: 'El código de producto es requerido' })
   code: string;
 
-  @ApiProperty({
-    example: { es: 'Coca Cola 1L', en: 'Coca Cola 1L' },
-    description: 'Nombre del producto',
-  })
+  @ApiProperty({ example: { es: 'Coca Cola 1L' }, description: 'Nombre del producto' })
   @IsObject()
   @IsOptional()
-  name?: Record<string, string>;
+  name?: TranslatedInput;
 
-  @ApiProperty({
-    example: { es: 'Bebida gaseosa de 1 litro', en: 'Sparkling drink of 1 liter' },
-    description: 'Descripción del producto',
-  })
+  @ApiProperty({ example: { es: 'Bebida gaseosa de 1 litro' }, description: 'Descripción del producto' })
   @IsObject()
   @IsOptional()
-  description?: Record<string, string>;
+  description?: TranslatedInput;
 
   @ApiProperty({ example: 10, description: 'Cantidad disponible' })
   @IsOptional()

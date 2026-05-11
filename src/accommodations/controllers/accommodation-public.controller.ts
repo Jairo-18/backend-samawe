@@ -104,8 +104,10 @@ export class AccommodationPublicController {
     summary: 'Obtiene los 2 hospedajes más solicitados (acceso público)',
   })
   @ApiOkResponse({ type: MostRequestedResponseSwaggerDto })
-  async getMostRequested(): Promise<MostRequestedResponseSwaggerDto> {
-    const data = await this._accommodationUC.getMostRequested();
+  async getMostRequested(
+    @Query('organizationalId') organizationalId?: string,
+  ): Promise<MostRequestedResponseSwaggerDto> {
+    const data = await this._accommodationUC.getMostRequested(organizationalId);
     return {
       statusCode: HttpStatus.OK,
       data,

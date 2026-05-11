@@ -7,13 +7,10 @@ import { ExcursionController } from './controllers/excursion.controller';
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { SharedModule } from '../shared/shared.module';
-import { LocalStorageModule } from '../local-storage/local-storage.module';
-
 @Module({
   imports: [
     SharedModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    LocalStorageModule,
   ],
   controllers: [ExcursionController],
   providers: [

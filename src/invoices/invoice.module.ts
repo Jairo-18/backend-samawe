@@ -8,7 +8,6 @@ import { SharedModule } from '../shared/shared.module';
 import { InvoiceDetailService } from './services/invoiceDetail.service';
 import { InvoiceExcelService } from './services/invoiceExcel.service';
 import { RecipeModule } from '../recipes/recipe.module';
-import { RecipeService } from '../recipes/services/recipe.service';
 
 @Module({
   imports: [
@@ -23,7 +22,6 @@ import { RecipeService } from '../recipes/services/recipe.service';
     InvoiceDetailService,
     InvoicedPaginatedService,
     InvoiceExcelService,
-    RecipeService,
   ],
   exports: [InvoiceService, InvoiceDetailService],
 })

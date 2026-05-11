@@ -27,6 +27,7 @@ import { OrganizationalModule } from './organizational/organizational.module';
 import { BenefitSectionModule } from './benefit-section/benefitSection.module';
 import { LegalModule } from './legal/legal.module';
 import { ReviewModule } from './reviews/review.module';
+import { TranslationsModule } from './translations/translations.module';
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { ReviewModule } from './reviews/review.module';
     BenefitSectionModule,
     LegalModule,
     ReviewModule,
+    TranslationsModule,
   ],
   controllers: [AppController],
   providers: [

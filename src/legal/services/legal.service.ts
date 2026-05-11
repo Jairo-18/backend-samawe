@@ -12,6 +12,8 @@ import {
   ReorderDto,
 } from '../dtos/legal.dto';
 import { LegalType } from '../constants/legal.constants';
+import { TranslationService } from '../../shared/services/translation.service';
+import { TranslatedInput } from '../../shared/types/translated-field.type';
 
 @Injectable()
 export class LegalService {
@@ -20,6 +22,7 @@ export class LegalService {
     private readonly _legalItemRepository: LegalItemRepository,
     private readonly _legalItemChildRepository: LegalItemChildRepository,
     private readonly _organizationalRepository: OrganizationalRepository,
+    private readonly _translationService: TranslationService,
   ) {}
 
   private async _findOrgOrFail(organizationalId: string) {
@@ -56,6 +59,11 @@ export class LegalService {
     return child;
   }
 
+  private _translateOptional(input?: TranslatedInput) {
+    if (!input) return Promise.resolve(undefined);
+    return this._translationService.toTranslatedField(input);
+  }
+
   async getAllSections(organizationalId: string) {
     await this._findOrgOrFail(organizationalId);
     return this._legalSectionRepository.find({
@@ -84,22 +92,27 @@ export class LegalService {
     if (dto.items?.length) {
       const section = await this._findSectionOrFail(legalSectionId);
       for (const [i, itemDto] of dto.items.entries()) {
+        const [title, description] = await Promise.all([
+          this._translateOptional(itemDto.title),
+          this._translateOptional(itemDto.description),
+        ]);
         const itemResult = await this._legalItemRepository.insert({
-          title: itemDto.title,
-          description: itemDto.description,
+          title,
+          description,
           order: itemDto.order ?? i,
           legalSection: section,
         });
         const legalItemId = itemResult.identifiers[0].legalItemId as string;
         if (itemDto.children?.length) {
           const item = await this._findItemOrFail(legalItemId);
-          await this._legalItemChildRepository.insert(
-            itemDto.children.map((c, j) => ({
-              content: c.content,
+          const translatedChildren = await Promise.all(
+            itemDto.children.map(async (c, j) => ({
+              content: await this._translationService.toTranslatedField(c.content),
               order: c.order ?? j,
               legalItem: item,
             })),
           );
+          await this._legalItemChildRepository.insert(translatedChildren);
         }
       }
     }
@@ -115,9 +128,14 @@ export class LegalService {
   async addItem(legalSectionId: string, dto: CreateLegalItemDto) {
     const section = await this._findSectionOrFail(legalSectionId);
 
+    const [title, description] = await Promise.all([
+      this._translateOptional(dto.title),
+      this._translateOptional(dto.description),
+    ]);
+
     const result = await this._legalItemRepository.insert({
-      title: dto.title,
-      description: dto.description,
+      title,
+      description,
       order: dto.order ?? 0,
       legalSection: section,
     });
@@ -125,13 +143,14 @@ export class LegalService {
 
     if (dto.children?.length) {
       const item = await this._findItemOrFail(legalItemId);
-      await this._legalItemChildRepository.insert(
-        dto.children.map((c, j) => ({
-          content: c.content,
+      const translatedChildren = await Promise.all(
+        dto.children.map(async (c, j) => ({
+          content: await this._translationService.toTranslatedField(c.content),
           order: c.order ?? j,
           legalItem: item,
         })),
       );
+      await this._legalItemChildRepository.insert(translatedChildren);
     }
 
     return { rowId: legalItemId };
@@ -139,7 +158,13 @@ export class LegalService {
 
   async updateItem(legalItemId: string, dto: UpdateLegalItemDto) {
     await this._findItemOrFail(legalItemId);
-    await this._legalItemRepository.update({ legalItemId }, { ...dto });
+    const update: Record<string, unknown> = {};
+    if (dto.title) update['title'] = await this._translationService.toTranslatedField(dto.title);
+    if (dto.description) update['description'] = await this._translationService.toTranslatedField(dto.description);
+    if (dto.order !== undefined) update['order'] = dto.order;
+    if (Object.keys(update).length) {
+      await this._legalItemRepository.update({ legalItemId }, update);
+    }
   }
 
   async deleteItem(legalItemId: string) {
@@ -149,8 +174,9 @@ export class LegalService {
 
   async addChild(legalItemId: string, dto: CreateLegalItemChildDto) {
     const item = await this._findItemOrFail(legalItemId);
+    const content = await this._translationService.toTranslatedField(dto.content);
     const result = await this._legalItemChildRepository.insert({
-      content: dto.content,
+      content,
       order: dto.order ?? 0,
       legalItem: item,
     });
@@ -159,7 +185,12 @@ export class LegalService {
 
   async updateChild(legalItemChildId: string, dto: UpdateLegalItemChildDto) {
     await this._findChildOrFail(legalItemChildId);
-    await this._legalItemChildRepository.update({ legalItemChildId }, { ...dto });
+    const update: Record<string, unknown> = {};
+    if (dto.content) update['content'] = await this._translationService.toTranslatedField(dto.content);
+    if (dto.order !== undefined) update['order'] = dto.order;
+    if (Object.keys(update).length) {
+      await this._legalItemChildRepository.update({ legalItemChildId }, update);
+    }
   }
 
   async deleteChild(legalItemChildId: string) {

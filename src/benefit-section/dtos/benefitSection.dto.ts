@@ -3,18 +3,20 @@ import {
   IsArray,
   IsInt,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   IsString,
   Min,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { TranslatedInput } from '../../shared/types/translated-field.type';
 
 export class CreateBenefitItemDto {
-  @ApiProperty({ example: 'Aparcamiento' })
-  @IsString()
+  @ApiProperty({ example: { es: 'Aparcamiento' } })
+  @IsObject()
   @IsNotEmpty()
-  name: string;
+  name: TranslatedInput;
 
   @ApiProperty({ example: 'local_parking' })
   @IsString()
@@ -29,10 +31,10 @@ export class CreateBenefitItemDto {
 }
 
 export class UpdateBenefitItemDto {
-  @ApiPropertyOptional({ example: 'Estacionamiento' })
+  @ApiPropertyOptional({ example: { es: 'Estacionamiento' } })
   @IsOptional()
-  @IsString()
-  name?: string;
+  @IsObject()
+  name?: TranslatedInput;
 
   @ApiPropertyOptional({ example: 'local_parking' })
   @IsOptional()
@@ -47,10 +49,10 @@ export class UpdateBenefitItemDto {
 }
 
 export class CreateBenefitSectionDto {
-  @ApiProperty({ example: 'Beneficios y servicios' })
-  @IsString()
+  @ApiProperty({ example: { es: 'Beneficios y servicios' } })
+  @IsObject()
   @IsNotEmpty()
-  title: string;
+  title: TranslatedInput;
 
   @ApiPropertyOptional({ example: 0 })
   @IsOptional()
@@ -67,10 +69,10 @@ export class CreateBenefitSectionDto {
 }
 
 export class UpdateBenefitSectionDto {
-  @ApiPropertyOptional({ example: 'Beneficios y servicios' })
+  @ApiPropertyOptional({ example: { es: 'Beneficios y servicios' } })
   @IsOptional()
-  @IsString()
-  title?: string;
+  @IsObject()
+  title?: TranslatedInput;
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()

@@ -57,8 +57,8 @@ export class Organizational {
   @Column('varchar', { length: 10, nullable: true })
   languageDefault?: string;
 
-  @Column('text', { nullable: true })
-  description?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  description?: Record<string, string>;
 
   @Column('varchar', { length: 20, nullable: true })
   primaryColor?: string;
@@ -84,89 +84,89 @@ export class Organizational {
   @Column('varchar', { length: 20, nullable: true })
   bgSecondaryColor?: string;
 
-  @Column('varchar', { length: 200, nullable: true })
-  homeTitle?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  homeTitle?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  homeDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  homeDescription?: Record<string, string>;
 
-  @Column('varchar', { length: 200, nullable: true })
-  experienceTitle?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  experienceTitle?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  experienceDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  experienceDescription?: Record<string, string>;
 
-  @Column('varchar', { length: 200, nullable: true })
-  reservationTitle?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  reservationTitle?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  reservationDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  reservationDescription?: Record<string, string>;
 
-  @Column('varchar', { length: 200, nullable: true })
-  aboutUsTitle?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  aboutUsTitle?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  aboutUsDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  aboutUsDescription?: Record<string, string>;
 
-  @Column('varchar', { length: 200, nullable: true })
-  missionTitle?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  missionTitle?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  missionDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  missionDescription?: Record<string, string>;
 
-  @Column('varchar', { length: 200, nullable: true })
-  visionTitle?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  visionTitle?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  visionDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  visionDescription?: Record<string, string>;
 
-  @Column('varchar', { length: 200, nullable: true })
-  historyTitle?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  historyTitle?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  historyDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  historyDescription?: Record<string, string>;
 
-  @Column('varchar', { length: 200, nullable: true })
-  gastronomyTitle?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  gastronomyTitle?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  gastronomyDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  gastronomyDescription?: Record<string, string>;
 
-  @Column('varchar', { length: 200, nullable: true })
-  gastronomyHistoryTitle?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  gastronomyHistoryTitle?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  gastronomyHistoryDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  gastronomyHistoryDescription?: Record<string, string>;
 
-  @Column('varchar', { length: 200, nullable: true })
-  gastronomyKitchenTitle?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  gastronomyKitchenTitle?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  gastronomyKitchenDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  gastronomyKitchenDescription?: Record<string, string>;
 
-  @Column('varchar', { length: 200, nullable: true })
-  gastronomyIngredientsTitle?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  gastronomyIngredientsTitle?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  gastronomyIngredientsDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  gastronomyIngredientsDescription?: Record<string, string>;
 
-  @Column('varchar', { length: 200, nullable: true })
-  accommodationsTitle?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  accommodationsTitle?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  accommodationsDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  accommodationsDescription?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  howToArriveDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  howToArriveDescription?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  howToArrivePublicTransportDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  howToArrivePublicTransportDescription?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  howToArrivePrivateTransportDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  howToArrivePrivateTransportDescription?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  accessibilityDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  accessibilityDescription?: Record<string, string>;
 
   @Column('varchar', { length: 500, nullable: true })
   mapsUrl?: string;
@@ -180,11 +180,11 @@ export class Organizational {
   @Column('varchar', { length: 500, nullable: true })
   instagramUrl?: string;
 
-  @Column('varchar', { length: 200, nullable: true })
-  metaTitle?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  metaTitle?: Record<string, string>;
 
-  @Column('varchar', { length: 500, nullable: true })
-  metaDescription?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  metaDescription?: Record<string, string>;
 
   @Column('text', { nullable: true })
   googleBusinessRefreshToken?: string;

@@ -32,7 +32,7 @@ export class AccommodationUC {
     return await this._accommodationService.delete(accommodationId);
   }
 
-  async getMostRequested(): Promise<MostRequestedAccommodationDto[]> {
-    return await this._accommodationService.getMostRequested();
+  async getMostRequested(organizationalId?: string): Promise<MostRequestedAccommodationDto[]> {
+    return await this._accommodationService.getMostRequested(organizationalId);
   }
 }

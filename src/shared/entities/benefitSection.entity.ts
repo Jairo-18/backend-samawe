@@ -16,8 +16,8 @@ export class BenefitSection {
   @PrimaryGeneratedColumn('uuid')
   benefitSectionId: string;
 
-  @Column('varchar', { length: 150, nullable: false })
-  title: string;
+  @Column('jsonb', { nullable: false })
+  title: Record<string, string>;
 
   @Column({ type: 'int', default: 0 })
   order: number;
