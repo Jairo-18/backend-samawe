@@ -22,6 +22,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { LocalStorageService } from '../../local-storage/services/local-storage.service';
+import { TranslationService } from '../../shared/services/translation.service';
 
 @Injectable()
 export class ExcursionService {
@@ -33,6 +34,7 @@ export class ExcursionService {
     private readonly _organizationalRepository: OrganizationalRepository,
     private readonly _localStorageService: LocalStorageService,
     private readonly _taxeTypeRepository: TaxeTypeRepository,
+    private readonly _translationService: TranslationService,
   ) {}
 
   async create(createExcursionDto: CreateExcursionDto): Promise<Excursion> {
@@ -89,8 +91,15 @@ export class ExcursionService {
         }
       }
 
+      const name = await this._translationService.toTranslatedField(createExcursionDto.name);
+      const description = createExcursionDto.description
+        ? await this._translationService.toTranslatedField(createExcursionDto.description)
+        : undefined;
+
       const newExcursion = this._excursionRepository.create({
         ...excursionData,
+        name,
+        ...(description && { description }),
         categoryType,
         stateType,
         ...(organizational && { organizational }),
@@ -188,7 +197,10 @@ export class ExcursionService {
       delete updateExcursionDto.taxeTypeId;
     }
 
-    Object.assign(excursion, updateExcursionDto);
+    const { name: rawName, description: rawDesc, ...restUpdate } = updateExcursionDto;
+    if (rawName) restUpdate['name'] = await this._translationService.toTranslatedField(rawName);
+    if (rawDesc) restUpdate['description'] = await this._translationService.toTranslatedField(rawDesc);
+    Object.assign(excursion, restUpdate);
 
     return await this._excursionRepository.save(excursion);
   }

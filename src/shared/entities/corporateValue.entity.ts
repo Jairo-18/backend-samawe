@@ -14,11 +14,11 @@ export class CorporateValue {
   @PrimaryGeneratedColumn('uuid')
   corporateValueId: string;
 
-  @Column('varchar', { length: 150, nullable: false })
-  title: string;
+  @Column({ type: 'jsonb', nullable: false })
+  title: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  description?: string;
+  @Column({ type: 'jsonb', nullable: true })
+  description?: Record<string, string>;
 
   @Column({ type: 'int', default: 0 })
   order: number;

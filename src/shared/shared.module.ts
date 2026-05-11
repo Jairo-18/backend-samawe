@@ -92,6 +92,9 @@ import { ReviewReply } from './entities/reviewReply.entity';
 import { ReviewRepository } from './repositories/review.repository';
 import { ReviewReplyRepository } from './repositories/reviewReply.repository';
 import { RolesGuard } from './guards/roles.guard';
+import { TranslationService } from './services/translation.service';
+import { LocalStorageService } from '../local-storage/services/local-storage.service';
+import { UserService } from '../user/services/user.service';
 
 @Module({})
 export class SharedModule {
@@ -269,6 +272,9 @@ export class SharedModule {
         ReviewRepository,
         ReviewReplyRepository,
         RolesGuard,
+        TranslationService,
+        LocalStorageService,
+        UserService,
       ],
       exports: [
         JwtModule,
@@ -320,6 +326,9 @@ export class SharedModule {
         ReviewRepository,
         ReviewReplyRepository,
         RolesGuard,
+        TranslationService,
+        LocalStorageService,
+        UserService,
       ],
     };
   }

@@ -11,6 +11,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { SkipApiKey } from '../../shared/decorators/skip-api-key.decorator';
 import { OrganizationalUC } from '../useCases/organizational.uc';
 import {
   CreateOrganizationalDto,
@@ -101,6 +102,7 @@ export class OrganizationalController {
       data: org,
     };
   }
+
 
   @Get(':id/media')
   @GetMediaMapDocs()

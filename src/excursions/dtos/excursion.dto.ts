@@ -14,6 +14,7 @@ import {
   IsString,
   Min,
 } from 'class-validator';
+import { TranslatedInput } from '../../shared/types/translated-field.type';
 
 export class CreateExcursionDto {
   @ApiProperty({ example: 1, description: 'ID de la pasadía', required: false })
@@ -26,22 +27,15 @@ export class CreateExcursionDto {
   @IsNotEmpty({ message: 'El código de excursión es requerido' })
   code: string;
 
-  @ApiProperty({
-    example: { es: 'Tour Montaña', en: 'Mountain Tour' },
-    description: 'Nombre de la excursión',
-  })
+  @ApiProperty({ example: { es: 'Tour Montaña' }, description: 'Nombre de la excursión' })
   @IsObject()
   @IsNotEmpty({ message: 'El nombre es requerido' })
-  name: Record<string, string>;
+  name: TranslatedInput;
 
-  @ApiProperty({
-    example: { es: 'Excursión a la montaña con guía y refrigerios', en: 'Mountain excursion with guide and snacks' },
-    description: 'Descripción de la excursión',
-    required: false,
-  })
+  @ApiProperty({ example: { es: 'Excursión a la montaña con guía y refrigerios' }, description: 'Descripción de la excursión', required: false })
   @IsOptional()
   @IsObject()
-  description?: Record<string, string>;
+  description?: TranslatedInput;
 
   @ApiProperty({
     example: 150000,
@@ -107,23 +101,15 @@ export class UpdateExcursionDto {
   @IsString()
   code?: string;
 
-  @ApiProperty({
-    example: { es: 'Tour Lago Azul', en: 'Blue Lake Tour' },
-    description: 'Nombre de la excursión',
-    required: false,
-  })
+  @ApiProperty({ example: { es: 'Tour Lago Azul' }, description: 'Nombre de la excursión', required: false })
   @IsOptional()
   @IsObject()
-  name?: Record<string, string>;
+  name?: TranslatedInput;
 
-  @ApiProperty({
-    example: { es: 'Excursión al Lago Azul con guía turística', en: 'Blue Lake excursion with tourist guide' },
-    description: 'Descripción de la excursión',
-    required: false,
-  })
+  @ApiProperty({ example: { es: 'Excursión al Lago Azul con guía turística' }, description: 'Descripción de la excursión', required: false })
   @IsOptional()
   @IsObject()
-  description?: Record<string, string>;
+  description?: TranslatedInput;
 
   @ApiProperty({
     example: 150000,

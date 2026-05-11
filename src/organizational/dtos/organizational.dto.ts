@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsEmail,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   MaxLength,
@@ -10,6 +11,7 @@ import {
 import { HttpStatus } from '@nestjs/common';
 import { BaseResponseDto } from '../../shared/dtos/response.dto';
 import { Organizational } from '../../shared/entities/organizational.entity';
+import { TranslatedInput } from '../../shared/types/translated-field.type';
 
 export class CreateOrganizationalDto {
   @ApiProperty({ example: 'Eco Hotel Samawé' })
@@ -71,10 +73,10 @@ export class CreateOrganizationalDto {
   @IsString()
   languageDefault?: string;
 
-  @ApiPropertyOptional({ example: 'Descripción del hotel...' })
+  @ApiPropertyOptional({ example: { es: 'Descripción del hotel...' } })
   @IsOptional()
-  @IsString()
-  description?: string;
+  @IsObject()
+  description?: TranslatedInput;
 
   @ApiPropertyOptional({ example: '#2E7D32' })
   @IsOptional()
@@ -116,149 +118,145 @@ export class CreateOrganizationalDto {
   @IsString()
   bgSecondaryColor?: string;
 
-  @ApiPropertyOptional({ example: 'Bienvenidos a Eco Hotel' })
+  @ApiPropertyOptional({ example: { es: 'Bienvenidos' } })
   @IsOptional()
-  @IsString()
-  homeTitle?: string;
+  @IsObject()
+  homeTitle?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Un refugio natural exclusivo...' })
+  @ApiPropertyOptional({ example: { es: 'Un refugio natural...' } })
   @IsOptional()
-  @IsString()
-  homeDescription?: string;
+  @IsObject()
+  homeDescription?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Experiencias' })
+  @ApiPropertyOptional({ example: { es: 'Experiencias' } })
   @IsOptional()
-  @IsString()
-  experienceTitle?: string;
+  @IsObject()
+  experienceTitle?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Sumérgete en la tranquilidad...' })
+  @ApiPropertyOptional({ example: { es: 'Sumérgete...' } })
   @IsOptional()
-  @IsString()
-  experienceDescription?: string;
+  @IsObject()
+  experienceDescription?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Reserva tu escapada' })
+  @ApiPropertyOptional({ example: { es: 'Reserva tu escapada' } })
   @IsOptional()
-  @IsString()
-  reservationTitle?: string;
+  @IsObject()
+  reservationTitle?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Las fechas más deseadas...' })
+  @ApiPropertyOptional({ example: { es: 'Las fechas más deseadas...' } })
   @IsOptional()
-  @IsString()
-  reservationDescription?: string;
+  @IsObject()
+  reservationDescription?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Conoce la esencia de Río de Oro' })
+  @ApiPropertyOptional({ example: { es: 'Quiénes somos' } })
   @IsOptional()
-  @IsString()
-  aboutUsTitle?: string;
+  @IsObject()
+  aboutUsTitle?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'En San Rafael, rodeado de montañas...' })
+  @ApiPropertyOptional({ example: { es: 'En el corazón de...' } })
   @IsOptional()
-  @IsString()
-  aboutUsDescription?: string;
+  @IsObject()
+  aboutUsDescription?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Misión' })
+  @ApiPropertyOptional({ example: { es: 'Misión' } })
   @IsOptional()
-  @IsString()
-  missionTitle?: string;
+  @IsObject()
+  missionTitle?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Brindar experiencias de hospedaje...' })
+  @ApiPropertyOptional({ example: { es: 'Brindar experiencias...' } })
   @IsOptional()
-  @IsString()
-  missionDescription?: string;
+  @IsObject()
+  missionDescription?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Visión' })
+  @ApiPropertyOptional({ example: { es: 'Visión' } })
   @IsOptional()
-  @IsString()
-  visionTitle?: string;
+  @IsObject()
+  visionTitle?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Ser reconocidos en el 2030...' })
+  @ApiPropertyOptional({ example: { es: 'Ser reconocidos...' } })
   @IsOptional()
-  @IsString()
-  visionDescription?: string;
+  @IsObject()
+  visionDescription?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Nuestra Historia' })
+  @ApiPropertyOptional({ example: { es: 'Nuestra Historia' } })
   @IsOptional()
-  @IsString()
-  historyTitle?: string;
+  @IsObject()
+  historyTitle?: TranslatedInput;
 
-  @ApiPropertyOptional({
-    example: 'El Ecohotel nació como un sueño familiar...',
-  })
+  @ApiPropertyOptional({ example: { es: 'Nació como un sueño...' } })
   @IsOptional()
-  @IsString()
-  historyDescription?: string;
+  @IsObject()
+  historyDescription?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Sabores que fluyen como el río' })
+  @ApiPropertyOptional({ example: { es: 'Gastronomía' } })
   @IsOptional()
-  @IsString()
-  gastronomyTitle?: string;
+  @IsObject()
+  gastronomyTitle?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Nuestra cocina combina...' })
+  @ApiPropertyOptional({ example: { es: 'Nuestra cocina...' } })
   @IsOptional()
-  @IsString()
-  gastronomyDescription?: string;
+  @IsObject()
+  gastronomyDescription?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Nuestra Historia' })
+  @ApiPropertyOptional({ example: { es: 'Historia culinaria' } })
   @IsOptional()
-  @IsString()
-  gastronomyHistoryTitle?: string;
+  @IsObject()
+  gastronomyHistoryTitle?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Nacimos como un lugar de encuentro...' })
+  @ApiPropertyOptional({ example: { es: 'Nacimos como...' } })
   @IsOptional()
-  @IsString()
-  gastronomyHistoryDescription?: string;
+  @IsObject()
+  gastronomyHistoryDescription?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Nuestra cocina' })
+  @ApiPropertyOptional({ example: { es: 'Nuestra cocina' } })
   @IsOptional()
-  @IsString()
-  gastronomyKitchenTitle?: string;
+  @IsObject()
+  gastronomyKitchenTitle?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'En Río de Oro creemos que...' })
+  @ApiPropertyOptional({ example: { es: 'Creemos que...' } })
   @IsOptional()
-  @IsString()
-  gastronomyKitchenDescription?: string;
+  @IsObject()
+  gastronomyKitchenDescription?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Ingredientes con historia' })
+  @ApiPropertyOptional({ example: { es: 'Ingredientes con historia' } })
   @IsOptional()
-  @IsString()
-  gastronomyIngredientsTitle?: string;
+  @IsObject()
+  gastronomyIngredientsTitle?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Trabajamos con productos locales...' })
+  @ApiPropertyOptional({ example: { es: 'Productos locales...' } })
   @IsOptional()
-  @IsString()
-  gastronomyIngredientsDescription?: string;
+  @IsObject()
+  gastronomyIngredientsDescription?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Habitaciones' })
+  @ApiPropertyOptional({ example: { es: 'Hospedajes' } })
   @IsOptional()
-  @IsString()
-  accommodationsTitle?: string;
+  @IsObject()
+  accommodationsTitle?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Santuarios privados diseñados...' })
+  @ApiPropertyOptional({ example: { es: 'Cabañas diseñadas...' } })
   @IsOptional()
-  @IsString()
-  accommodationsDescription?: string;
+  @IsObject()
+  accommodationsDescription?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Para llegar al ecohotel...' })
+  @ApiPropertyOptional({ example: { es: 'Para llegar...' } })
   @IsOptional()
-  @IsString()
-  howToArriveDescription?: string;
+  @IsObject()
+  howToArriveDescription?: TranslatedInput;
 
-  @ApiPropertyOptional({
-    example: 'Terminal del norte, flota sotrasanvicente...',
-  })
+  @ApiPropertyOptional({ example: { es: 'Terminal del norte...' } })
   @IsOptional()
-  @IsString()
-  howToArrivePublicTransportDescription?: string;
+  @IsObject()
+  howToArrivePublicTransportDescription?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Autopista Medellín Bogotá, Rionegro...' })
+  @ApiPropertyOptional({ example: { es: 'Autopista...' } })
   @IsOptional()
-  @IsString()
-  howToArrivePrivateTransportDescription?: string;
+  @IsObject()
+  howToArrivePrivateTransportDescription?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'La vía de ingreso es pavimentada...' })
+  @ApiPropertyOptional({ example: { es: 'La vía es pavimentada...' } })
   @IsOptional()
-  @IsString()
-  accessibilityDescription?: string;
+  @IsObject()
+  accessibilityDescription?: TranslatedInput;
 
   @ApiPropertyOptional({ example: 'https://maps.google.com/?q=...' })
   @IsOptional()
@@ -280,15 +278,15 @@ export class CreateOrganizationalDto {
   @IsString()
   instagramUrl?: string;
 
-  @ApiPropertyOptional({ example: 'Eco Hotel Samawé | Naturaleza y Bienestar' })
+  @ApiPropertyOptional({ example: { es: 'Eco Hotel Samawé | Naturaleza y Bienestar' } })
   @IsOptional()
-  @IsString()
-  metaTitle?: string;
+  @IsObject()
+  metaTitle?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Descubre el mejor eco hotel del Putumayo.' })
+  @ApiPropertyOptional({ example: { es: 'Descubre el mejor eco hotel del Putumayo.' } })
   @IsOptional()
-  @IsString()
-  metaDescription?: string;
+  @IsObject()
+  metaDescription?: TranslatedInput;
 
   @ApiPropertyOptional({ example: false })
   @IsOptional()
@@ -364,14 +362,14 @@ export class GetOrganizationalResponseDto implements BaseResponseDto {
 }
 
 export class CreateCorporateValueDto {
-  @ApiProperty({ example: 'Sostenibilidad' })
-  @IsString()
-  title: string;
+  @ApiProperty({ example: { es: 'Sostenibilidad', en: 'Sustainability' } })
+  @IsObject()
+  title: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'Cuidamos el entorno natural...' })
+  @ApiPropertyOptional({ example: { es: 'Cuidamos el entorno natural...' } })
   @IsOptional()
-  @IsString()
-  description?: string;
+  @IsObject()
+  description?: TranslatedInput;
 
   @ApiPropertyOptional({ example: 0 })
   @IsOptional()

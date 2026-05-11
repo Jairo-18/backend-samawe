@@ -17,6 +17,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { TranslatedInput } from '../../shared/types/translated-field.type';
 
 export class CreateAccommodationDto {
   @ApiProperty({ example: 1, description: 'ID del hospedaje', required: false })
@@ -29,19 +30,15 @@ export class CreateAccommodationDto {
   @IsNotEmpty({ message: 'El código de hospedaje es requerido' })
   code: string;
 
-  @ApiProperty({ example: { es: 'Cabaña Sur', en: 'South Cabin' }, description: 'Nombre del hospedaje' })
+  @ApiProperty({ example: { es: 'Cabaña Sur' }, description: 'Nombre del hospedaje' })
   @IsObject()
   @IsNotEmpty({ message: 'El nombre es requerido' })
-  name: Record<string, string>;
+  name: TranslatedInput;
 
-  @ApiProperty({
-    example: { es: 'Cabaña familiar con vista al lago', en: 'Family cabin with lake view' },
-    description: 'Descripción del hospedaje',
-    required: false,
-  })
+  @ApiProperty({ example: { es: 'Cabaña familiar con vista al lago' }, description: 'Descripción del hospedaje', required: false })
   @IsOptional()
   @IsObject()
-  description?: Record<string, string>;
+  description?: TranslatedInput;
 
   @ApiProperty({ example: 4, description: 'Cantidad de personas' })
   @IsInt()
@@ -134,18 +131,15 @@ export class UpdateAccommodationDto {
   @IsNotEmpty({ message: 'El código es requerido' })
   code?: string;
 
-  @ApiProperty({ example: { es: 'Cabaña Sur', en: 'South Cabin' }, description: 'Nombre del hospedaje' })
+  @ApiProperty({ example: { es: 'Cabaña Sur' }, description: 'Nombre del hospedaje' })
   @IsObject()
   @IsOptional()
-  name?: Record<string, string>;
+  name?: TranslatedInput;
 
-  @ApiProperty({
-    example: { es: 'Hospedaje con vista al lago', en: 'Accommodation with lake view' },
-    description: 'Descripción',
-  })
+  @ApiProperty({ example: { es: 'Hospedaje con vista al lago' }, description: 'Descripción' })
   @IsObject()
   @IsOptional()
-  description?: Record<string, string>;
+  description?: TranslatedInput;
 
   @ApiProperty({ example: 4, description: 'Cantidad de personas permitidas' })
   @IsInt()

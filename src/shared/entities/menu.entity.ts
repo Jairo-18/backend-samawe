@@ -18,11 +18,11 @@ export class Menu {
   @PrimaryGeneratedColumn()
   menuId: number;
 
-  @Column('varchar', { length: 255, nullable: false })
-  name: string;
+  @Column('jsonb', { nullable: false })
+  name: Record<string, string>;
 
-  @Column('varchar', { length: 500, nullable: true })
-  description?: string;
+  @Column('jsonb', { nullable: true })
+  description?: Record<string, string>;
 
   @ManyToMany(() => Recipe, { eager: true })
   @JoinTable({

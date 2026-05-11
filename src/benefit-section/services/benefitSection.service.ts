@@ -8,6 +8,7 @@ import {
   CreateBenefitItemDto,
   UpdateBenefitItemDto,
 } from '../dtos/benefitSection.dto';
+import { TranslationService } from '../../shared/services/translation.service';
 
 @Injectable()
 export class BenefitSectionService {
@@ -15,6 +16,7 @@ export class BenefitSectionService {
     private readonly _benefitSectionRepository: BenefitSectionRepository,
     private readonly _benefitItemRepository: BenefitItemRepository,
     private readonly _organizationalRepository: OrganizationalRepository,
+    private readonly _translationService: TranslationService,
   ) {}
 
   private async _findOrgOrFail(organizationalId: string) {
@@ -69,8 +71,10 @@ export class BenefitSectionService {
   async createSection(organizationalId: string, dto: CreateBenefitSectionDto) {
     const organizational = await this._findOrgOrFail(organizationalId);
 
+    const title = await this._translationService.toTranslatedField(dto.title);
+
     const result = await this._benefitSectionRepository.insert({
-      title: dto.title,
+      title,
       order: dto.order ?? 0,
       organizational,
     });
@@ -79,14 +83,15 @@ export class BenefitSectionService {
 
     if (dto.items?.length) {
       const section = await this._findSectionOrFail(benefitSectionId);
-      await this._benefitItemRepository.insert(
-        dto.items.map((item, i) => ({
-          name: item.name,
+      const translatedItems = await Promise.all(
+        dto.items.map(async (item, i) => ({
+          name: await this._translationService.toTranslatedField(item.name),
           icon: item.icon,
           order: item.order ?? i,
           benefitSection: section,
         })),
       );
+      await this._benefitItemRepository.insert(translatedItems);
     }
 
     return { rowId: benefitSectionId };
@@ -97,7 +102,14 @@ export class BenefitSectionService {
     dto: UpdateBenefitSectionDto,
   ) {
     await this._findSectionOrFail(benefitSectionId);
-    await this._benefitSectionRepository.update({ benefitSectionId }, { ...dto });
+    const update: Partial<{ title: Record<string, string>; order: number }> = {};
+    if (dto.title) {
+      update.title = await this._translationService.toTranslatedField(dto.title);
+    }
+    if (dto.order !== undefined) {
+      update.order = dto.order;
+    }
+    await this._benefitSectionRepository.update({ benefitSectionId }, update);
   }
 
   async deleteSection(benefitSectionId: string) {
@@ -108,8 +120,10 @@ export class BenefitSectionService {
   async addItem(benefitSectionId: string, dto: CreateBenefitItemDto) {
     const section = await this._findSectionOrFail(benefitSectionId);
 
+    const name = await this._translationService.toTranslatedField(dto.name);
+
     const result = await this._benefitItemRepository.insert({
-      name: dto.name,
+      name,
       icon: dto.icon,
       order: dto.order ?? 0,
       benefitSection: section,
@@ -120,7 +134,17 @@ export class BenefitSectionService {
 
   async updateItem(benefitItemId: string, dto: UpdateBenefitItemDto) {
     await this._findItemOrFail(benefitItemId);
-    await this._benefitItemRepository.update({ benefitItemId }, { ...dto });
+    const update: Partial<{ name: Record<string, string>; icon: string; order: number }> = {};
+    if (dto.name) {
+      update.name = await this._translationService.toTranslatedField(dto.name);
+    }
+    if (dto.icon !== undefined) {
+      update.icon = dto.icon;
+    }
+    if (dto.order !== undefined) {
+      update.order = dto.order;
+    }
+    await this._benefitItemRepository.update({ benefitItemId }, update);
   }
 
   async deleteItem(benefitItemId: string) {

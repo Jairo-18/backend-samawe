@@ -4,6 +4,7 @@ import {
   IsIn,
   IsInt,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   IsString,
   Min,
@@ -11,12 +12,13 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { LEGAL_TYPE, LegalType } from '../constants/legal.constants';
+import { TranslatedInput } from '../../shared/types/translated-field.type';
 
 export class CreateLegalItemChildDto {
-  @ApiProperty({ example: 'Razón social: Samawe Putumayo S.A.S. Zomac' })
-  @IsString()
+  @ApiProperty({ example: { es: 'Razón social: Samawe Putumayo S.A.S. Zomac' } })
+  @IsObject()
   @IsNotEmpty()
-  content: string;
+  content: TranslatedInput;
 
   @ApiPropertyOptional({ example: 0 })
   @IsOptional()
@@ -26,10 +28,10 @@ export class CreateLegalItemChildDto {
 }
 
 export class UpdateLegalItemChildDto {
-  @ApiPropertyOptional({ example: 'Razón social: Samawe Putumayo S.A.S. Zomac' })
+  @ApiPropertyOptional({ example: { es: 'Razón social: Samawe Putumayo S.A.S. Zomac' } })
   @IsOptional()
-  @IsString()
-  content?: string;
+  @IsObject()
+  content?: TranslatedInput;
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
@@ -39,15 +41,15 @@ export class UpdateLegalItemChildDto {
 }
 
 export class CreateLegalItemDto {
-  @ApiPropertyOptional({ example: '1. Responsable del tratamiento' })
+  @ApiPropertyOptional({ example: { es: '1. Responsable del tratamiento' } })
   @IsOptional()
-  @IsString()
-  title?: string;
+  @IsObject()
+  title?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'En cumplimiento de la Ley 1581 de 2012...' })
+  @ApiPropertyOptional({ example: { es: 'En cumplimiento de la Ley 1581 de 2012...' } })
   @IsOptional()
-  @IsString()
-  description?: string;
+  @IsObject()
+  description?: TranslatedInput;
 
   @ApiPropertyOptional({ example: 0 })
   @IsOptional()
@@ -64,15 +66,15 @@ export class CreateLegalItemDto {
 }
 
 export class UpdateLegalItemDto {
-  @ApiPropertyOptional({ example: '1. Responsable del tratamiento' })
+  @ApiPropertyOptional({ example: { es: '1. Responsable del tratamiento' } })
   @IsOptional()
-  @IsString()
-  title?: string;
+  @IsObject()
+  title?: TranslatedInput;
 
-  @ApiPropertyOptional({ example: 'En cumplimiento de la Ley 1581 de 2012...' })
+  @ApiPropertyOptional({ example: { es: 'En cumplimiento de la Ley 1581 de 2012...' } })
   @IsOptional()
-  @IsString()
-  description?: string;
+  @IsObject()
+  description?: TranslatedInput;
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()

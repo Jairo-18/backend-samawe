@@ -8,13 +8,11 @@ import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { SharedModule } from './../shared/shared.module';
 import { AccommodationUC } from './useCases/accommodationUC.uc';
-import { LocalStorageModule } from '../local-storage/local-storage.module';
 
 @Module({
   imports: [
     SharedModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    LocalStorageModule,
   ],
   controllers: [AccommodationController, AccommodationPublicController],
   providers: [

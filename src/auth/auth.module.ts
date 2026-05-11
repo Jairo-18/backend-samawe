@@ -1,7 +1,6 @@
 import { JwtStrategy } from './../shared/strategies/jwt.strategy';
 import { GoogleStrategy } from './../shared/strategies/google.strategy';
 import { AccessSessionsService } from './services/accessSessions.service';
-import { UserService } from '../user/services/user.service';
 import { SharedModule } from './../shared/shared.module';
 import { Module } from '@nestjs/common';
 import { AuthController } from './controllers/auth.controller';
@@ -10,13 +9,11 @@ import { AuthUC } from './useCases/auth.UC';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
-import { LocalStorageModule } from '../local-storage/local-storage.module';
 import { OrganizationalModule } from '../organizational/organizational.module';
 
 @Module({
   imports: [
     SharedModule,
-    LocalStorageModule,
     OrganizationalModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
@@ -32,7 +29,6 @@ import { OrganizationalModule } from '../organizational/organizational.module';
     AuthService,
     AuthUC,
     JwtService,
-    UserService,
     AccessSessionsService,
     JwtStrategy,
     GoogleStrategy,

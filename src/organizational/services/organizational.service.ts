@@ -15,6 +15,28 @@ import { IdentificationTypeRepository } from '../../shared/repositories/identifi
 import { PersonTypeRepository } from '../../shared/repositories/personType.repository';
 import { PhoneCodeRepository } from '../../shared/repositories/phoneCode.repository';
 import { LocalStorageService } from '../../local-storage/services/local-storage.service';
+import { TranslationService } from '../../shared/services/translation.service';
+
+const TRANSLATABLE_FIELDS: (keyof CreateOrganizationalDto)[] = [
+  'description',
+  'homeTitle', 'homeDescription',
+  'experienceTitle', 'experienceDescription',
+  'reservationTitle', 'reservationDescription',
+  'aboutUsTitle', 'aboutUsDescription',
+  'missionTitle', 'missionDescription',
+  'visionTitle', 'visionDescription',
+  'historyTitle', 'historyDescription',
+  'gastronomyTitle', 'gastronomyDescription',
+  'gastronomyHistoryTitle', 'gastronomyHistoryDescription',
+  'gastronomyKitchenTitle', 'gastronomyKitchenDescription',
+  'gastronomyIngredientsTitle', 'gastronomyIngredientsDescription',
+  'accommodationsTitle', 'accommodationsDescription',
+  'howToArriveDescription',
+  'howToArrivePublicTransportDescription',
+  'howToArrivePrivateTransportDescription',
+  'accessibilityDescription',
+  'metaTitle', 'metaDescription',
+];
 
 @Injectable()
 export class OrganizationalService {
@@ -27,6 +49,7 @@ export class OrganizationalService {
     private readonly _phoneCodeRepository: PhoneCodeRepository,
     private readonly _localStorageService: LocalStorageService,
     private readonly _corporateValueRepository: CorporateValueRepository,
+    private readonly _translationService: TranslationService,
   ) {}
 
   async create(dto: CreateOrganizationalDto) {
@@ -58,8 +81,11 @@ export class OrganizationalService {
         })
       : null;
 
+    const translations = await this._translationService.translateFields(dto, TRANSLATABLE_FIELDS);
+
     const result = await this._organizationalRepository.insert({
       ...dto,
+      ...translations,
       identificationType,
       personType,
       phoneCode,
@@ -162,10 +188,13 @@ export class OrganizationalService {
         })
       : undefined;
 
+    const translations = await this._translationService.translateFields(dto, TRANSLATABLE_FIELDS);
+
     await this._organizationalRepository.update(
       { organizationalId },
       {
         ...dto,
+        ...translations,
         ...(identificationType && { identificationType }),
         ...(personType && { personType }),
         ...(phoneCode && { phoneCode }),
@@ -339,8 +368,14 @@ export class OrganizationalService {
     dto: CreateCorporateValueDto,
   ) {
     const organizational = await this.findOne(organizationalId);
+    const title = await this._translationService.toTranslatedField(dto.title);
+    const description = dto.description
+      ? await this._translationService.toTranslatedField(dto.description)
+      : undefined;
     const result = await this._corporateValueRepository.insert({
       ...dto,
+      title,
+      description,
       order: dto.order ?? 0,
       organizational,
     });
@@ -360,7 +395,14 @@ export class OrganizationalService {
         HttpStatus.NOT_FOUND,
       );
     }
-    await this._corporateValueRepository.update({ corporateValueId }, { ...dto });
+    const title = await this._translationService.toTranslatedField(dto.title);
+    const description = dto.description
+      ? await this._translationService.toTranslatedField(dto.description)
+      : undefined;
+    await this._corporateValueRepository.update(
+      { corporateValueId },
+      { ...dto, title, description },
+    );
   }
 
   async uploadCorporateValueImage(

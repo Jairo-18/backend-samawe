@@ -16,11 +16,11 @@ export class LegalItem {
   @PrimaryGeneratedColumn('uuid')
   legalItemId: string;
 
-  @Column('varchar', { length: 255, nullable: true })
-  title?: string;
+  @Column('jsonb', { nullable: true })
+  title?: Record<string, string>;
 
-  @Column('text', { nullable: true })
-  description?: string;
+  @Column('jsonb', { nullable: true })
+  description?: Record<string, string>;
 
   @Column({ type: 'int', default: 0 })
   order: number;

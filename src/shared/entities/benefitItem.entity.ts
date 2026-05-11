@@ -14,8 +14,8 @@ export class BenefitItem {
   @PrimaryGeneratedColumn('uuid')
   benefitItemId: string;
 
-  @Column('varchar', { length: 150, nullable: false })
-  name: string;
+  @Column('jsonb', { nullable: false })
+  name: Record<string, string>;
 
   @Column('varchar', { length: 100, nullable: false })
   icon: string;

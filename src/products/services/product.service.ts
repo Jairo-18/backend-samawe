@@ -19,6 +19,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { LocalStorageService } from '../../local-storage/services/local-storage.service';
+import { TranslationService } from '../../shared/services/translation.service';
 
 @Injectable()
 export class ProductService {
@@ -31,6 +32,7 @@ export class ProductService {
     private readonly _recipeRepository: RecipeRepository,
     private readonly _localStorageService: LocalStorageService,
     private readonly _taxeTypeRepository: TaxeTypeRepository,
+    private readonly _translationService: TranslationService,
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
@@ -89,8 +91,15 @@ export class ProductService {
         }
       }
 
+      const name = await this._translationService.toTranslatedField(createProductDto.name);
+      const description = createProductDto.description
+        ? await this._translationService.toTranslatedField(createProductDto.description)
+        : undefined;
+
       const newProduct = this._productRepository.create({
         ...productData,
+        name,
+        ...(description && { description }),
         categoryType,
         ...(unitOfMeasure && { unitOfMeasure }),
         ...(organizational && { organizational }),
@@ -187,7 +196,9 @@ export class ProductService {
       }
     }
 
-    const { taxeTypeId: _t, ...updateData } = updateProductDto;
+    const { taxeTypeId: _t, name: rawName, description: rawDesc, ...updateData } = updateProductDto;
+    if (rawName) updateData['name'] = await this._translationService.toTranslatedField(rawName);
+    if (rawDesc) updateData['description'] = await this._translationService.toTranslatedField(rawDesc);
     Object.assign(product, updateData);
 
     return await this._productRepository.save(product);
@@ -305,7 +316,7 @@ export class ProductService {
 
     if (invoiceDetailCount > 0) {
       throw new BadRequestException(
-        `El producto ${product.name} está asociado a una factura y no puede eliminarse.`,
+        `El producto ${product.name?.['es'] ?? JSON.stringify(product.name)} está asociado a una factura y no puede eliminarse.`,
       );
     }
 
@@ -315,7 +326,7 @@ export class ProductService {
 
     if (recipeCount > 0) {
       throw new BadRequestException(
-        `El producto ${product.name} está asociado a una receta y no puede eliminarse.`,
+        `El producto ${product.name?.['es'] ?? JSON.stringify(product.name)} está asociado a una receta y no puede eliminarse.`,
       );
     }
 

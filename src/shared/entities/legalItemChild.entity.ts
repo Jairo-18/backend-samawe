@@ -14,8 +14,8 @@ export class LegalItemChild {
   @PrimaryGeneratedColumn('uuid')
   legalItemChildId: string;
 
-  @Column('text', { nullable: false })
-  content: string;
+  @Column('jsonb', { nullable: false })
+  content: Record<string, string>;
 
   @Column({ type: 'int', default: 0 })
   order: number;
