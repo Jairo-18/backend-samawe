@@ -19,12 +19,12 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typeorm": "cross-env ts-node ./node_modules/typeorm/cli",
-    "migration:run": "cross-env NODE_ENV=development npm run typeorm migration:run -- -d typeorm.config.ts",
-    "migration:run:prod": "cross-env NODE_ENV=production npm run typeorm migration:run -- -d typeorm.config.ts",
-    "migration:generate": "cross-env NODE_ENV=development npm run typeorm -- -d typeorm.config.ts migration:generate ./src/migrations/%npm_config_name%",
-    "migration:create": "npm run typeorm -- migration:create ./src/migrations/%npm_config_name%",
-    "migration:revert": "cross-env NODE_ENV=development npm run typeorm -- -d typeorm.config.ts migration:revert",
-    "migration:revert:prod": "cross-env NODE_ENV=production npm run typeorm -- -d typeorm.config.ts migration:revert"
+    "migration:run": "cross-env NODE_ENV=development pnpm run typeorm migration:run -- -d typeorm.config.ts",
+    "migration:run:prod": "cross-env NODE_ENV=production pnpm run typeorm migration:run -- -d typeorm.config.ts",
+    "migration:generate": "cross-env NODE_ENV=development pnpm run typeorm -- -d typeorm.config.ts migration:generate ./src/migrations/%npm_config_name%",
+    "migration:create": "pnpm run typeorm -- migration:create ./src/migrations/%npm_config_name%",
+    "migration:revert": "cross-env NODE_ENV=development pnpm run typeorm -- -d typeorm.config.ts migration:revert",
+    "migration:revert:prod": "cross-env NODE_ENV=production pnpm run typeorm -- -d typeorm.config.ts migration:revert"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",
@@ -119,16 +119,6 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
-  },
-  "pnpm": {
-    "ignoredBuiltDependencies": [
-      "@nestjs/core",
-      "@scarf/scarf",
-      "bcrypt"
-    ],
-    "onlyBuiltDependencies": [
-      "sharp"
-    ]
   },
   "pkg": {
     "scripts": [

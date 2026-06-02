@@ -13,9 +13,8 @@ import { ParamsPaginationGenericDto, Type } from '../dtos/genericType.dto';
 
 const JSONB_NAME_TYPES = new Set([
   'categoryType', 'stateType', 'bedType', 'roleType', 'identificationType',
-  'invoiceType', 'taxeType', 'payType', 'paidType', 'discountType',
+  'invoiceType', 'taxeType', 'payType', 'paidType',
   'personType', 'mediaType', 'unitOfMeasure',
-  // discountType excluded: name stays as varchar
 ]);
 
 @Injectable()

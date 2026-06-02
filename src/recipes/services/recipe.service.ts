@@ -49,12 +49,12 @@ export class RecipeService {
       .where('product.deletedAt IS NULL');
 
     if (params.search) {
-      qb.andWhere('LOWER(product.name) LIKE LOWER(:search)', {
+      qb.andWhere(`LOWER("product"."name"->>'es') LIKE LOWER(:search)`, {
         search: `%${params.search.trim()}%`,
       });
     }
 
-    const allRows = await qb.orderBy('product.name', 'ASC').getMany();
+    const allRows = await qb.orderBy(`"product"."name"->>'es'`, 'ASC').getMany();
 
     const grouped = new Map<number, RecipeWithDetailsResponse>();
 

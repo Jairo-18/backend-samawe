@@ -147,14 +147,14 @@ export class ReportService {
             qb.andWhere('accommodation.accommodationId IS NOT NULL');
           } else if (['PASADIA', 'SERVICIOS'].includes(categoryName)) {
             qb.andWhere('excursion.excursionId IS NOT NULL');
-            qb.andWhere('excursionCategoryType.name = :categoryName', {
+            qb.andWhere(`"excursionCategoryType"."name"->>'es' = :categoryName`, {
               categoryName,
             });
           } else if (
             ['BAR', 'RESTAURANTE', 'OTROS', 'MECATO'].includes(categoryName)
           ) {
             qb.andWhere('product.productId IS NOT NULL');
-            qb.andWhere('categoryType.name = :categoryName', { categoryName });
+            qb.andWhere(`"categoryType"."name"->>'es' = :categoryName`, { categoryName });
           }
 
           return qb.getRawOne();
@@ -228,14 +228,14 @@ export class ReportService {
             qb.andWhere('accommodation.accommodationId IS NOT NULL');
           } else if (['PASADIA', 'SERVICIOS'].includes(categoryName)) {
             qb.andWhere('excursion.excursionId IS NOT NULL');
-            qb.andWhere('excursionCategoryType.name = :categoryName', {
+            qb.andWhere(`"excursionCategoryType"."name"->>'es' = :categoryName`, {
               categoryName,
             });
           } else if (
             ['BAR', 'RESTAURANTE', 'OTROS', 'MECATO'].includes(categoryName)
           ) {
             qb.andWhere('product.productId IS NOT NULL');
-            qb.andWhere('categoryType.name = :categoryName', { categoryName });
+            qb.andWhere(`"categoryType"."name"->>'es' = :categoryName`, { categoryName });
           }
           const results = await qb.getRawMany();
 
@@ -358,14 +358,14 @@ export class ReportService {
       qb.andWhere('accommodation.accommodationId IS NOT NULL');
     } else if (['PASADIA', 'SERVICIOS'].includes(categoryName)) {
       qb.andWhere('excursion.excursionId IS NOT NULL');
-      qb.andWhere('excursionCategoryType.name = :categoryName', {
+      qb.andWhere(`"excursionCategoryType"."name"->>'es' = :categoryName`, {
         categoryName,
       });
     } else if (
       ['BAR', 'RESTAURANTE', 'OTROS', 'MECATO'].includes(categoryName)
     ) {
       qb.andWhere('product.productId IS NOT NULL');
-      qb.andWhere('categoryType.name = :categoryName', { categoryName });
+      qb.andWhere(`"categoryType"."name"->>'es' = :categoryName`, { categoryName });
     }
     const results = await qb.getRawMany();
 
