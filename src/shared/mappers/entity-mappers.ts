@@ -268,6 +268,7 @@ export interface UserDetailDto {
   identificationNumber: string;
   isActive: boolean;
   avatarUrl?: string;
+  address?: string;
   roleType: { roleTypeId: string; code: string; name: Record<string, string> } | null;
   identificationType: {
     identificationTypeId: string;
@@ -276,6 +277,8 @@ export interface UserDetailDto {
   } | null;
   phoneCode: { phoneCodeId: string; code: string; name: string } | null;
   personType: { personTypeId: number; code: string; name: Record<string, string> } | null;
+  department: { departmentId: number; code: string; name: string } | null;
+  municipality: { municipalityId: number; code: string; name: string } | null;
   organizationalId: string | null;
 }
 
@@ -289,6 +292,7 @@ export function mapUserDetail(user: User): UserDetailDto {
     identificationNumber: user.identificationNumber,
     isActive: user.isActive,
     avatarUrl: user.avatarUrl ?? undefined,
+    address: user.address ?? undefined,
     roleType: user.roleType
       ? {
           roleTypeId: user.roleType.roleTypeId,
@@ -315,6 +319,20 @@ export function mapUserDetail(user: User): UserDetailDto {
           personTypeId: user.personType.personTypeId,
           code: user.personType.code,
           name: user.personType.name,
+        }
+      : null,
+    department: user.department
+      ? {
+          departmentId: user.department.departmentId,
+          code: user.department.code,
+          name: user.department.name,
+        }
+      : null,
+    municipality: user.municipality
+      ? {
+          municipalityId: user.municipality.municipalityId,
+          code: user.municipality.code,
+          name: user.municipality.name,
         }
       : null,
     organizationalId: user.organizational?.organizationalId ?? null,

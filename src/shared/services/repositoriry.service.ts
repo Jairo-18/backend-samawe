@@ -16,6 +16,8 @@ import { PersonTypeRepository } from '../repositories/personType.repository';
 import { OrganizationalRepository } from '../repositories/organizational.repository';
 import { MediaTypeRepository } from '../repositories/mediaType.repository';
 import { CorporateValueRepository } from '../repositories/corporateValue.repository';
+import { DepartmentRepository } from '../repositories/department.repository';
+import { MunicipalityRepository } from '../repositories/municipality.repository';
 
 @Injectable()
 export class RepositoryService {
@@ -37,6 +39,8 @@ export class RepositoryService {
     organizational: OrganizationalRepository;
     mediaType: MediaTypeRepository;
     corporateValue: CorporateValueRepository;
+    department: DepartmentRepository;
+    municipality: MunicipalityRepository;
   };
 
   constructor(
@@ -57,6 +61,8 @@ export class RepositoryService {
     private readonly _organizationalRepository: OrganizationalRepository,
     private readonly _mediaTypeRepository: MediaTypeRepository,
     private readonly _corporateValueRepository: CorporateValueRepository,
+    private readonly _departmentRepository: DepartmentRepository,
+    private readonly _municipalityRepository: MunicipalityRepository,
   ) {
     this.repositories = {
       bedType: _bedTypeRepository,
@@ -76,6 +82,8 @@ export class RepositoryService {
       organizational: _organizationalRepository,
       mediaType: _mediaTypeRepository,
       corporateValue: _corporateValueRepository,
+      department: _departmentRepository,
+      municipality: _municipalityRepository,
     };
   }
 }

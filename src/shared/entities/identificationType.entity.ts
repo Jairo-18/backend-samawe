@@ -20,6 +20,10 @@ export class IdentificationType {
   @Column({ type: 'jsonb', nullable: true })
   name: Record<string, string>;
 
+  // DIAN/Factus numeric code: "13"=CC, "31"=NIT, "22"=CE, "41"=Pasaporte
+  @Column('varchar', { length: 5, nullable: true })
+  factusCode?: string;
+
   @OneToMany(() => User, (user) => user.identificationType)
   user: User[];
 

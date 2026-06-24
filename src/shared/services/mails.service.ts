@@ -1,6 +1,7 @@
 ﻿import { MailerService } from '@nestjs-modules/mailer';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SendEmailOptions } from '../interfaces/mail.interface';
 
 @Injectable()
 export class MailsService {
@@ -14,12 +15,8 @@ export class MailsService {
     to,
     subject,
     body,
-  }: {
-    from?: string;
-    to?: string;
-    subject: string;
-    body: string;
-  }): Promise<void> {
+    attachments,
+  }: SendEmailOptions): Promise<void> {
     if (!to && !this.configService.get<string>('mail.to')) {
       throw new HttpException(
         'No recipient email provided',
@@ -31,6 +28,7 @@ export class MailsService {
       to: to || this.configService.get<string>('mail.to'),
       subject,
       html: body,
+      ...(attachments?.length ? { attachments } : {}),
     });
   }
 }

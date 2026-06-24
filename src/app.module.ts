@@ -28,6 +28,7 @@ import { BenefitSectionModule } from './benefit-section/benefitSection.module';
 import { LegalModule } from './legal/legal.module';
 import { ReviewModule } from './reviews/review.module';
 import { TranslationsModule } from './translations/translations.module';
+import { FactusModule } from './factus/factus.module';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { TranslationsModule } from './translations/translations.module';
     LegalModule,
     ReviewModule,
     TranslationsModule,
+    FactusModule,
   ],
   controllers: [AppController],
   providers: [

@@ -13,6 +13,7 @@ import {
   RecoveryPasswordDto,
 } from './../dtos/user.dto';
 import { IdentificationTypeRepository } from '../../shared/repositories/identificationType.repository';
+import { MunicipalityRepository } from '../../shared/repositories/municipality.repository';
 import { UserRepository } from '../../shared/repositories/user.repository';
 import { User } from '../../shared/entities/user.entity';
 import { PersonTypeRepository } from '../../shared/repositories/personType.repository';
@@ -43,6 +44,7 @@ export class UserService {
     private readonly _userRepository: UserRepository,
     private readonly _roleTypeRepository: RoleTypeRepository,
     private readonly _identificationTypeRepository: IdentificationTypeRepository,
+    private readonly _municipalityRepository: MunicipalityRepository,
     private readonly _phoneCodeRepository: PhoneCodeRepository,
     private readonly _passwordService: PasswordService,
     private readonly _invoiceRepository: InvoiceRepository,
@@ -85,10 +87,20 @@ export class UserService {
       }
     }
 
+    const identificationType = await this._identificationTypeRepository.findOne({
+      where: { identificationTypeId: user.identificationType },
+    });
+    // Desglosa el NIT (número + dv) antes de cualquier validación, para que el
+    // chequeo de duplicados compare contra el número ya limpio que se persiste.
+    const { identificationNumber, factusDv } = this.breakdownIdentification(
+      identificationType?.factusCode,
+      user.identificationNumber,
+    );
+
     const existingUserByIdentification = await this._userRepository.findOne({
       where: {
         identificationType: { identificationTypeId: user.identificationType },
-        identificationNumber: user.identificationNumber,
+        identificationNumber,
       },
     });
 
@@ -119,12 +131,6 @@ export class UserService {
       where: { roleTypeId: user.roleType },
     });
 
-    const identificationType = await this._identificationTypeRepository.findOne(
-      {
-        where: { identificationTypeId: user.identificationType },
-      },
-    );
-
     const phoneCode = await this._phoneCodeRepository.findOne({
       where: { phoneCodeId: user.phoneCode },
     });
@@ -150,8 +156,20 @@ export class UserService {
       }
     }
 
+    // Ubicación DANE (solo clientes de Colombia). Deriva el municipio y, de él,
+    // el factusMunicipalityCode que usa la factura electrónica.
+    const location = await this.resolveLocation(
+      user.departmentId,
+      user.municipalityId,
+    );
+
     const res = await this._userRepository.insert({
       ...user,
+      identificationNumber,
+      factusDv,
+      departmentId: location.departmentId,
+      municipalityId: location.municipalityId,
+      factusMunicipalityCode: location.factusMunicipalityCode,
       password: hashedPassword,
       roleType,
       identificationType,
@@ -404,8 +422,19 @@ export class UserService {
       personType,
       password,
       confirmPassword,
+      departmentId,
+      municipalityId,
       ...restUserData
     } = userData;
+
+    // La ubicación solo se toca si vino en el payload (departamento o municipio).
+    // Para extranjeros el front envía ambos en null → se limpia y el
+    // factusMunicipalityCode vuelve a null (la factura usa el municipio del negocio).
+    const locationProvided =
+      departmentId !== undefined || municipalityId !== undefined;
+    const location = locationProvided
+      ? await this.resolveLocation(departmentId, municipalityId)
+      : undefined;
 
     if (password) {
       if (password !== confirmPassword) {
@@ -420,10 +449,36 @@ export class UserService {
       ? await bcrypt.hash(password, 10)
       : undefined;
 
+    // Si llega un nuevo número de identificación, lo desglosamos según el tipo
+    // de documento efectivo (el nuevo, o el que ya tenía el usuario).
+    let identificationBreakdown:
+      | { identificationNumber: string; factusDv: string | null }
+      | undefined;
+    if (userData.identificationNumber !== undefined) {
+      const effectiveIdTypeId =
+        identificationType || userExist.identificationType.identificationTypeId;
+      const idType = await this._identificationTypeRepository.findOne({
+        where: { identificationTypeId: effectiveIdTypeId },
+      });
+      identificationBreakdown = this.breakdownIdentification(
+        idType?.factusCode,
+        userData.identificationNumber,
+      );
+    }
+
     return await this._userRepository.update(
       { userId },
       {
         ...restUserData,
+        ...(identificationBreakdown && {
+          identificationNumber: identificationBreakdown.identificationNumber,
+          factusDv: identificationBreakdown.factusDv,
+        }),
+        ...(location && {
+          departmentId: location.departmentId,
+          municipalityId: location.municipalityId,
+          factusMunicipalityCode: location.factusMunicipalityCode,
+        }),
         ...(hashedPassword && { password: hashedPassword }),
         phoneCode: {
           phoneCodeId: phoneCode || userExist.phoneCode.phoneCodeId,
@@ -452,6 +507,43 @@ export class UserService {
     );
   }
 
+  /**
+   * Resuelve la ubicación DANE del cliente a partir de los ids enviados por el
+   * front. Solo aplica a clientes de Colombia; para extranjeros llegan en null/
+   * undefined y se devuelve todo en null (la factura usa el municipio del
+   * negocio). Si hay municipio, deriva de él el departamento y el
+   * `factusMunicipalityCode` (el código DANE que necesita la factura electrónica),
+   * garantizando que municipio y departamento siempre queden coherentes.
+   */
+  private async resolveLocation(
+    departmentId?: number | null,
+    municipalityId?: number | null,
+  ): Promise<{
+    departmentId: number | null;
+    municipalityId: number | null;
+    factusMunicipalityCode: string | null;
+  }> {
+    if (municipalityId) {
+      const municipality = await this._municipalityRepository.findOne({
+        where: { municipalityId },
+      });
+      if (!municipality) {
+        throw new BadRequestException('El municipio seleccionado no existe');
+      }
+      return {
+        departmentId: municipality.departmentId,
+        municipalityId: municipality.municipalityId,
+        factusMunicipalityCode: municipality.code,
+      };
+    }
+    // Sin municipio: puede haber departamento elegido (aún sin municipio) o nada.
+    return {
+      departmentId: departmentId ?? null,
+      municipalityId: null,
+      factusMunicipalityCode: null,
+    };
+  }
+
   private async resolvePersonType(identificationTypeId: string) {
     const NIT_ID = '3';
     const PERSONA_JURIDICA_ID = 2;
@@ -465,6 +557,46 @@ export class UserService {
     return await this._personTypeRepository.findOne({
       where: { personTypeId },
     });
+  }
+
+  /**
+   * Desglosa el número de identificación según el tipo de documento.
+   * Para NIT (factusCode '31') el recepcionista puede escribir el NIT con o sin
+   * guion/dígito de verificación (p. ej. "900123456-7" o "900123456"); aquí
+   * dejamos en identificationNumber ÚNICAMENTE el número (sin dv ni guion) y
+   * calculamos el dv con el algoritmo oficial de la DIAN, ignorando el dv que se
+   * haya tecleado (así nunca se envía uno equivocado a Factus).
+   * Para los demás documentos se devuelve el número sin espacios y sin dv.
+   */
+  private breakdownIdentification(
+    factusCode: string | undefined | null,
+    rawNumber: string,
+  ): { identificationNumber: string; factusDv: string | null } {
+    const cleaned = String(rawNumber ?? '').replace(/\s+/g, '');
+    if (factusCode !== '31') {
+      return { identificationNumber: cleaned, factusDv: null };
+    }
+    const numberPart = (
+      cleaned.includes('-') ? cleaned.split('-')[0] : cleaned
+    ).replace(/\D/g, '');
+    return {
+      identificationNumber: numberPart,
+      factusDv: this.computeNitDv(numberPart),
+    };
+  }
+
+  /** Dígito de verificación de un NIT según el algoritmo oficial de la DIAN. */
+  private computeNitDv(nit: string): string {
+    const weights = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71];
+    const digits = nit.replace(/\D/g, '');
+    const reversed = digits.split('').reverse();
+    let sum = 0;
+    for (let i = 0; i < reversed.length && i < weights.length; i++) {
+      sum += parseInt(reversed[i], 10) * weights[i];
+    }
+    const mod = sum % 11;
+    const dv = mod > 1 ? 11 - mod : mod;
+    return String(dv);
   }
 
   private validatePasswordMatch(password: string, confirmPassword: string) {
@@ -485,6 +617,8 @@ export class UserService {
         'phoneCode',
         'personType',
         'organizational',
+        'department',
+        'municipality',
       ],
     });
 

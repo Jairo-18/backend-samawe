@@ -12,7 +12,8 @@ import { BalanceRepository } from './../../shared/repositories/balance.repositor
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { BalanceType } from './../../shared/constants/balanceType.constants';
 import { Balance } from './../../shared/entities/balance.entity';
-import { IsNull } from 'typeorm';
+import { CreditNote } from './../../shared/entities/creditNote.entity';
+import { In, IsNull } from 'typeorm';
 
 @Injectable()
 export class EarningService {
@@ -227,6 +228,7 @@ export class EarningService {
 
         const invoices = await query
           .select([
+            'invoice.invoiceId AS "invoiceId"',
             'invoice.code AS code',
             'invoice.total AS total',
             'invoice.createdAt AS "createdAt"',
@@ -235,17 +237,39 @@ export class EarningService {
           .orderBy('invoice.createdAt', 'ASC')
           .getRawMany();
 
-        const formatted: InvoiceChartItemDto[] = invoices.map((inv) => ({
-          code: inv.code,
-          total: Number(inv.total),
-          type:
-            inv.invoiceTypeCode === 'FV'
-              ? 'FV'
-              : inv.invoiceTypeCode === 'FC'
-                ? 'FC'
-                : 'other',
-          createdAt: new Date(inv.createdAt),
-        }));
+        // Total acreditado por factura (notas crédito) → para mostrar el neto.
+        const invoiceIds = invoices
+          .map((inv) => Number(inv.invoiceId))
+          .filter((id) => id > 0);
+        const creditedByInvoice = new Map<number, number>();
+        if (invoiceIds.length) {
+          const creditNotes = await this._invoiceRepository.manager.find(
+            CreditNote,
+            { where: { invoiceId: In(invoiceIds) } },
+          );
+          for (const cn of creditNotes) {
+            creditedByInvoice.set(
+              cn.invoiceId,
+              (creditedByInvoice.get(cn.invoiceId) ?? 0) + (Number(cn.total) || 0),
+            );
+          }
+        }
+
+        const formatted: InvoiceChartItemDto[] = invoices.map((inv) => {
+          // FVE (electrónica) también es venta; se agrupa con FV.
+          const isSale =
+            inv.invoiceTypeCode === 'FV' || inv.invoiceTypeCode === 'FVE';
+          // El neto solo aplica a ventas (las NC son sobre electrónicas).
+          const credited = isSale
+            ? (creditedByInvoice.get(Number(inv.invoiceId)) ?? 0)
+            : 0;
+          return {
+            code: inv.code,
+            total: Number(inv.total) - credited,
+            type: isSale ? 'FV' : inv.invoiceTypeCode === 'FC' ? 'FC' : 'other',
+            createdAt: new Date(inv.createdAt),
+          };
+        });
 
         return { type, data: formatted };
       }),

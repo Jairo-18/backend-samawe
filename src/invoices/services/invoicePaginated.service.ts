@@ -1,4 +1,5 @@
 import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
+import { CreditNoteRepository } from './../../shared/repositories/creditNote.repository';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { Invoice } from './../../shared/entities/invoice.entity';
 import { PaginatedListInvoicesParamsDto } from '../dtos/paginatedInvoice.dto';
@@ -9,7 +10,10 @@ import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class InvoicedPaginatedService {
-  constructor(private readonly _invoiceRepository: InvoiceRepository) {}
+  constructor(
+    private readonly _invoiceRepository: InvoiceRepository,
+    private readonly _creditNoteRepository: CreditNoteRepository,
+  ) {}
 
   async paginatedList(
     params: PaginatedListInvoicesParamsDto,
@@ -189,6 +193,27 @@ export class InvoicedPaginatedService {
 
     const [items, itemCount] = await query.getManyAndCount();
 
+    // Notas crédito por factura (conteo + total acreditado) para mostrar el
+    // badge y el neto en la lista, sin tocar la factura original.
+    const invoiceIds = items.map((i) => i.invoiceId);
+    const creditAgg = new Map<number, { count: number; total: number }>();
+    if (invoiceIds.length) {
+      const rows = await this._creditNoteRepository
+        .createQueryBuilder('cn')
+        .select('cn.invoiceId', 'invoiceId')
+        .addSelect('COUNT(*)', 'count')
+        .addSelect('COALESCE(SUM(cn.total), 0)', 'total')
+        .where('cn.invoiceId IN (:...ids)', { ids: invoiceIds })
+        .groupBy('cn.invoiceId')
+        .getRawMany<{ invoiceId: number; count: string; total: string }>();
+      for (const r of rows) {
+        creditAgg.set(Number(r.invoiceId), {
+          count: Number(r.count),
+          total: Number(r.total),
+        });
+      }
+    }
+
     const transformedItems = items.map((invoice) => {
       let totalTaxes = 0;
       let totalVat = 0;
@@ -304,6 +329,9 @@ export class InvoicedPaginatedService {
               name: invoice.stateType.name,
             }
           : undefined,
+        factusNumber: invoice.factusNumber ?? undefined,
+        creditNotesCount: creditAgg.get(invoice.invoiceId)?.count ?? 0,
+        creditNotesTotal: creditAgg.get(invoice.invoiceId)?.total ?? 0,
       };
 
       return plainToInstance(Invoice, simplified);

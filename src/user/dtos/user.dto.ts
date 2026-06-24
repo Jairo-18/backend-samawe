@@ -11,6 +11,7 @@ import {
   IsOptional,
   ValidateIf,
   IsBoolean,
+  IsInt,
   MinLength,
 } from 'class-validator';
 import { IsNotDisposableEmail } from '../../shared/validators/isNotDisposableEmail';
@@ -132,6 +133,27 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   organizationalId?: string;
+
+  @ApiPropertyOptional({ example: 'Calle 1 # 2 - 3' })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional({
+    example: 27,
+    description: 'ID del departamento (DANE). Solo aplica a clientes de Colombia.',
+  })
+  @IsOptional()
+  @IsInt()
+  departmentId?: number;
+
+  @ApiPropertyOptional({
+    example: 1071,
+    description: 'ID del municipio (DANE). Solo aplica a clientes de Colombia.',
+  })
+  @IsOptional()
+  @IsInt()
+  municipalityId?: number;
 }
 
 export interface GetAllUsersRespose {
@@ -240,6 +262,29 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   organizationalId?: string;
+
+  @ApiPropertyOptional({ example: 'Calle 1 # 2 - 3' })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional({
+    example: 27,
+    description:
+      'ID del departamento (DANE). Solo Colombia; null para extranjeros.',
+  })
+  @IsOptional()
+  @IsInt()
+  departmentId?: number | null;
+
+  @ApiPropertyOptional({
+    example: 1071,
+    description:
+      'ID del municipio (DANE). Solo Colombia; null para extranjeros.',
+  })
+  @IsOptional()
+  @IsInt()
+  municipalityId?: number | null;
 
   @ApiPropertyOptional({
     example: 'MiContraseña123!',

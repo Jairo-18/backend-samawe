@@ -65,4 +65,8 @@
     code: string;
     name: Record<string, string>;
   };
+  factusNumber?: string;
+  /** Notas crédito de la factura: conteo y total acreditado (para badge/neto). */
+  creditNotesCount?: number;
+  creditNotesTotal?: number;
 }

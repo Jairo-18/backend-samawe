@@ -47,6 +47,8 @@ export class GenericTypeService<T extends object> {
       taxeType: 'taxeTypeId',
       discountType: 'discountTypeId',
       additionalType: 'additionalTypeId',
+      department: 'departmentId',
+      municipality: 'municipalityId',
     };
     return idFieldByEntity[type] ?? 'id';
   }
@@ -63,6 +65,8 @@ export class GenericTypeService<T extends object> {
       identificationType: ['name', 'code', 'identificationTypeId'],
       stateType: ['name', 'code', 'stateTypeId'],
       taxeType: ['name', 'code', 'taxeTypeId'],
+      department: ['name', 'code', 'departmentId'],
+      municipality: ['name', 'code', 'municipalityId'],
     };
     return orderFieldsByEntity[type] || [];
   }
@@ -118,6 +122,8 @@ export class GenericTypeService<T extends object> {
       roleType: 'roleTypeId',
       stateType: 'stateTypeId',
       taxeType: 'taxeTypeId',
+      department: 'departmentId',
+      municipality: 'municipalityId',
     };
 
     const key = map[type];

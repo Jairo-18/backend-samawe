@@ -165,6 +165,22 @@ export class Invoice {
   @JoinColumn({ name: 'organizationalId' })
   organizational?: Organizational;
 
+  // Factus (facturación electrónica) result fields
+  @Column('varchar', { length: 50, nullable: true })
+  factusNumber?: string;
+
+  @Column('text', { nullable: true })
+  factusCufe?: string;
+
+  @Column('text', { nullable: true })
+  factusQrCode?: string;
+
+  @Column('text', { nullable: true })
+  factusPublicUrl?: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  factusSentAt?: Date;
+
   @CreateDateColumn()
   createdAt: Date;
 

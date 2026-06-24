@@ -1,5 +1,7 @@
 ﻿import { PayTypeRepository } from './../../shared/repositories/payType.repository';
 import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
+import { CreditNote } from './../../shared/entities/creditNote.entity';
+import { InvoiceDetaill } from './../../shared/entities/invoiceDetaill.entity';
 import { Injectable } from '@nestjs/common';
 import {
   PaymentTypeReport,
@@ -95,12 +97,53 @@ export class ReportService {
             .getRawOne();
         };
 
-        const [daily, weekly, monthly, yearly] = await Promise.all([
+        // Notas crédito a restar: mismo filtro (tipo de pago + estado), pero
+        // sobre las facturas de la NC → total acreditado por periodo.
+        const creditQuery = async (startDate: Date, endDate: Date) => {
+          return await this._invoiceRepository.manager
+            .getRepository(CreditNote)
+            .createQueryBuilder('cn')
+            .innerJoin('cn.invoice', 'invoice')
+            .leftJoin('invoice.payType', 'payType')
+            .leftJoin('invoice.paidType', 'paidType')
+            .select('COALESCE(SUM(cn.total), 0)', 'total')
+            .where(`"payType"."name"->>'es' = :paymentTypeName`, {
+              paymentTypeName,
+            })
+            .andWhere(`"paidType"."name"->>'es' IN (:...paidTypes)`, {
+              paidTypes: ['PAGADO', 'RESERVADO - PAGADO'],
+            })
+            .andWhere(
+              'invoice.createdAt >= :startDate AND invoice.createdAt <= :endDate',
+              { startDate, endDate },
+            )
+            .getRawOne();
+        };
+
+        const [
+          daily,
+          weekly,
+          monthly,
+          yearly,
+          dailyCr,
+          weeklyCr,
+          monthlyCr,
+          yearlyCr,
+        ] = await Promise.all([
           query(dateRanges.daily.start, dateRanges.daily.end),
           query(dateRanges.weekly.start, dateRanges.weekly.end),
           query(dateRanges.monthly.start, dateRanges.monthly.end),
           query(dateRanges.yearly.start, dateRanges.yearly.end),
+          creditQuery(dateRanges.daily.start, dateRanges.daily.end),
+          creditQuery(dateRanges.weekly.start, dateRanges.weekly.end),
+          creditQuery(dateRanges.monthly.start, dateRanges.monthly.end),
+          creditQuery(dateRanges.yearly.start, dateRanges.yearly.end),
         ]);
+
+        const net = (
+          gross: { total?: string } | undefined,
+          credit: { total?: string } | undefined,
+        ) => (parseFloat(gross?.total ?? '0') || 0) - (parseFloat(credit?.total ?? '0') || 0);
 
         return {
           paymentType: paymentTypeName,
@@ -108,10 +151,10 @@ export class ReportService {
           weeklyCount: parseInt(weekly?.count) || 0,
           monthlyCount: parseInt(monthly?.count) || 0,
           yearlyCount: parseInt(yearly?.count) || 0,
-          dailyTotal: parseFloat(daily?.total) || 0,
-          weeklyTotal: parseFloat(weekly?.total) || 0,
-          monthlyTotal: parseFloat(monthly?.total) || 0,
-          yearlyTotal: parseFloat(yearly?.total) || 0,
+          dailyTotal: net(daily, dailyCr),
+          weeklyTotal: net(weekly, weeklyCr),
+          monthlyTotal: net(monthly, monthlyCr),
+          yearlyTotal: net(yearly, yearlyCr),
         };
       }),
     );
@@ -119,9 +162,106 @@ export class ReportService {
     return reports;
   }
 
+  /**
+   * Subtotal acreditado por notas crédito en el rango, agrupado por NOMBRE de
+   * categoría (mismas categorías que el reporte de ventas). El neteo es por
+   * línea: `subtotal × (cantidadAcreditada / cantidad)`. Atribuido al periodo de
+   * la factura. Hospedaje → 'HOSPEDAJE'; productos/excursiones → su categoría.
+   */
+  private async getCreditedSubtotalsByCategory(
+    startDate: Date,
+    endDate: Date,
+  ): Promise<Map<string, number>> {
+    const result = new Map<string, number>();
+
+    const notes = await this._invoiceRepository.manager
+      .getRepository(CreditNote)
+      .createQueryBuilder('cn')
+      .innerJoin('cn.invoice', 'invoice')
+      .where('invoice.createdAt BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      })
+      .getMany();
+    if (!notes.length) return result;
+
+    const creditedQty = new Map<number, number>();
+    for (const note of notes) {
+      const sel = Array.isArray(note.itemsSnapshot)
+        ? (note.itemsSnapshot as { invoiceDetailId: number; quantity: number }[])
+        : [];
+      for (const it of sel) {
+        if (it && typeof it.invoiceDetailId === 'number') {
+          creditedQty.set(
+            it.invoiceDetailId,
+            (creditedQty.get(it.invoiceDetailId) ?? 0) + Number(it.quantity ?? 0),
+          );
+        }
+      }
+    }
+    if (!creditedQty.size) return result;
+
+    const details = await this._invoiceRepository.manager
+      .getRepository(InvoiceDetaill)
+      .createQueryBuilder('detail')
+      .leftJoin('detail.product', 'product')
+      .leftJoin('product.categoryType', 'categoryType')
+      .leftJoin('detail.accommodation', 'accommodation')
+      .leftJoin('detail.excursion', 'excursion')
+      .leftJoin('excursion.categoryType', 'excursionCategoryType')
+      .select([
+        'detail.invoiceDetailId AS "invoiceDetailId"',
+        'detail.subtotal AS subtotal',
+        'detail.amount AS amount',
+        'accommodation.accommodationId AS "accommodationId"',
+        `"categoryType"."name"->>'es' AS "productCategory"`,
+        `"excursionCategoryType"."name"->>'es' AS "excursionCategory"`,
+      ])
+      .where('detail.invoiceDetailId IN (:...ids)', {
+        ids: [...creditedQty.keys()],
+      })
+      .getRawMany();
+
+    for (const d of details) {
+      const qty = creditedQty.get(Number(d.invoiceDetailId)) ?? 0;
+      const amount = Number(d.amount) || 0;
+      const subtotal = Number(d.subtotal) || 0;
+      if (qty <= 0 || amount <= 0) continue;
+      const creditedSubtotal = subtotal * (qty / amount);
+
+      const category = d.accommodationId
+        ? 'HOSPEDAJE'
+        : (d.productCategory ?? d.excursionCategory);
+      if (!category) continue;
+      result.set(category, (result.get(category) ?? 0) + creditedSubtotal);
+    }
+    return result;
+  }
+
   async generateSalesByCategoryReport(): Promise<CategoryReportDto[]> {
     const now = this.getColombianDateTime();
     const dateRanges = this.calculateDateRanges(now);
+
+    // Acreditado por categoría y por rango, calculado una sola vez.
+    const [creditedDaily, creditedWeekly, creditedMonthly, creditedYearly] =
+      await Promise.all([
+        this.getCreditedSubtotalsByCategory(
+          dateRanges.daily.start,
+          dateRanges.daily.end,
+        ),
+        this.getCreditedSubtotalsByCategory(
+          dateRanges.weekly.start,
+          dateRanges.weekly.end,
+        ),
+        this.getCreditedSubtotalsByCategory(
+          dateRanges.monthly.start,
+          dateRanges.monthly.end,
+        ),
+        this.getCreditedSubtotalsByCategory(
+          dateRanges.yearly.start,
+          dateRanges.yearly.end,
+        ),
+      ]);
 
     const reports = await Promise.all(
       CATEGORY_TYPES.map(async (categoryName) => {
@@ -173,10 +313,18 @@ export class ReportService {
           weeklyCount: parseInt(weekly?.count) || 0,
           monthlyCount: parseInt(monthly?.count) || 0,
           yearlyCount: parseInt(yearly?.count) || 0,
-          dailyTotal: parseFloat(daily?.total) || 0,
-          weeklyTotal: parseFloat(weekly?.total) || 0,
-          monthlyTotal: parseFloat(monthly?.total) || 0,
-          yearlyTotal: parseFloat(yearly?.total) || 0,
+          dailyTotal:
+            (parseFloat(daily?.total) || 0) -
+            (creditedDaily.get(categoryName) ?? 0),
+          weeklyTotal:
+            (parseFloat(weekly?.total) || 0) -
+            (creditedWeekly.get(categoryName) ?? 0),
+          monthlyTotal:
+            (parseFloat(monthly?.total) || 0) -
+            (creditedMonthly.get(categoryName) ?? 0),
+          yearlyTotal:
+            (parseFloat(yearly?.total) || 0) -
+            (creditedYearly.get(categoryName) ?? 0),
         };
       }),
     );

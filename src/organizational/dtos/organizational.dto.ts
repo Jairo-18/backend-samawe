@@ -6,7 +6,9 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
+  ValidateIf,
 } from 'class-validator';
 import { HttpStatus } from '@nestjs/common';
 import { BaseResponseDto } from '../../shared/dtos/response.dto';
@@ -302,6 +304,16 @@ export class CreateOrganizationalDto {
   @IsOptional()
   @IsString()
   department?: string;
+
+  /**
+   * Propietario / representante legal: userId de un User (persona natural).
+   * Acepta null para desvincular. Distinto de los datos de la jurídica.
+   */
+  @ApiPropertyOptional({ example: 'b3f1c2d4-...', nullable: true })
+  @IsOptional()
+  @ValidateIf((o) => o.legalRepresentativeUserId !== null)
+  @IsUUID()
+  legalRepresentativeUserId?: string | null;
 
   /** IDs de relaciones opcionales */
   @ApiPropertyOptional({ example: 1 })

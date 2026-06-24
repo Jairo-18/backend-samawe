@@ -126,7 +126,13 @@ export class OrganizationalService {
   async findOne(organizationalId: string) {
     const org = await this._organizationalRepository.findOne({
       where: { organizationalId },
-      relations: ['identificationType', 'personType', 'phoneCode'],
+      relations: [
+        'identificationType',
+        'personType',
+        'phoneCode',
+        'legalRepresentative',
+        'legalRepresentative.identificationType',
+      ],
     });
 
     if (!org) {

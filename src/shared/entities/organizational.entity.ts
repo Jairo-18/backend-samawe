@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { IdentificationType } from './identificationType.entity';
 import { PersonType } from './personType.entity';
+import { User } from './user.entity';
 import { PhoneCode } from './phoneCode.entity';
 import { OrganizationalMedia } from './organizationalMedia.entity';
 import { CorporateValue } from './corporateValue.entity';
@@ -200,6 +201,32 @@ export class Organizational {
 
   @Column({ type: 'boolean', default: true })
   status: boolean;
+
+  // Factus (facturación electrónica) config
+  @Column({ type: 'integer', nullable: true })
+  factusNumberingRangeId?: number;
+
+  @Column('varchar', { length: 10, nullable: true })
+  factusMunicipalityCode?: string;
+
+  @Column('varchar', { length: 2, nullable: true })
+  factusDv?: string;
+
+  @Column('varchar', { length: 10, nullable: true, default: 'ZZ' })
+  factusTributeCode?: string;
+
+  @Column('varchar', { length: 2, nullable: true, default: '1' })
+  factusLegalOrganizationCode?: string;
+
+  // Propietario / representante legal: persona NATURAL (User existente) usada
+  // como emisor en facturas a nombre del dueño (tipo FVP). Es distinto de
+  // legalName/identificationNumber, que son los datos de la jurídica (samawe).
+  @Column('uuid', { nullable: true })
+  legalRepresentativeUserId?: string;
+
+  @ManyToOne(() => User, { nullable: true, eager: false })
+  @JoinColumn({ name: 'legalRepresentativeUserId' })
+  legalRepresentative?: User;
 
   @ManyToOne(
     () => IdentificationType,

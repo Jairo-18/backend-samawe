@@ -5,6 +5,7 @@ import { InvoiceEventsListener } from './services/invoiceEventsListener.service'
 import { BalanceService } from './services/balance.service';
 import { InvoiceDetaillRepository } from './repositories/invoiceDetaill.repository';
 import { InvoiceRepository } from './repositories/invoice.repository';
+import { CreditNoteRepository } from './repositories/creditNote.repository';
 import { PayTypeRepository } from './repositories/payType.repository';
 import { PaidTypeRepository } from './repositories/paidType.repository';
 import { AdditionalTypeRepository } from './repositories/additionalType.repository';
@@ -21,6 +22,7 @@ import { PhoneCode } from './entities/phoneCode.entity';
 import { AccessSessionsRepository } from './repositories/accessSessions.repository';
 import { AccessSessions } from './entities/accessSessions.entity';
 import { Invoice } from './entities/invoice.entity';
+import { CreditNote } from './entities/creditNote.entity';
 import { AdditionalType } from './entities/additionalType.entity';
 import { PaidType } from './entities/paidType.entity';
 import { PayType } from './entities/payType.entity';
@@ -49,6 +51,7 @@ import { BalanceRepository } from './repositories/balance.repository';
 import { Balance } from './entities/balance.entity';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MailsService } from './services/mails.service';
+import { InvoicePdfService } from './services/invoicePdf.service';
 import { MailTemplateService } from './services/mail-template.service';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { GeneralInvoiceDetaillService } from './services/generalInvoiceDetaill.service';
@@ -91,6 +94,10 @@ import { Review } from './entities/review.entity';
 import { ReviewReply } from './entities/reviewReply.entity';
 import { ReviewRepository } from './repositories/review.repository';
 import { ReviewReplyRepository } from './repositories/reviewReply.repository';
+import { Department } from './entities/department.entity';
+import { Municipality } from './entities/municipality.entity';
+import { DepartmentRepository } from './repositories/department.repository';
+import { MunicipalityRepository } from './repositories/municipality.repository';
 import { RolesGuard } from './guards/roles.guard';
 import { TranslationService } from './services/translation.service';
 import { LocalStorageService } from '../local-storage/services/local-storage.service';
@@ -161,6 +168,7 @@ export class SharedModule {
           Invoice,
           InvoiceDetaill,
           InvoiceType,
+          CreditNote,
           Notification,
           PaidType,
           PayType,
@@ -189,6 +197,8 @@ export class SharedModule {
           LegalItemChild,
           Review,
           ReviewReply,
+          Department,
+          Municipality,
         ]),
 
         JwtModule.registerAsync({
@@ -237,6 +247,7 @@ export class SharedModule {
         InvoiceRepository,
         InvoiceDetaillRepository,
         InvoiceTypeRepository,
+        CreditNoteRepository,
         NotificationRepository,
         PaidTypeRepository,
         PersonTypeRepository,
@@ -257,6 +268,7 @@ export class SharedModule {
         RepositoryService,
         InvoiceEventsListener,
         MailsService,
+        InvoicePdfService,
         MailTemplateService,
         PasswordService,
         GeneralInvoiceDetaillService,
@@ -271,6 +283,8 @@ export class SharedModule {
         LegalItemChildRepository,
         ReviewRepository,
         ReviewReplyRepository,
+        DepartmentRepository,
+        MunicipalityRepository,
         RolesGuard,
         TranslationService,
         LocalStorageService,
@@ -291,6 +305,7 @@ export class SharedModule {
         InvoiceRepository,
         InvoiceDetaillRepository,
         InvoiceTypeRepository,
+        CreditNoteRepository,
         NotificationRepository,
         PaidTypeRepository,
         PersonTypeRepository,
@@ -310,6 +325,7 @@ export class SharedModule {
         RepositoryService,
         InvoiceEventsListener,
         MailsService,
+        InvoicePdfService,
         MailTemplateService,
         PasswordService,
         GeneralInvoiceDetaillService,
@@ -325,6 +341,8 @@ export class SharedModule {
         LegalItemChildRepository,
         ReviewRepository,
         ReviewReplyRepository,
+        DepartmentRepository,
+        MunicipalityRepository,
         RolesGuard,
         TranslationService,
         LocalStorageService,

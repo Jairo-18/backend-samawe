@@ -338,6 +338,8 @@ export class InvoiceService {
         'invoiceDetails.taxeType',
         'user.phoneCode',
         'user.identificationType',
+        'user.department',
+        'user.municipality',
       ],
     });
 
@@ -463,6 +465,10 @@ export class InvoiceService {
         endDate: detail.endDate,
         isPaid: detail.isPaid,
       })),
+      factusNumber: invoice.factusNumber ?? undefined,
+      factusCufe: invoice.factusCufe ?? undefined,
+      factusQrCode: invoice.factusQrCode ?? undefined,
+      factusPublicUrl: invoice.factusPublicUrl ?? undefined,
     };
   }
 
@@ -721,7 +727,9 @@ export class InvoiceService {
         ? this._invoiceRepository.manager
             .getRepository(StateType)
             .createQueryBuilder('s')
-            .where(`s.name->>'es' IN (:...names)`, { names: ['Disponible', 'DISPONIBLE'] })
+            .where(`s.name->>'es' IN (:...names)`, {
+              names: ['Disponible', 'DISPONIBLE'],
+            })
             .getOne()
         : Promise.resolve(null),
     ]);
@@ -821,21 +829,19 @@ export class InvoiceService {
     title: string,
     message: string,
   ) {
-    const roleNames = [
-      'ADMINISTRADOR',
-      'Administrador',
-      'MESERO',
-      'Mesero',
-      'CHEF',
-      'Chef',
-      'RECEPCIONISTA',
-      'Recepcionista',
-    ];
+    // Se filtra por CÓDIGO de rol (no por nombre): es estable ante mayúsculas /
+    // traducciones y coincide con la lista del frontend que muestra el icono de
+    // notificaciones (['ADMIN','SUPERADMIN','EMP','MES','CHE']). Incluye
+    // SUPERADMIN, que antes quedaba fuera por nombre y no recibía nada.
+    const roleCodes = ['SUPERADMIN', 'ADMIN', 'EMP', 'MES', 'CHE'];
     const usersToNotify = await manager
       .getRepository(User)
       .createQueryBuilder('u')
       .leftJoinAndSelect('u.roleType', 'roleType')
-      .where(`roleType.name->>'es' IN (:...roleNames)`, { roleNames })
+      // El alias camelCase debe ir entre comillas: en una cadena cruda TypeORM
+      // no lo escapa y Postgres lo pasa a minúsculas ("roletype"), provocando
+      // "missing FROM-clause entry for table roletype".
+      .where(`"roleType".code IN (:...roleCodes)`, { roleCodes })
       .getMany();
 
     if (usersToNotify.length > 0) {
@@ -900,7 +906,8 @@ export class InvoiceService {
         );
 
         const grouped = resDetails.reduce<Record<string, number>>((acc, d) => {
-          const name = d.product!.name?.['es'] ?? JSON.stringify(d.product!.name);
+          const name =
+            d.product!.name?.['es'] ?? JSON.stringify(d.product!.name);
           acc[name] = (acc[name] ?? 0) + Number(d.amount);
           return acc;
         }, {});

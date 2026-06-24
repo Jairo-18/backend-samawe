@@ -580,6 +580,18 @@ export class GetInvoiceWithDetailsDto {
 
   @ApiProperty({ type: () => [InvoiceDetailDto] })
   invoiceDetails: InvoiceDetailDto[];
+
+  @ApiProperty({ example: 'SETP990000003', description: 'Número DIAN Factus', required: false })
+  factusNumber?: string;
+
+  @ApiProperty({ description: 'CUFE de la factura electrónica', required: false })
+  factusCufe?: string;
+
+  @ApiProperty({ description: 'URL/imagen del QR DIAN', required: false })
+  factusQrCode?: string;
+
+  @ApiProperty({ description: 'Enlace público de la factura en Factus', required: false })
+  factusPublicUrl?: string;
 }
 
 export class GetInvoiceWithDetailsResponseDto implements BaseResponseDto {

@@ -55,6 +55,9 @@ export interface UpdateUserModel {
   roleType: string;
   personType: string;
   organizationalId?: string;
+  address?: string;
+  departmentId?: number | null;
+  municipalityId?: number | null;
   password?: string;
   confirmPassword?: string;
 }

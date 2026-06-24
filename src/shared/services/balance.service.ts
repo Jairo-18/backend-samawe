@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Between, IsNull } from 'typeorm';
+import { Between, In, IsNull } from 'typeorm';
 import { ProductRepository } from './../repositories/product.repository';
 import { BalanceRepository } from './../repositories/balance.repository';
 import { InvoiceRepository } from './../repositories/invoice.repository';
 import { Invoice } from './../entities/invoice.entity';
+import { CreditNote } from '../entities/creditNote.entity';
 import { Balance } from '../entities/balance.entity';
 import { BalanceType } from '../constants/balanceType.constants';
 
@@ -104,6 +105,10 @@ export class BalanceService {
         { totalInvoiceSale: number; totalInvoiceBuy: number }
       >();
 
+      // Facturas de venta del periodo (FV + FVE) → su org, para luego restarles
+      // las notas crédito (solo las electrónicas las tienen).
+      const saleInvoiceOrgById = new Map<number, string>();
+
       for (const invoice of invoices) {
         const orgId = invoice.organizational?.organizationalId || 'global';
         const amount = Number(invoice.total) || 0;
@@ -114,10 +119,31 @@ export class BalanceService {
         }
         const orgTotals = totalsByOrg.get(orgId)!;
 
-        if (invoiceTypeCode === 'FV') {
+        // Las electrónicas (FVE) también son ventas; al emitir, la factura
+        // cambia su tipo de FV a FVE → hay que contar ambos.
+        if (invoiceTypeCode === 'FV' || invoiceTypeCode === 'FVE') {
           orgTotals.totalInvoiceSale += amount;
+          saleInvoiceOrgById.set(invoice.invoiceId, orgId);
         } else if (invoiceTypeCode === 'FC') {
           orgTotals.totalInvoiceBuy += amount;
+        }
+      }
+
+      // Ventas NETAS: resta el total de las notas crédito a la venta de su
+      // factura. Se atribuye al periodo de la factura original (mismo criterio
+      // que la columna "Neto" del listado), no al de emisión de la NC.
+      const saleInvoiceIds = [...saleInvoiceOrgById.keys()];
+      if (saleInvoiceIds.length) {
+        const creditNotes = await manager.find(CreditNote, {
+          where: { invoiceId: In(saleInvoiceIds) },
+        });
+        for (const cn of creditNotes) {
+          const orgId = saleInvoiceOrgById.get(cn.invoiceId);
+          if (!orgId) continue;
+          const orgTotals = totalsByOrg.get(orgId);
+          if (orgTotals) {
+            orgTotals.totalInvoiceSale -= Number(cn.total) || 0;
+          }
         }
       }
 

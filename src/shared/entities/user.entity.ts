@@ -15,6 +15,8 @@ import { RoleType } from './roleType.entity';
 import { Invoice } from './invoice.entity';
 import { PersonType } from './personType.entity';
 import { Organizational } from './organizational.entity';
+import { Department } from './department.entity';
+import { Municipality } from './municipality.entity';
 
 @Entity({ name: 'User' })
 export class User {
@@ -44,6 +46,27 @@ export class User {
     nullable: true,
   })
   email: string;
+
+  @Column('varchar', { length: 255, nullable: true })
+  address?: string;
+
+  // Ubicación (catálogo DANE). Solo aplica a clientes en Colombia; para
+  // extranjeros queda en null (se factura con el municipio del negocio).
+  // Las FKs se exponen como columnas (además de la relación) para poder
+  // asignarlas/limpiarlas directamente en create/update.
+  @Column('int', { nullable: true })
+  departmentId?: number | null;
+
+  @ManyToOne(() => Department, { nullable: true, eager: false })
+  @JoinColumn({ name: 'departmentId' })
+  department?: Department;
+
+  @Column('int', { nullable: true })
+  municipalityId?: number | null;
+
+  @ManyToOne(() => Municipality, { nullable: true, eager: false })
+  @JoinColumn({ name: 'municipalityId' })
+  municipality?: Municipality;
 
   @Column('varchar', {
     length: 25,
@@ -115,6 +138,19 @@ export class User {
 
   @Column({ type: 'boolean', default: false })
   isBanned: boolean;
+
+  // Factus (facturación electrónica) — datos del cliente como receptor
+  @Column('varchar', { length: 10, nullable: true })
+  factusMunicipalityCode?: string;
+
+  @Column('varchar', { length: 2, nullable: true })
+  factusDv?: string;
+
+  @Column('varchar', { length: 10, nullable: true, default: 'ZZ' })
+  factusTributeCode?: string;
+
+  @Column('varchar', { length: 2, nullable: true, default: '2' })
+  factusLegalOrganizationCode?: string;
 
   @CreateDateColumn({
     type: 'timestamp',

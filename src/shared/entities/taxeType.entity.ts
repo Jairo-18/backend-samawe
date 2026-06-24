@@ -18,6 +18,10 @@ export class TaxeType {
   @Column('float', { nullable: false })
   percentage: number;
 
+  // Factus DIAN tax code: "01"=IVA, "04"=INC (IPOCONSUMO)
+  @Column('varchar', { length: 5, nullable: true })
+  factusCode?: string;
+
   @CreateDateColumn({
     type: 'timestamp',
   })
