@@ -1,4 +1,4 @@
-﻿import { User } from './user.entity';
+import { User } from './user.entity';
 import { PayType } from './payType.entity';
 import {
   Column,
@@ -166,6 +166,14 @@ export class Invoice {
   organizational?: Organizational;
 
   // Factus (facturación electrónica) result fields
+
+  // El reference_code real enviado a Factus. Normalmente coincide con invoice.code,
+  // pero cuando hay reintentos por 409/Regla-90 se añade un sufijo (-v2, -v3…) para
+  // evitar el rechazo por "documento procesado anteriormente". Se guarda para poder
+  // referenciar la factura en Factus y en notas crédito.
+  @Column('varchar', { length: 80, nullable: true })
+  factusReferenceCode?: string;
+
   @Column('varchar', { length: 50, nullable: true })
   factusNumber?: string;
 

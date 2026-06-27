@@ -400,6 +400,96 @@ export class FactusInvoiceService {
     };
   }
 
+  /**
+   * RECUPERACIÓN: la factura fue procesada por la DIAN (Regla 90 / ya existe en
+   * Factus) pero el resultado nunca se guardó en la BD local (p. ej. el servidor
+   * cayó justo después de emitir, o hubo un timeout). Este método busca la
+   * factura en Factus por reference_code (y variantes -v2/-v3 si las hubiera),
+   * extrae el número/CUFE/QR y los persiste en la factura interna.
+   *
+   * Después de esto la factura queda marcada como electrónica y no se puede
+   * volver a emitir (idempotencia normal).
+   */
+  async recoverFromFactus(invoiceId: number): Promise<FactusBillResult> {
+    const invoice = await this.loadInvoice(invoiceId);
+
+    if (invoice.factusNumber) {
+      this.logger.log(
+        `Factura ${invoiceId} ya tiene factusNumber ${invoice.factusNumber}; no hace falta recuperar.`,
+      );
+      return {
+        billNumber: invoice.factusNumber,
+        referenceCode: invoice.factusReferenceCode ?? invoice.code,
+        isValidated: true,
+        cufe: invoice.factusCufe ?? null,
+        qrCode: invoice.factusQrCode ?? null,
+        publicUrl: invoice.factusPublicUrl ?? null,
+        createdAt:
+          invoice.factusSentAt?.toISOString() ?? invoice.createdAt.toISOString(),
+      };
+    }
+
+    // Probamos el code base y hasta 5 sufijos (-v2 … -v6) por si algún reintento
+    // anterior usó sufijo. Nos detenemos en el primero que Factus devuelva.
+    const candidates = [
+      invoice.code,
+      ...([2, 3, 4, 5, 6].map((n) => `${invoice.code}-v${n}`)),
+    ];
+
+    let raw: any = null;
+    let matchedRef: string = invoice.code;
+
+    for (const ref of candidates) {
+      try {
+        const res = await this.billsService.getBillByReference(ref);
+        const bills = (res as any)?.data?.data ?? (res as any)?.data ?? [];
+        const found = Array.isArray(bills) ? bills[0] : bills;
+        if (found?.number || found?.bill_number) {
+          raw = found;
+          matchedRef = ref;
+          this.logger.log(
+            `Factura ${invoiceId}: encontrada en Factus con reference_code="${ref}" → número ${found.number ?? found.bill_number}`,
+          );
+          break;
+        }
+      } catch {
+        // Si Factus devuelve 404 para este ref, seguimos con el siguiente.
+      }
+    }
+
+    if (!raw) {
+      throw new NotFoundException(
+        `No se encontró la factura ${invoiceId} en Factus con ninguno de los ` +
+          `reference_codes probados (${candidates.join(', ')}). ` +
+          `Verifica en el portal de Factus el reference_code correcto.`,
+      );
+    }
+
+    // Armamos el resultado en el mismo formato que extractResult usa
+    const result: FactusBillResult = {
+      billNumber: raw.number ?? raw.bill_number ?? null,
+      referenceCode: matchedRef,
+      isValidated: raw.is_validated ?? true,
+      cufe: raw.cufe ?? null,
+      qrCode: raw.links?.qr ?? raw.qr_code ?? null,
+      publicUrl: raw.links?.public_url ?? null,
+      createdAt: raw.created_at ?? new Date().toISOString(),
+    };
+
+    // Guardar el factusReferenceCode real (puede tener sufijo) además del resultado
+    invoice.factusReferenceCode = matchedRef;
+    await this.saveFactusResult(invoice, result);
+
+    this.logger.log(
+      `Factura ${invoiceId} recuperada de Factus: número=${result.billNumber}, CUFE=${result.cufe?.slice(0, 20)}…`,
+    );
+
+    // Notificaciones en segundo plano (best-effort, igual que en emisión normal)
+    this.dispatchPostEmissionNotifications(invoice, result);
+
+    return result;
+  }
+
   private async loadInvoice(invoiceId: number): Promise<Invoice> {
     const invoice = await this.invoiceRepository.findOne({
       where: { invoiceId },

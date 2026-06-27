@@ -35,6 +35,20 @@ export class FactusInvoiceController {
     return { success: true, data: result };
   }
 
+  @Post(':id/recover')
+  @ApiOperation({
+    summary: 'Recuperar factura ya procesada por la DIAN (Regla 90)',
+    description:
+      'Úsalo cuando la DIAN ya procesó la factura (error "Regla 90 — Documento procesado anteriormente") ' +
+      'pero el resultado nunca se guardó en el sistema. Busca la factura en Factus por reference_code, ' +
+      'extrae el número, CUFE, QR y los sincroniza a la BD local. ' +
+      'Después de esto la factura queda marcada como electrónica normalmente.',
+  })
+  async recoverInvoice(@Param('id', ParseIntPipe) id: number) {
+    const result = await this.invoiceService.recoverFromFactus(id);
+    return { success: true, recovered: true, data: result };
+  }
+
   @Get(':id/status')
   @ApiOperation({
     summary: 'Consultar estado Factus de una factura interna (solo lectura)',
