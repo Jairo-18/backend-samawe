@@ -126,6 +126,12 @@
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
   },
+  "pnpm": {
+    "//": "pnpm 10+ no ejecuta scripts de instalación salvo que se declaren aquí, y falla con ERR_PNPM_IGNORED_BUILDS si no hay decisión explícita. sharp SÍ necesita su script (compila/baja los binarios nativos que usa invoicePdf.service para convertir el logo WebP a PNG). @nestjs/core y @scarf/scarf solo imprimen mensajes/telemetría: se dejan deliberadamente sin ejecutar.",
+    "onlyBuiltDependencies": [
+      "sharp"
+    ]
+  },
   "pkg": {
     "scripts": [
       "dist/src/main.js"

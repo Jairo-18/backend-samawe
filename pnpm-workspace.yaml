@@ -1,4 +1,14 @@
+# sharp necesita su script de instalación (binarios nativos que usa
+# invoicePdf.service para convertir el logo WebP a PNG). @nestjs/core y
+# @scarf/scarf solo imprimen mensajes/telemetría: se dejan sin ejecutar.
+#
+# Se declaran las dos claves a propósito: `allowBuilds` es la de pnpm 11 (la que
+# usa el entorno local) y `onlyBuiltDependencies` la de pnpm 10 (la versión
+# fijada en el Dockerfile). Con una sola, la otra versión vuelve a preguntar.
 allowBuilds:
   '@nestjs/core': false
   '@scarf/scarf': false
   sharp: true
+
+onlyBuiltDependencies:
+  - sharp
