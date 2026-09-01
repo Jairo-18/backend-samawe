@@ -74,9 +74,41 @@ export class FactusInvoiceService {
       invoice.organizational?.factusNumberingRangeId,
     );
     const payload = this.buildPayload(invoice, numberingRangeId);
-    const raw = await this.billsService.createAndValidateBill(payload);
+
+    let raw: any;
+    let attempt = 0;
+    const maxAttempts = 6;
+    let currentReferenceCode = invoice.code;
+
+    while (attempt < maxAttempts) {
+      try {
+        raw = await this.billsService.createAndValidateBill(payload);
+        break; // Éxito
+      } catch (error: any) {
+        const isConflict = error?.status === 409 || error?.response?.statusCode === 409;
+        const isRule90 =
+          (error?.status === 422 || error?.response?.statusCode === 422) &&
+          JSON.stringify(error?.response ?? {}).includes('procesado anteriormente');
+
+        if (isConflict || isRule90) {
+          attempt++;
+          if (attempt >= maxAttempts) throw error;
+          
+          currentReferenceCode = `${invoice.code}-v${attempt + 1}`;
+          payload.reference_code = currentReferenceCode;
+          
+          this.logger.warn(
+            `Factura ${invoiceId}: reference_code anterior rechazado (409/Regla 90). ` +
+            `Reintentando con sufijo: ${currentReferenceCode}`,
+          );
+        } else {
+          throw error;
+        }
+      }
+    }
 
     const result = this.extractResult(raw);
+    invoice.factusReferenceCode = currentReferenceCode;
     await this.saveFactusResult(invoice, result);
 
     // La factura ya quedó válida ante la DIAN y guardada (número + CUFE + QR).
@@ -739,10 +771,62 @@ export class FactusInvoiceService {
     invoice.factusQrCode = result.qrCode ?? undefined;
     invoice.factusPublicUrl = result.publicUrl ?? undefined;
     invoice.factusSentAt = new Date();
+    // factusReferenceCode puede haber sido seteado antes (p. ej. en recoverFromFactus
+    // cuando el reference_code real difiere de invoice.code por sufijo -v2/-v3).
+    // Si no fue tocado, lo igualamos al code para que siempre quede poblado.
+    if (!invoice.factusReferenceCode) {
+      invoice.factusReferenceCode = invoice.code;
+    }
 
     await this.invoiceRepository.save(invoice);
     this.logger.log(
       `Invoice ${invoice.invoiceId} saved with Factus number ${invoice.factusNumber}`,
     );
+  }
+
+  /**
+   * Limpia los campos Factus de una factura (factusNumber, CUFE, QR, publicUrl,
+   * factusReferenceCode, factusSentAt) para permitir reenviarla desde cero.
+   *
+   * ⚠️ ÚSALO SOLO SI:
+   *  a) La factura tiene un número de SANDBOX (SETP…) y nunca fue enviada a prod.
+   *  b) Confirmaste en el portal de Factus que NO existe en producción.
+   * Si la factura ya fue validada por la DIAN en prod, usa recoverFromFactus en
+   * vez de este endpoint para recuperar el número real sin re-emitir.
+   */
+  async resetFactusFields(invoiceId: number): Promise<{ reset: boolean; message: string }> {
+    const invoice = await this.invoiceRepository.findOne({
+      where: { invoiceId },
+    });
+    if (!invoice) throw new NotFoundException(`Factura ${invoiceId} no encontrada`);
+
+    const prevNumber = invoice.factusNumber;
+
+    invoice.factusNumber = undefined;
+    invoice.factusCufe = undefined;
+    invoice.factusQrCode = undefined;
+    invoice.factusPublicUrl = undefined;
+    invoice.factusSentAt = undefined;
+    invoice.factusReferenceCode = undefined;
+    invoice.invoiceElectronic = false;
+    // Volvemos al tipo FV (id=3) para que aparezca en la lista de ventas normales
+    // hasta que sea re-emitida. El id 3 es FV en prod (confirmado por el dueño).
+    invoice.invoiceType = { invoiceTypeId: 3 } as any;
+
+    await this.invoiceRepository.save(invoice);
+
+    this.logger.warn(
+      `Factura ${invoiceId}: campos Factus limpiados (previo número: ${prevNumber ?? 'ninguno'}). ` +
+        `Lista para reenviar a Factus con POST :id/send.`,
+    );
+
+    return {
+      reset: true,
+      message:
+        `Factura ${invoiceId} reseteada. Número anterior: ${prevNumber ?? 'ninguno'}. ` +
+        `Ahora puedes reenviarla con POST /factus/invoices/${invoiceId}/send. ` +
+        `IMPORTANTE: si la DIAN ya la tiene con el reference_code "${invoice.code}", ` +
+        `Factus rechazará con Regla 90. En ese caso usa primero POST :id/recover.`,
+    };
   }
 }

@@ -60,4 +60,17 @@ export class FactusInvoiceController {
     const result = await this.invoiceService.getFactusStatus(id);
     return { success: true, data: result };
   }
+
+  @Post(':id/reset-factus')
+  @ApiOperation({
+    summary: '⚠️ Limpiar campos Factus de una factura (sandbox → prod)',
+    description:
+      'Borra factusNumber, CUFE, QR y publicUrl de la factura para poder reenviarla a Factus prod. ' +
+      'SOLO úsalo si la factura tiene un número de SANDBOX (SETP…) y confirmaste en el portal de ' +
+      'Factus que NO existe en producción. Si la DIAN ya la tiene, usa POST :id/recover en cambio.',
+  })
+  async resetFactus(@Param('id', ParseIntPipe) id: number) {
+    const result = await this.invoiceService.resetFactusFields(id);
+    return { success: true, ...result };
+  }
 }
