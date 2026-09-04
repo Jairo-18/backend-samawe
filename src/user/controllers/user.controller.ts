@@ -52,6 +52,7 @@ import {
 } from '@nestjs/common';
 import { GetUser } from '../../shared/decorators/user.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { IMAGE_UPLOAD_OPTIONS } from '../../shared/constants/upload.constant';
 import { Throttle } from '@nestjs/throttler';
 import { IsNotEmpty, IsString } from 'class-validator';
 import { AuthGuard } from '@nestjs/passport';
@@ -253,7 +254,7 @@ export class UserController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
   @Roles(...ALL_ROLES)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', IMAGE_UPLOAD_OPTIONS))
   async uploadAvatar(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,

@@ -32,6 +32,7 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { IMAGE_UPLOAD_OPTIONS } from '../../shared/constants/upload.constant';
 import { LocalStorageService } from './../../local-storage/services/local-storage.service';
 import { ExcursionImageService } from '../services/excursionImage.service';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -145,7 +146,7 @@ export class ExcursionController {
 
   @Post(':id/images')
   @UploadImageDocs()
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', IMAGE_UPLOAD_OPTIONS))
   async uploadImage(
     @Param('id') excursionId: number,
     @UploadedFile() file: Express.Multer.File,

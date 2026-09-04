@@ -31,6 +31,7 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { IMAGE_UPLOAD_OPTIONS } from '../../shared/constants/upload.constant';
 import { LocalStorageService } from './../../local-storage/services/local-storage.service';
 import { AccommodationImageService } from '../services/accommodationImage.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -143,7 +144,7 @@ export class AccommodationController {
 
   @Post(':id/images')
   @UploadImageDocs()
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', IMAGE_UPLOAD_OPTIONS))
   async uploadImage(
     @Param('id') accommodationId: number,
     @UploadedFile() file: Express.Multer.File,

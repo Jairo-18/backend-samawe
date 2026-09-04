@@ -29,6 +29,7 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { IMAGE_UPLOAD_OPTIONS } from '../../shared/constants/upload.constant';
 import { LocalStorageService } from './../../local-storage/services/local-storage.service';
 import { ProductImageService } from '../services/productImage.service';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -141,7 +142,7 @@ export class ProductController {
 
   @Post(':id/images')
   @UploadImageDocs()
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', IMAGE_UPLOAD_OPTIONS))
   async uploadImage(
     @Param('id') productId: number,
     @UploadedFile() file: Express.Multer.File,

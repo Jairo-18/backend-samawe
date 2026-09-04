@@ -39,6 +39,7 @@ import {
   FindAllMediaTypesDocs,
 } from '../decorators/organizational.decorators';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { IMAGE_UPLOAD_OPTIONS } from '../../shared/constants/upload.constant';
 import { LocalStorageService } from '../../local-storage/services/local-storage.service';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CreatedRecordResponseDto } from 'src/shared/dtos/response.dto';
@@ -152,7 +153,7 @@ export class OrganizationalController {
   @Post(':id/upload-media')
   @ApiBearerAuth()
   @UploadMediaDocs()
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', IMAGE_UPLOAD_OPTIONS))
   @UseGuards(AuthGuard(), RolesGuard)
   async uploadMedia(
     @Param('id') id: string,
@@ -248,7 +249,7 @@ export class OrganizationalController {
   @Post('corporate-values/:valueId/upload-image')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', IMAGE_UPLOAD_OPTIONS))
   async uploadCorporateValueImage(
     @Param('valueId') valueId: string,
     @UploadedFile() file: Express.Multer.File,

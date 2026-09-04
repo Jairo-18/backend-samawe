@@ -26,6 +26,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import * as bodyParser from 'body-parser';
+import { MulterExceptionFilter } from './shared/filters/multer-exception.filter';
 import { LoggingInterceptor } from './shared/interceptors/logging.interceptor';
 import { AppDataSource } from 'typeorm.config';
 
@@ -72,6 +73,11 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  // Multer aborta antes de llegar al controlador, así que sus errores no pasan
+  // por la lógica de la app: sin este filtro, pasarse del tamaño máximo
+  // devuelve un 500 genérico en vez de decir qué ocurrió.
+  app.useGlobalFilters(new MulterExceptionFilter());
 
   app.useGlobalInterceptors(
     new LoggingInterceptor(),
