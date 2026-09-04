@@ -64,3 +64,25 @@ export interface AccommodationPublicListItem {
   stateType: StateTypeClean | null;
   images: AccommodationImage[];
 }
+
+/**
+ * Ficha pública de un hospedaje. Añade `code` sobre el item de listado, que la
+ * página de detalle usa para la URL legible y como referencia visible.
+ * Deliberadamente NO expone `priceBuy` ni el `organizationalId`: es un endpoint
+ * sin autenticación.
+ */
+export interface AccommodationPublicDetail extends AccommodationPublicListItem {
+  code?: string;
+}
+
+/**
+ * Un tramo ocupado. Solo fechas: este endpoint es público, así que no sale de
+ * aquí nada del huésped ni de la factura.
+ *
+ * El intervalo es SEMIABIERTO: `endDate` es el momento de salida y ese día ya
+ * está libre para una nueva entrada.
+ */
+export interface AccommodationOccupiedRange {
+  startDate: string;
+  endDate: string;
+}

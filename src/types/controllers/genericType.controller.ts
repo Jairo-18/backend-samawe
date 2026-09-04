@@ -14,6 +14,7 @@ import {
   Param,
   Post,
   NotFoundException,
+  ForbiddenException,
   UseGuards,
   HttpStatus,
   Patch,
@@ -36,8 +37,19 @@ import {
 } from '../dtos/genericType.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../../shared/decorators/roles.decorator';
+import { GetUser } from '../../shared/decorators/user.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
+
+const STAFF_ROLES = [RolesUser.SUPERADMIN, RolesUser.ADMIN, RolesUser.EMP];
+
+/**
+ * Catálogos que cualquier usuario autenticado puede leer en `GET :type/all`.
+ * Son datos públicos del DANE que el cliente necesita para completar su propio
+ * perfil (departamento y municipio). El resto de tipos —roles, tipos de factura,
+ * etc.— sigue restringido al personal.
+ */
+const PUBLIC_CATALOG_TYPES = ['department', 'municipality'];
 
 @Controller('type')
 @ApiTags('Tipos')
@@ -87,9 +99,29 @@ export class GenericTypeController {
   }
 
   @Get(':type/all')
+  // Se abre a todos los roles y la restricción se aplica abajo por tipo: los
+  // catálogos DANE los necesita el propio cliente (rol USER) para editar su
+  // perfil, pero el resto de tipos debe seguir siendo solo del personal.
+  @Roles(
+    RolesUser.SUPERADMIN,
+    RolesUser.ADMIN,
+    RolesUser.EMP,
+    RolesUser.PRO,
+    RolesUser.CHE,
+    RolesUser.MES,
+    RolesUser.USER,
+  )
   @GetAllByTypeDocs()
-  async getAllByType(@Param('type') type: string) {
+  async getAllByType(@Param('type') type: string, @GetUser() user: any) {
     this.validateTypeExists(type);
+
+    const isStaff = STAFF_ROLES.includes(user?.roleType?.code);
+    if (!isStaff && !PUBLIC_CATALOG_TYPES.includes(type)) {
+      throw new ForbiddenException(
+        'No tienes permisos para realizar esta acción',
+      );
+    }
+
     const result = await this.genericTypeUC.getAll(type);
     return {
       statusCode: HttpStatus.OK,

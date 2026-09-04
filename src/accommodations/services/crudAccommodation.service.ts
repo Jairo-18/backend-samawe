@@ -2,7 +2,7 @@ import { AccommodationRepository } from './../../shared/repositories/accommodati
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { RepositoryService } from '../../shared/services/repositoriry.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   PaginatedAccommodationSelectParamsDto,
   PaginatedListAccommodationsParamsDto,
@@ -11,14 +11,22 @@ import {
 import { ParamsPaginationDto } from '../../shared/dtos/pagination.dto';
 import {
   AccommodationInterfacePaginatedList,
+  AccommodationOccupiedRange,
+  AccommodationPublicDetail,
   AccommodationPublicListItem,
 } from '../interface/accommodation.interface';
+import { InvoiceDetaillRepository } from '../../shared/repositories/invoiceDetaill.repository';
+import {
+  RESERVED_PAID_TYPE_CONDITION,
+  RESERVED_PAID_TYPE_PARAMS,
+} from '../../shared/constants/accommodationOccupancy.constant';
 
 @Injectable()
 export class CrudAccommodationService {
   constructor(
     private readonly _repositoriesService: RepositoryService,
     private readonly _accommodationRepository: AccommodationRepository,
+    private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
   ) {}
 
   async paginatedList(params: PaginatedListAccommodationsParamsDto) {
@@ -33,6 +41,32 @@ export class CrudAccommodationService {
       .skip(skip)
       .take(params.perPage)
       .orderBy('acc_name_sort', 'ASC');
+
+    // Disponibilidad: excluye los hospedajes con una reserva solapada en el
+    // rango pedido. Mismo criterio de solape que la validación al guardar el
+    // detalle (intervalos semiabiertos: el día de salida queda libre), para que
+    // el listado y el guardado nunca discrepen.
+    if (params.startDate && params.endDate) {
+      query.andWhere(
+        `NOT EXISTS (
+          SELECT 1
+          FROM "InvoiceDetaill" "od"
+          INNER JOIN "Invoice" "oi" ON "oi"."invoiceId" = "od"."invoiceId"
+          INNER JOIN "PaidType" "paidType" ON "paidType"."paidTypeId" = "oi"."paidTypeId"
+          WHERE "od"."accommodationId" = "accommodation"."accommodationId"
+            AND "od"."startDate" < :availEnd
+            AND "od"."endDate" > :availStart
+            AND "od"."deletedAt" IS NULL
+            AND "oi"."deletedAt" IS NULL
+            AND ${RESERVED_PAID_TYPE_CONDITION}
+        )`,
+        {
+          availStart: params.startDate,
+          availEnd: params.endDate,
+          ...RESERVED_PAID_TYPE_PARAMS,
+        },
+      );
+    }
 
     if (params.code) {
       query.andWhere('accommodation.code ILIKE :code', { code: `%${params.code}%` });
@@ -231,6 +265,108 @@ export class CrudAccommodationService {
 
     const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto: params });
     return new ResponsePaginationDto(items, pageMetaDto);
+  }
+
+  /**
+   * Ficha pública de un hospedaje, sin autenticación. Devuelve los mismos
+   * campos que el listado público más el `code`; nunca `priceBuy`.
+   */
+  async publicDetail(
+    accommodationId: number,
+  ): Promise<AccommodationPublicDetail> {
+    const a = await this._accommodationRepository
+      .createQueryBuilder('accommodation')
+      .leftJoinAndSelect('accommodation.categoryType', 'categoryType')
+      .leftJoinAndSelect('accommodation.bedType', 'bedType')
+      .leftJoinAndSelect('accommodation.stateType', 'stateType')
+      .leftJoinAndSelect('accommodation.images', 'images')
+      .where('accommodation.accommodationId = :accommodationId', {
+        accommodationId,
+      })
+      .getOne();
+
+    if (!a) {
+      throw new NotFoundException('Hospedaje no encontrado');
+    }
+
+    return {
+      accommodationId: a.accommodationId,
+      code: a.code,
+      name: a.name,
+      description: a.description,
+      amountPerson: a.amountPerson,
+      amountRoom: a.amountRoom,
+      amountBathroom: a.amountBathroom,
+      jacuzzi: a.jacuzzi,
+      priceSale: a.priceSale,
+      categoryType: a.categoryType
+        ? {
+            categoryTypeId: a.categoryType.categoryTypeId,
+            code: a.categoryType.code,
+            name: a.categoryType.name,
+          }
+        : null,
+      bedType: a.bedType
+        ? {
+            bedTypeId: a.bedType.bedTypeId,
+            code: a.bedType.code,
+            name: a.bedType.name,
+          }
+        : null,
+      stateType: a.stateType
+        ? {
+            stateTypeId: a.stateType.stateTypeId,
+            code: a.stateType.code,
+            name: a.stateType.name,
+          }
+        : null,
+      images:
+        a.images?.map((img) => ({
+          accommodationImageId: img.accommodationImageId,
+          imageUrl: img.imageUrl,
+          publicId: img.publicId,
+        })) ?? [],
+    };
+  }
+
+  /**
+   * Tramos ocupados de un hospedaje, para pintar el calendario público.
+   *
+   * Solo devuelve fechas. Filtra por los mismos estados que bloquean al
+   * facturar (`RESERVED_PAID_TYPE_CODES`), así que el calendario y la
+   * validación del panel no pueden discrepar.
+   *
+   * Descarta los tramos con `endDate <= startDate`: en producción hay 12 filas
+   * así, y otras 111 de menos de una hora, herencia de cuando el formulario
+   * traía "ahora" y "ahora + 5 minutos" como horas por defecto. Un rango
+   * invertido no representa ocupación de nada y ensuciaría el calendario.
+   */
+  async publicOccupiedRanges(
+    accommodationId: number,
+    from: Date,
+    to: Date,
+  ): Promise<AccommodationOccupiedRange[]> {
+    const rows = await this._invoiceDetaillRepository
+      .createQueryBuilder('detail')
+      .select(['detail.startDate', 'detail.endDate'])
+      .innerJoin('detail.invoice', 'invoice')
+      .innerJoin('invoice.paidType', 'paidType')
+      .where('detail.accommodation = :accommodationId', { accommodationId })
+      .andWhere('detail.startDate IS NOT NULL AND detail.endDate IS NOT NULL')
+      .andWhere('detail.endDate > detail.startDate')
+      .andWhere('detail.startDate < :to AND detail.endDate > :from', {
+        from,
+        to,
+      })
+      .andWhere('invoice.deletedAt IS NULL')
+      .andWhere(RESERVED_PAID_TYPE_CONDITION, RESERVED_PAID_TYPE_PARAMS)
+      .orderBy('detail.startDate', 'ASC')
+      .getMany();
+
+    return rows.map((r) => ({
+      startDate: (r.startDate as Date).toISOString(),
+      endDate: (r.endDate as Date).toISOString(),
+    }));
   }
 
   async paginatedPartialAccommodations(

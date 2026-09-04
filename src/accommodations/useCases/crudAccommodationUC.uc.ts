@@ -25,4 +25,16 @@ export class CrudAccommodationUC {
   async paginatedPublicList(params: ParamsPaginationDto) {
     return await this._crudAccommodationService.paginatedPublicList(params);
   }
+
+  async publicDetail(accommodationId: number) {
+    return await this._crudAccommodationService.publicDetail(accommodationId);
+  }
+
+  async publicOccupiedRanges(accommodationId: number, from: Date, to: Date) {
+    return await this._crudAccommodationService.publicOccupiedRanges(
+      accommodationId,
+      from,
+      to,
+    );
+  }
 }

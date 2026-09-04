@@ -1,4 +1,11 @@
-import { Controller, Get, HttpStatus, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
 import {
   ApiOkResponse,
   ApiOperation,
@@ -9,7 +16,11 @@ import { AccommodationUC } from '../useCases/accommodationUC.uc';
 import { CrudAccommodationUC } from '../useCases/crudAccommodationUC.uc';
 import { ParamsPaginationDto } from '../../shared/dtos/pagination.dto';
 import { ResponsePaginationDto } from '../../shared/dtos/pagination.dto';
-import { AccommodationPublicListItem } from '../interface/accommodation.interface';
+import {
+  AccommodationOccupiedRange,
+  AccommodationPublicDetail,
+  AccommodationPublicListItem,
+} from '../interface/accommodation.interface';
 
 class AccommodationImageSwaggerDto {
   @ApiProperty({ example: 4 })
@@ -123,5 +134,54 @@ export class AccommodationPublicController {
     @Query() params: ParamsPaginationDto,
   ): Promise<ResponsePaginationDto<AccommodationPublicListItem>> {
     return this._crudAccommodationUC.paginatedPublicList(params);
+  }
+
+  /**
+   * Tramos ocupados para el calendario de la ficha. Devuelve solo fechas.
+   * Se declara ANTES de ':id' porque Nest resuelve por orden y una ruta más
+   * específica declarada después nunca se alcanzaría.
+   */
+  @Get(':id/availability')
+  @ApiOperation({
+    summary: 'Fechas ocupadas de un hospedaje (acceso público)',
+  })
+  @ApiOkResponse({ description: 'Tramos ocupados, intervalos semiabiertos' })
+  async getPublicAvailability(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('months') months?: string,
+  ): Promise<{ statusCode: number; data: AccommodationOccupiedRange[] }> {
+    // Ventana acotada: sin tope, un `months` enorme haría escanear todo el
+    // histórico de detalles en un endpoint sin autenticación.
+    const parsed = Number(months);
+    const window = Number.isFinite(parsed)
+      ? Math.min(Math.max(Math.trunc(parsed), 1), 24)
+      : 12;
+
+    const from = new Date();
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(from);
+    to.setMonth(to.getMonth() + window);
+
+    const data = await this._crudAccommodationUC.publicOccupiedRanges(
+      id,
+      from,
+      to,
+    );
+    return { statusCode: HttpStatus.OK, data };
+  }
+
+  /**
+   * Ficha de un hospedaje, sin autenticación: es una página indexable por
+   * Google. Va la última del controlador para que 'most-requested' y 'list' no
+   * caigan en el comodín ':id'.
+   */
+  @Get(':id')
+  @ApiOperation({ summary: 'Ficha de un hospedaje (acceso público)' })
+  @ApiOkResponse({ description: 'Datos públicos del hospedaje' })
+  async getPublicDetail(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ statusCode: number; data: AccommodationPublicDetail }> {
+    const data = await this._crudAccommodationUC.publicDetail(id);
+    return { statusCode: HttpStatus.OK, data };
   }
 }

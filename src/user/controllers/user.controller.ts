@@ -38,6 +38,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpStatus,
   Param,
@@ -49,6 +50,7 @@ import {
   UseInterceptors,
   UploadedFile,
 } from '@nestjs/common';
+import { GetUser } from '../../shared/decorators/user.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { IsNotEmpty, IsString } from 'class-validator';
@@ -187,11 +189,31 @@ export class UserController {
     };
   }
 
+  /**
+   * Un usuario sin rol de personal solo puede tocar su propia cuenta. Sin esta
+   * comprobación el `:id` de la URL bastaba para leer o editar a cualquier otro
+   * (los endpoints aceptan todos los roles), y en el PATCH además se podía
+   * mandar `roleType` y escalar privilegios a administrador.
+   */
+  private assertCanActOnUser(requester: any, targetUserId: string): void {
+    const isStaff = STAFF_ROLES.includes(requester?.roleType?.code);
+    if (isStaff) return;
+    if (requester?.userId !== targetUserId) {
+      throw new ForbiddenException(
+        'No tienes permisos para realizar esta acción',
+      );
+    }
+  }
+
   @Get(':id')
   @UseGuards(AuthGuard(), RolesGuard)
   @Roles(...ALL_ROLES)
   @FindOneUserDocs()
-  async findOne(@Param('id') id: string): Promise<GetUserResponseDto> {
+  async findOne(
+    @Param('id') id: string,
+    @GetUser() requester: any,
+  ): Promise<GetUserResponseDto> {
+    this.assertCanActOnUser(requester, id);
     const user = await this._userUC.findOne(id);
     return {
       statusCode: HttpStatus.OK,
@@ -206,7 +228,20 @@ export class UserController {
   async update(
     @Param('id') id: string,
     @Body() userData: UpdateUserDto,
+    @GetUser() requester: any,
   ): Promise<UpdateRecordResponseDto> {
+    this.assertCanActOnUser(requester, id);
+
+    // Campos que solo el personal puede tocar. Aunque el usuario ya solo puede
+    // editarse a sí mismo, sin esto podría auto-asignarse el rol de
+    // administrador, reactivarse tras un baneo o cambiarse de organización.
+    const isStaff = STAFF_ROLES.includes(requester?.roleType?.code);
+    if (!isStaff) {
+      delete userData.roleType;
+      delete userData.isActive;
+      delete userData.organizationalId;
+    }
+
     await this._userUC.update(id, userData);
     return {
       message: 'api.user.updated',
@@ -222,7 +257,11 @@ export class UserController {
   async uploadAvatar(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
+    @GetUser() requester: any,
   ): Promise<UpdateRecordResponseDto> {
+    // El personal puede moderar la foto de cualquier usuario; el resto, solo la
+    // suya. Antes cualquiera podía reemplazar el avatar de otra cuenta.
+    this.assertCanActOnUser(requester, id);
     await this._userUC.uploadAvatar(id, file);
     return {
       message: 'api.user.avatar_updated',
@@ -236,7 +275,9 @@ export class UserController {
   @Roles(...ALL_ROLES)
   async deleteAvatar(
     @Param('id') id: string,
+    @GetUser() requester: any,
   ): Promise<UpdateRecordResponseDto> {
+    this.assertCanActOnUser(requester, id);
     await this._userUC.deleteAvatar(id);
     return {
       message: 'api.user.avatar_deleted',

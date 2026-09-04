@@ -6,7 +6,7 @@ import { CategoryType } from './../../shared/entities/categoryType.entity';
 import { StateType } from './../../shared/entities/stateType.entity';
 import { UnitOfMeasure } from './../../shared/entities/unitOfMeasure.entity';
 import { HttpStatus } from '@nestjs/common';
-import { IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsOptional, IsString } from 'class-validator';
 
 /**
  * Datos relacionados para creación de hospedajes
@@ -35,6 +35,30 @@ export class CreateRelatedDataServicesAndProductsResponseDto
  * Parámetros de paginación para listado de hospedajes
  */
 export class PaginatedListAccommodationsParamsDto extends ParamsPaginationDto {
+  /**
+   * Filtro de disponibilidad. Si se envían las dos, el listado excluye los
+   * hospedajes que ya tienen una reserva solapada en ese rango. Se usa desde el
+   * panel de facturación para que el recepcionista no pueda ni seleccionar una
+   * cabaña ocupada. Si falta una de las dos, no se aplica el filtro.
+   */
+  @ApiProperty({
+    example: '2026-09-10T20:00:00.000Z',
+    description: 'Inicio del rango para filtrar por disponibilidad',
+    required: false,
+  })
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  @ApiProperty({
+    example: '2026-09-14T17:00:00.000Z',
+    description: 'Fin del rango para filtrar por disponibilidad',
+    required: false,
+  })
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+
   @ApiProperty({
     example: 'ACM-001',
     description: 'Código del hospedaje',

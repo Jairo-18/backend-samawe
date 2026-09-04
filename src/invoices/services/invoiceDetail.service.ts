@@ -26,6 +26,10 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GeneralInvoiceDetaillService } from 'src/shared/services/generalInvoiceDetaill.service';
 import { In } from 'typeorm';
 import { Invoice } from './../../shared/entities/invoice.entity';
+import {
+  RESERVED_PAID_TYPE_CONDITION,
+  RESERVED_PAID_TYPE_PARAMS,
+} from './../../shared/constants/accommodationOccupancy.constant';
 
 /**
  * Códigos de categoría que activan el flujo de recetas al ser vendidos.
@@ -206,10 +210,15 @@ export class InvoiceDetailService {
           createInvoiceDetailDto.startDate &&
           createInvoiceDetailDto.endDate
         ) {
-          const overlappingDetail = await this._invoiceDetaillRepository
+          // El filtro por estado va en el WHERE, no aplicado después sobre una
+          // sola fila. Con el `getOne()` anterior bastaba con que el primer
+          // detalle solapado fuese una cotización (o cualquier estado que no
+          // bloquea) para que la comprobación no saltara y se colara una doble
+          // reserva, aunque en esas mismas fechas hubiera otra reserva real.
+          const overlappingCount = await this._invoiceDetaillRepository
             .createQueryBuilder('detail')
-            .leftJoinAndSelect('detail.invoice', 'invoice')
-            .leftJoinAndSelect('invoice.paidType', 'paidType')
+            .innerJoin('detail.invoice', 'invoice')
+            .innerJoin('invoice.paidType', 'paidType')
             .where('detail.accommodation = :accommodationId', {
               accommodationId: accommodation.accommodationId,
             })
@@ -220,18 +229,11 @@ export class InvoiceDetailService {
                 endDate: createInvoiceDetailDto.endDate,
               },
             )
-            .getOne();
+            .andWhere('invoice.deletedAt IS NULL')
+            .andWhere(RESERVED_PAID_TYPE_CONDITION, RESERVED_PAID_TYPE_PARAMS)
+            .getCount();
 
-          if (
-            overlappingDetail &&
-            overlappingDetail.invoice?.paidType?.name &&
-            [
-              'Reservado - Pagado',
-              'Reservado - Pendiente',
-              'RESERVADO - PAGADO',
-              'RESERVADO - PENDIENTE',
-            ].includes(overlappingDetail.invoice.paidType.name?.['es']?.trim() ?? '')
-          ) {
+          if (overlappingCount > 0) {
             throw new BadRequestException(
               `El hospedaje ya está reservado entre ${createInvoiceDetailDto.startDate} y ${createInvoiceDetailDto.endDate}`,
             );

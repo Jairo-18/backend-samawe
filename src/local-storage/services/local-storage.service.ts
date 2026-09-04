@@ -20,15 +20,28 @@ export class LocalStorageService {
   private readonly baseUrl: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.uploadsDir =
-      process.platform === 'win32'
-        ? path.join(process.cwd(), 'uploads')
-        : '/app/uploads';
+    // win32 = la app corre en la máquina del desarrollador; si no, en el
+    // contenedor. Es el mismo criterio que se usa abajo para la URL pública.
+    const isLocalMachine = process.platform === 'win32';
 
+    this.uploadsDir = isLocalMachine
+      ? path.join(process.cwd(), 'uploads')
+      : '/app/uploads';
+
+    const port = this.configService.get<number>('app.port') || 3000;
+    const localUrl = `http://localhost:${port}`;
     const configuredUrl = this.configService.get<string>('APP_BASE_URL');
+
+    // El disco y la URL pública TIENEN que apuntar al mismo sitio. Corriendo en
+    // local los archivos se guardan en ./uploads y los sirve este mismo proceso
+    // (ServeStaticModule en /uploads), pero `APP_BASE_URL` de .env.development
+    // apunta al servidor de dev remoto —ese archivo lo comparten el local y el
+    // desplegado—, así que la URL guardada en la BD señalaba a un host que no
+    // tiene el archivo y la imagen nunca cargaba (404).
+    // `APP_FILES_BASE_URL` permite forzarlo si hiciera falta otro host.
     this.baseUrl =
-      configuredUrl ||
-      `http://localhost:${this.configService.get<number>('app.port') || 3000}`;
+      this.configService.get<string>('APP_FILES_BASE_URL') ||
+      (isLocalMachine ? localUrl : configuredUrl || localUrl);
   }
 
   /**
@@ -66,23 +79,24 @@ export class LocalStorageService {
     const filePath = path.join(targetDir, filename);
 
     const isLargeFile = file.buffer.length > 2 * 1024 * 1024;
+    const maxWidth = isLargeFile ? 1920 : 1200;
 
-    if (isLargeFile) {
-      sharp(file.buffer)
+    // El `toFile` DEBE esperarse. Antes se lanzaba sin `await` (solo con
+    // `.catch`), así que el método devolvía la URL mientras sharp seguía
+    // escribiendo el archivo: quien consumiera esa URL de inmediato —el front
+    // tras subir un avatar— pedía una imagen que todavía no existía en disco y
+    // veía la foto vieja o rota. También hacía que un fallo de sharp quedara
+    // solo en consola, con la URL ya guardada en la BD apuntando a la nada.
+    try {
+      await sharp(file.buffer)
         .webp({ quality: 80, effort: 6 })
-        .resize({ width: 1920, withoutEnlargement: true })
-        .toFile(filePath)
-        .catch((err) =>
-          console.error('Error optimizando imagen (background):', err),
-        );
-    } else {
-      sharp(file.buffer)
-        .webp({ quality: 80, effort: 6 })
-        .resize({ width: 1200, withoutEnlargement: true })
-        .toFile(filePath)
-        .catch((err) =>
-          console.error('Error optimizando imagen (background):', err),
-        );
+        .resize({ width: maxWidth, withoutEnlargement: true })
+        .toFile(filePath);
+    } catch (error) {
+      console.error('Error optimizando imagen:', error);
+      throw new InternalServerErrorException(
+        'No se pudo procesar la imagen. Intenta con otro archivo.',
+      );
     }
 
     const publicId = `${folder}/${filename}`;
