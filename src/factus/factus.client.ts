@@ -144,4 +144,9 @@ export class FactusClient implements OnModuleInit {
     const response = await this.client.patch<T>(url, data, config);
     return response.data;
   }
+
+  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.client.delete<T>(url, config);
+    return response.data;
+  }
 }

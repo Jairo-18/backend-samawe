@@ -3,6 +3,10 @@ import { ExcursionRepository } from './../../shared/repositories/excursion.repos
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { CreditNote } from './../../shared/entities/creditNote.entity';
+import {
+  PURCHASE_CODES_SQL,
+  SALE_CODES_SQL,
+} from './../../shared/constants/invoiceType.constants';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
@@ -13,6 +17,27 @@ export class StatisticsService {
     private readonly _excursionRepository: ExcursionRepository,
     private readonly _invoiceDetailRepository: InvoiceDetaillRepository,
   ) {}
+
+  /**
+   * Columnas de totales/conteos de ventas y compras. Las usan las estadísticas
+   * de hoy y las de una fecha concreta, que antes repetían el bloque literal:
+   * la duplicación era justo el sitio donde se olvidaba un tipo nuevo al
+   * agregarlo (pasó con FVE). Los grupos salen de invoiceType.constants.
+   */
+  private buildSalesAndPurchasesSelect(): string[] {
+    return [
+      `COALESCE(SUM(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code IN (${SALE_CODES_SQL}) THEN detail.subtotal ELSE 0 END), 0) AS "totalProductsSold"`,
+      `COALESCE(SUM(CASE WHEN detail.accommodationId IS NOT NULL AND invoiceType.code IN (${SALE_CODES_SQL}) THEN detail.subtotal ELSE 0 END), 0) AS "totalAccommodationsSold"`,
+      `COALESCE(SUM(CASE WHEN detail.excursionId IS NOT NULL AND invoiceType.code IN (${SALE_CODES_SQL}) THEN detail.subtotal ELSE 0 END), 0) AS "totalExcursionsSold"`,
+      `COALESCE(SUM(CASE WHEN invoiceType.code IN (${SALE_CODES_SQL}) THEN detail.subtotal ELSE 0 END), 0) AS "totalSales"`,
+      `COALESCE(SUM(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code IN (${PURCHASE_CODES_SQL}) THEN detail.subtotal ELSE 0 END), 0) AS "totalProductsPurchased"`,
+      `COALESCE(SUM(CASE WHEN invoiceType.code IN (${PURCHASE_CODES_SQL}) THEN detail.subtotal ELSE 0 END), 0) AS "totalPurchases"`,
+      `COUNT(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code IN (${SALE_CODES_SQL}) THEN 1 END) AS "countProducts"`,
+      `COUNT(CASE WHEN detail.accommodationId IS NOT NULL AND invoiceType.code IN (${SALE_CODES_SQL}) THEN 1 END) AS "countAccommodations"`,
+      `COUNT(CASE WHEN detail.excursionId IS NOT NULL AND invoiceType.code IN (${SALE_CODES_SQL}) THEN 1 END) AS "countExcursions"`,
+      `COUNT(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code IN (${PURCHASE_CODES_SQL}) THEN 1 END) AS "countProductsPurchased"`,
+    ];
+  }
 
   async countActiveInactiveProducts(organizationalId?: string) {
     const query = this._productRepository
@@ -131,18 +156,7 @@ export class StatisticsService {
       .leftJoin('detail.product', 'product')
       .leftJoin('detail.accommodation', 'accommodation')
       .leftJoin('detail.excursion', 'excursion')
-      .select([
-        'COALESCE(SUM(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code IN (\'FV\', \'FVE\') THEN detail.subtotal ELSE 0 END), 0) AS "totalProductsSold"',
-        'COALESCE(SUM(CASE WHEN detail.accommodationId IS NOT NULL AND invoiceType.code IN (\'FV\', \'FVE\') THEN detail.subtotal ELSE 0 END), 0) AS "totalAccommodationsSold"',
-        'COALESCE(SUM(CASE WHEN detail.excursionId IS NOT NULL AND invoiceType.code IN (\'FV\', \'FVE\') THEN detail.subtotal ELSE 0 END), 0) AS "totalExcursionsSold"',
-        'COALESCE(SUM(CASE WHEN invoiceType.code IN (\'FV\', \'FVE\') THEN detail.subtotal ELSE 0 END), 0) AS "totalSales"',
-        'COALESCE(SUM(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code = \'FC\' THEN detail.subtotal ELSE 0 END), 0) AS "totalProductsPurchased"',
-        'COALESCE(SUM(CASE WHEN invoiceType.code = \'FC\' THEN detail.subtotal ELSE 0 END), 0) AS "totalPurchases"',
-        'COUNT(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code IN (\'FV\', \'FVE\') THEN 1 END) AS "countProducts"',
-        'COUNT(CASE WHEN detail.accommodationId IS NOT NULL AND invoiceType.code IN (\'FV\', \'FVE\') THEN 1 END) AS "countAccommodations"',
-        'COUNT(CASE WHEN detail.excursionId IS NOT NULL AND invoiceType.code IN (\'FV\', \'FVE\') THEN 1 END) AS "countExcursions"',
-        'COUNT(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code = \'FC\' THEN 1 END) AS "countProductsPurchased"',
-      ])
+      .select(this.buildSalesAndPurchasesSelect())
       .where('invoice.createdAt >= :startOfDay', { startOfDay })
       .andWhere('invoice.createdAt < :endOfDay', { endOfDay });
 
@@ -191,18 +205,7 @@ export class StatisticsService {
       .leftJoin('detail.product', 'product')
       .leftJoin('detail.accommodation', 'accommodation')
       .leftJoin('detail.excursion', 'excursion')
-      .select([
-        'COALESCE(SUM(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code IN (\'FV\', \'FVE\') THEN detail.subtotal ELSE 0 END), 0) AS "totalProductsSold"',
-        'COALESCE(SUM(CASE WHEN detail.accommodationId IS NOT NULL AND invoiceType.code IN (\'FV\', \'FVE\') THEN detail.subtotal ELSE 0 END), 0) AS "totalAccommodationsSold"',
-        'COALESCE(SUM(CASE WHEN detail.excursionId IS NOT NULL AND invoiceType.code IN (\'FV\', \'FVE\') THEN detail.subtotal ELSE 0 END), 0) AS "totalExcursionsSold"',
-        'COALESCE(SUM(CASE WHEN invoiceType.code IN (\'FV\', \'FVE\') THEN detail.subtotal ELSE 0 END), 0) AS "totalSales"',
-        'COALESCE(SUM(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code = \'FC\' THEN detail.subtotal ELSE 0 END), 0) AS "totalProductsPurchased"',
-        'COALESCE(SUM(CASE WHEN invoiceType.code = \'FC\' THEN detail.subtotal ELSE 0 END), 0) AS "totalPurchases"',
-        'COUNT(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code IN (\'FV\', \'FVE\') THEN 1 END) AS "countProducts"',
-        'COUNT(CASE WHEN detail.accommodationId IS NOT NULL AND invoiceType.code IN (\'FV\', \'FVE\') THEN 1 END) AS "countAccommodations"',
-        'COUNT(CASE WHEN detail.excursionId IS NOT NULL AND invoiceType.code IN (\'FV\', \'FVE\') THEN 1 END) AS "countExcursions"',
-        'COUNT(CASE WHEN detail.productId IS NOT NULL AND invoiceType.code = \'FC\' THEN 1 END) AS "countProductsPurchased"',
-      ])
+      .select(this.buildSalesAndPurchasesSelect())
       .where('invoice.createdAt >= :startOfDay', { startOfDay })
       .andWhere('invoice.createdAt < :endOfDay', { endOfDay });
 

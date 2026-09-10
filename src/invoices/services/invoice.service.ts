@@ -21,6 +21,10 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { Invoice } from './../../shared/entities/invoice.entity';
+import {
+  isPurchaseTypeCode,
+  isSaleTypeCode,
+} from './../../shared/constants/invoiceType.constants';
 import { PaidType } from './../../shared/entities/paidType.entity';
 import { PayType } from './../../shared/entities/payType.entity';
 import { PaidTypeRepository } from './../../shared/repositories/paidType.repository';
@@ -700,8 +704,12 @@ export class InvoiceService {
       throw new NotFoundException('Factura no encontrada');
     }
 
-    const isCompra = invoice.invoiceType.code === 'FC';
-    const isVenta = invoice.invoiceType.code === 'FV';
+    // Los grupos incluyen la variante electrónica de cada tipo: una venta
+    // emitida es FVE y una compra con documento soporte es DSE. Preguntar solo
+    // por 'FV'/'FC' hacía que borrar una factura ya emitida NO devolviera el
+    // stock ni los ingredientes de receta, dejando el inventario inflado.
+    const isCompra = isPurchaseTypeCode(invoice.invoiceType.code);
+    const isVenta = isSaleTypeCode(invoice.invoiceType.code);
 
     const productIds: number[] = [];
     const hasAccommodations = invoice.invoiceDetails.some(

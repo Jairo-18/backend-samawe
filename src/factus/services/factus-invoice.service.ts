@@ -3,6 +3,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { InvoiceRepository } from '../../shared/repositories/invoice.repository';
 import { Invoice } from '../../shared/entities/invoice.entity';
@@ -11,6 +12,7 @@ import { FactusBillsService } from './factus-bills.service';
 import { FactusBillResult } from '../interfaces/bill.interfaces';
 import { MailsService } from '../../shared/services/mails.service';
 import { InvoicePdfService } from '../../shared/services/invoicePdf.service';
+import { InvoiceTypeRepository } from '../../shared/repositories/invoiceType.repository';
 import { MailAttachment } from '../../shared/interfaces/mail.interface';
 import * as QRCode from 'qrcode';
 
@@ -40,12 +42,41 @@ const FACTUS_ID_CODE_BY_TYPE: Record<string, string> = {
 export class FactusInvoiceService {
   private readonly logger = new Logger(FactusInvoiceService.name);
 
+  // Cache de InvoiceType por code. La tabla es un catálogo semilla que no
+  // cambia en caliente, así que basta con resolverlo una vez por proceso.
+  private readonly invoiceTypeIdByCode = new Map<string, number>();
+
   constructor(
     private readonly invoiceRepository: InvoiceRepository,
     private readonly billsService: FactusBillsService,
     private readonly mailsService: MailsService,
     private readonly invoicePdfService: InvoicePdfService,
+    private readonly invoiceTypeRepository: InvoiceTypeRepository,
   ) {}
+
+  /**
+   * Resuelve el id de un InvoiceType por su `code` ('FV', 'FVE'…).
+   *
+   * Antes estos ids iban hardcodeados y uno estaba MAL: `resetFactusFields`
+   * usaba 3 "porque el 3 es FV", pero en la base de producción el 3 es CO
+   * (Cotización) y FV es 1 — resetear una factura la convertía en cotización.
+   * Los ids los asigna un SERIAL al sembrar el catálogo, así que dependen del
+   * orden en que se creó cada base y no se pueden dar por supuestos.
+   */
+  private async resolveInvoiceTypeId(code: string): Promise<number> {
+    const cached = this.invoiceTypeIdByCode.get(code);
+    if (cached) return cached;
+
+    const type = await this.invoiceTypeRepository.findOne({ where: { code } });
+    if (!type) {
+      throw new BadRequestException(
+        `No existe un InvoiceType con code "${code}" en la base de datos. ` +
+          'Revisa el catálogo InvoiceType antes de emitir.',
+      );
+    }
+    this.invoiceTypeIdByCode.set(code, type.invoiceTypeId);
+    return type.invoiceTypeId;
+  }
 
   async sendInvoiceToFactus(invoiceId: number): Promise<FactusBillResult> {
     const invoice = await this.loadInvoice(invoiceId);
@@ -71,44 +102,63 @@ export class FactusInvoiceService {
     this.validateInvoiceForFactus(invoice);
 
     const numberingRangeId = await this.billsService.resolveNumberingRangeId(
+      'sales',
       invoice.organizational?.factusNumberingRangeId,
     );
     const payload = this.buildPayload(invoice, numberingRangeId);
 
-    let raw: any;
-    let attempt = 0;
-    const maxAttempts = 6;
-    let currentReferenceCode = invoice.code;
-
-    while (attempt < maxAttempts) {
-      try {
-        raw = await this.billsService.createAndValidateBill(payload);
-        break; // Éxito
-      } catch (error: any) {
-        const isConflict = error?.status === 409 || error?.response?.statusCode === 409;
-        const isRule90 =
-          (error?.status === 422 || error?.response?.statusCode === 422) &&
-          JSON.stringify(error?.response ?? {}).includes('procesado anteriormente');
-
-        if (isConflict || isRule90) {
-          attempt++;
-          if (attempt >= maxAttempts) throw error;
-          
-          currentReferenceCode = `${invoice.code}-v${attempt + 1}`;
-          payload.reference_code = currentReferenceCode;
-          
-          this.logger.warn(
-            `Factura ${invoiceId}: reference_code anterior rechazado (409/Regla 90). ` +
-            `Reintentando con sufijo: ${currentReferenceCode}`,
-          );
-        } else {
-          throw error;
-        }
-      }
-    }
+    // Un solo intento, con el reference_code de la factura y sin sufijos.
+    //
+    // Factus deduplica por reference_code: reenviar el MISMO código es la forma
+    // oficial de reintentar (devuelve la factura existente y consulta su estado
+    // en la DIAN). El código anterior hacía lo contrario — ante un 409 o una
+    // Regla 90 reintentaba hasta 6 veces con sufijos -v2/-v3, y cada sufijo es
+    // un documento NUEVO para Factus. Eso no resuelve el bloqueo (el documento
+    // atascado sigue ahí) y multiplica los documentos pendientes. Fue lo que
+    // dejó la facturación de producción caída con la factura A773.
+    //
+    // El 409 lo traduce createAndValidateBill a un mensaje que explica que hay
+    // que ELIMINAR el documento atascado por su referencia y reintentar igual.
+    const raw = await this.billsService.createAndValidateBill(payload);
 
     const result = this.extractResult(raw);
-    invoice.factusReferenceCode = currentReferenceCode;
+
+    // Solo damos la factura por emitida si la DIAN la validó de verdad.
+    //
+    // `is_validated: false` tiene dos causas muy distintas y hay que separarlas
+    // (ver "Manejo de respuestas" en la doc de Factus):
+    //   · con "Rechazo" en errors → la DIAN la rechazó. Hay que eliminarla en
+    //     Factus, corregir y reenviar. Si no se elimina, bloquea los envíos.
+    //   · sin "Rechazo" → la DIAN solo está demorada. NO eliminar: reenviar
+    //     más tarde con los mismos datos y Factus reconcilia el estado.
+    // En ninguno de los dos casos se persiste número/CUFE ni se marca la
+    // factura como electrónica: hacerlo dejaba facturas "emitidas" sin CUFE.
+    if (result.isValidated !== true) {
+      const errors = this.extractErrors(raw);
+      const rejected = FactusInvoiceService.looksRejected(errors);
+      this.logger.error(
+        `Factura ${invoiceId}: Factus la registró como ${result.billNumber ?? 's/n'} ` +
+          `pero is_validated=false (${rejected ? 'RECHAZO' : 'pendiente en la DIAN'}). ` +
+          `errors=${JSON.stringify(errors)}`,
+      );
+      throw new UnprocessableEntityException({
+        message: rejected
+          ? 'La DIAN rechazó la factura. No quedó emitida.'
+          : 'La DIAN aún no ha validado la factura. No quedó emitida todavía.',
+        pendingInDian: !rejected,
+        rejected,
+        billNumber: result.billNumber,
+        referenceCode: invoice.code,
+        errors,
+        hint: rejected
+          ? `Elimina el documento en Factus (DELETE /factus/invoices/by-reference/${invoice.code}), ` +
+            'corrige los datos y vuelve a enviarla con el MISMO código.'
+          : 'No elimines nada. Reintenta más tarde con POST :id/send: Factus consultará ' +
+            'el estado en la DIAN y lo actualizará sin duplicar el documento.',
+      });
+    }
+
+    invoice.factusReferenceCode = invoice.code;
     await this.saveFactusResult(invoice, result);
 
     // La factura ya quedó válida ante la DIAN y guardada (número + CUFE + QR).
@@ -461,55 +511,54 @@ export class FactusInvoiceService {
       };
     }
 
-    // Probamos el code base y hasta 5 sufijos (-v2 … -v6) por si algún reintento
-    // anterior usó sufijo. Nos detenemos en el primero que Factus devuelva.
-    const candidates = [
-      invoice.code,
-      ...([2, 3, 4, 5, 6].map((n) => `${invoice.code}-v${n}`)),
-    ];
-
-    let raw: any = null;
-    let matchedRef: string = invoice.code;
-
-    for (const ref of candidates) {
-      try {
-        const res = await this.billsService.getBillByReference(ref);
-        const bills = (res as any)?.data?.data ?? (res as any)?.data ?? [];
-        const found = Array.isArray(bills) ? bills[0] : bills;
-        if (found?.number || found?.bill_number) {
-          raw = found;
-          matchedRef = ref;
-          this.logger.log(
-            `Factura ${invoiceId}: encontrada en Factus con reference_code="${ref}" → número ${found.number ?? found.bill_number}`,
-          );
-          break;
-        }
-      } catch {
-        // Si Factus devuelve 404 para este ref, seguimos con el siguiente.
-      }
-    }
+    // Un único reference_code: el de la factura. Ya no se prueban sufijos
+    // -v2…-v6 porque la emisión tampoco los genera.
+    const raw = await this.billsService.getBillByReference(invoice.code);
 
     if (!raw) {
       throw new NotFoundException(
-        `No se encontró la factura ${invoiceId} en Factus con ninguno de los ` +
-          `reference_codes probados (${candidates.join(', ')}). ` +
-          `Verifica en el portal de Factus el reference_code correcto.`,
+        `No existe en Factus ninguna factura con reference_code "${invoice.code}". ` +
+          `Verifícalo en el portal de Factus antes de volver a intentarlo.`,
       );
     }
 
-    // Armamos el resultado en el mismo formato que extractResult usa
     const result: FactusBillResult = {
       billNumber: raw.number ?? raw.bill_number ?? null,
-      referenceCode: matchedRef,
-      isValidated: raw.is_validated ?? true,
+      // Sin `?? true`: asumir que estaba validada era justamente lo que
+      // marcaba como electrónicas facturas que la DIAN nunca aceptó, dejándolas
+      // con número pero sin CUFE.
+      isValidated: raw.is_validated === true,
+      referenceCode: invoice.code,
       cufe: raw.cufe ?? null,
       qrCode: raw.links?.qr ?? raw.qr_code ?? null,
       publicUrl: raw.links?.public_url ?? null,
       createdAt: raw.created_at ?? new Date().toISOString(),
     };
 
-    // Guardar el factusReferenceCode real (puede tener sufijo) además del resultado
-    invoice.factusReferenceCode = matchedRef;
+    if (!result.isValidated) {
+      const errors = this.extractErrors(raw);
+      const rejected = FactusInvoiceService.looksRejected(errors);
+      this.logger.warn(
+        `Factura ${invoiceId}: existe en Factus como ${result.billNumber ?? 's/n'} ` +
+          `pero NO está validada por la DIAN (${rejected ? 'rechazada' : 'pendiente'}). ` +
+          `No se persiste nada.`,
+      );
+      throw new UnprocessableEntityException({
+        message: rejected
+          ? `La factura existe en Factus (${result.billNumber ?? 's/n'}) pero la DIAN la RECHAZÓ. No se puede dar por emitida.`
+          : `La factura existe en Factus (${result.billNumber ?? 's/n'}) pero sigue PENDIENTE en la DIAN. No se puede dar por emitida todavía.`,
+        pendingInDian: !rejected,
+        rejected,
+        billNumber: result.billNumber,
+        referenceCode: invoice.code,
+        errors,
+        hint: rejected
+          ? `Elimínala con DELETE /factus/invoices/by-reference/${invoice.code}, corrige los datos y reenvíala.`
+          : 'No elimines nada. Reintenta POST :id/send más tarde con los mismos datos.',
+      });
+    }
+
+    invoice.factusReferenceCode = invoice.code;
     await this.saveFactusResult(invoice, result);
 
     this.logger.log(
@@ -520,6 +569,74 @@ export class FactusInvoiceService {
     this.dispatchPostEmissionNotifications(invoice, result);
 
     return result;
+  }
+
+  /**
+   * Elimina de Factus un documento NO VALIDADO por su reference_code y, si
+   * corresponde a una factura nuestra, le limpia los campos Factus.
+   *
+   * Es la salida al bloqueo por rechazo de la DIAN: mientras el documento
+   * rechazado siga en Factus, toda emisión nueva responde 409. Ver la doc de
+   * Factus, "Eliminar no validada".
+   *
+   * Comprueba primero el estado real en Factus y se niega a borrar cualquier
+   * documento validado: una factura con CUFE es inmutable y solo se anula con
+   * una nota crédito.
+   */
+  async deleteFactusBillByReference(referenceCode: string): Promise<{
+    deleted: boolean;
+    referenceCode: string;
+    billNumber: string | null;
+    localInvoiceId: number | null;
+    message: string;
+  }> {
+    const bill = await this.billsService.getBillByReference(referenceCode);
+    if (!bill) {
+      throw new NotFoundException(
+        `No existe en Factus ninguna factura con reference_code "${referenceCode}".`,
+      );
+    }
+
+    const billNumber: string | null = bill.number ?? bill.bill_number ?? null;
+    if (bill.is_validated === true || bill.cufe) {
+      throw new BadRequestException(
+        `La factura ${billNumber ?? referenceCode} está VALIDADA por la DIAN ` +
+          '(tiene CUFE) y no se puede eliminar. Para anularla hay que emitir una ' +
+          'nota crédito.',
+      );
+    }
+
+    await this.billsService.deleteBillByReference(referenceCode);
+
+    // Si la teníamos apuntada localmente, dejamos de apuntarla: ese número ya
+    // no existe en Factus y conservarlo es lo que produjo facturas con número
+    // pero sin CUFE.
+    const local = await this.invoiceRepository.findOne({
+      where: [{ factusReferenceCode: referenceCode }, { code: referenceCode }],
+    });
+    if (local?.factusNumber || local?.factusReferenceCode) {
+      local.factusNumber = undefined;
+      local.factusCufe = undefined;
+      local.factusQrCode = undefined;
+      local.factusPublicUrl = undefined;
+      local.factusReferenceCode = undefined;
+      local.factusSentAt = undefined;
+      await this.invoiceRepository.save(local);
+      this.logger.warn(
+        `Factura interna ${local.invoiceId}: campos Factus limpiados tras eliminar ` +
+          `el documento "${referenceCode}" en Factus.`,
+      );
+    }
+
+    return {
+      deleted: true,
+      referenceCode,
+      billNumber,
+      localInvoiceId: local?.invoiceId ?? null,
+      message:
+        `Documento "${referenceCode}"${billNumber ? ` (${billNumber})` : ''} eliminado de Factus. ` +
+        'Ya se puede volver a emitir con el MISMO código.',
+    };
   }
 
   private async loadInvoice(invoiceId: number): Promise<Invoice> {
@@ -583,13 +700,22 @@ export class FactusInvoiceService {
       '13';
     const isJuridica = idCode === '31';
 
-    // La identificación debe ir SOLO con dígitos; el dv del NIT va aparte en
-    // customer.dv. Datos legacy pueden traer el NIT con guion+dv; lo saneamos.
+    // Saneamiento de la identificación. Los datos reales traen de todo: NITs con
+    // guion y dígito de verificación ("18128214-6"), documentos extranjeros con
+    // guion ("77-0608266"), espacios y tabuladores pegados.
+    //
+    // Reglas: el dv del NIT viaja aparte en `customer.dv`, nunca dentro de
+    // `identification`. Los documentos colombianos van solo con dígitos; un
+    // PASAPORTE (41) o una cédula de extranjería (22) conservan sus letras
+    // —son alfanuméricos de verdad— y solo se les quitan separadores.
     const rawId = user.identificationNumber.trim();
     const [idBase, dvFromDash] = rawId.includes('-')
       ? rawId.split('-')
       : [rawId, undefined];
-    const identification = isJuridica ? idBase.replace(/\D/g, '') : rawId;
+    const isNumericDoc = ['13', '31', '12', '11', '21'].includes(idCode);
+    const identification = isNumericDoc
+      ? idBase.replace(/\D/g, '')
+      : rawId.replace(/[^A-Za-z0-9]/g, '');
     const dv = user.factusDv ?? dvFromDash?.replace(/\D/g, '');
 
     const customer: Record<string, string> = {
@@ -747,6 +873,31 @@ export class FactusInvoiceService {
     return { code: '01', rate: '0.00' };
   }
 
+  /**
+   * Normaliza el campo `errors` de Factus a una lista de textos.
+   * Viene en dos formas según el endpoint: objeto indexado por regla
+   * (`{"90": "Regla: 90, Rechazo: …"}`) al listar, y array de strings al
+   * consultar por número. Hay que soportar las dos.
+   */
+  private extractErrors(raw: any): string[] {
+    const bill = raw?.data?.bill ?? raw?.data ?? raw;
+    const errors = bill?.errors;
+    if (!errors) return [];
+    if (Array.isArray(errors)) return errors.map((e) => String(e));
+    if (typeof errors === 'object') return Object.values(errors).map(String);
+    return [String(errors)];
+  }
+
+  /**
+   * ¿Los `errors` de la DIAN son un RECHAZO o solo una notificación?
+   * No todo lo que aparece en `errors` invalida el documento: reglas como
+   * FAJ44b o RUT01 son avisos informativos y la factura es válida igual. Solo
+   * cuenta como rechazo si el texto dice "Rechazo".
+   */
+  private static looksRejected(errors: string[]): boolean {
+    return errors.some((e) => /rechazo/i.test(e));
+  }
+
   private extractResult(raw: any): FactusBillResult {
     const bill = raw?.data?.bill ?? raw?.data ?? raw;
     return {
@@ -765,7 +916,9 @@ export class FactusInvoiceService {
     result: FactusBillResult,
   ): Promise<void> {
     invoice.invoiceElectronic = true;
-    invoice.invoiceType = { invoiceTypeId: 4 } as any; // FVE — Factura de Venta Electrónica
+    invoice.invoiceType = {
+      invoiceTypeId: await this.resolveInvoiceTypeId('FVE'),
+    } as any; // FVE — Factura de Venta Electrónica
     invoice.factusNumber = result.billNumber ?? undefined;
     invoice.factusCufe = result.cufe ?? undefined;
     invoice.factusQrCode = result.qrCode ?? undefined;
@@ -802,6 +955,27 @@ export class FactusInvoiceService {
 
     const prevNumber = invoice.factusNumber;
 
+    // `code` es una secuencia POR TIPO, con UNIQUE (code, invoiceTypeId): al
+    // emitir, la factura recibe un código de la serie FVE ("00001"), y esa serie
+    // arranca de cero. Devolverla a FV puede chocar con una FV que ya use ese
+    // mismo código. Lo detectamos antes para no reventar con un error de
+    // constraint ininteligible.
+    const fvId = await this.resolveInvoiceTypeId('FV');
+    const clash = await this.invoiceRepository.findOne({
+      where: { code: invoice.code, invoiceType: { invoiceTypeId: fvId } },
+      relations: ['invoiceType'],
+      withDeleted: true,
+    });
+    if (clash && clash.invoiceId !== invoice.invoiceId) {
+      throw new BadRequestException(
+        `No se puede devolver la factura ${invoiceId} al tipo FV: ya existe una ` +
+          `factura FV con el código "${invoice.code}" (id ${clash.invoiceId}). ` +
+          'Los códigos son una secuencia por tipo. Habría que renumerarla a mano, ' +
+          'lo que cambia el número visible del documento: decisión del negocio, ' +
+          'no automática.',
+      );
+    }
+
     invoice.factusNumber = undefined;
     invoice.factusCufe = undefined;
     invoice.factusQrCode = undefined;
@@ -809,9 +983,11 @@ export class FactusInvoiceService {
     invoice.factusSentAt = undefined;
     invoice.factusReferenceCode = undefined;
     invoice.invoiceElectronic = false;
-    // Volvemos al tipo FV (id=3) para que aparezca en la lista de ventas normales
-    // hasta que sea re-emitida. El id 3 es FV en prod (confirmado por el dueño).
-    invoice.invoiceType = { invoiceTypeId: 3 } as any;
+    // Volvemos al tipo FV para que aparezca en la lista de ventas normales
+    // hasta que sea re-emitida. Resuelto por `code`, nunca por id literal.
+    invoice.invoiceType = {
+      invoiceTypeId: await this.resolveInvoiceTypeId('FV'),
+    } as any;
 
     await this.invoiceRepository.save(invoice);
 

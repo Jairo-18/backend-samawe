@@ -11,6 +11,10 @@ import {
 import { BalanceRepository } from './../../shared/repositories/balance.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { BalanceType } from './../../shared/constants/balanceType.constants';
+import {
+  isPurchaseTypeCode,
+  isSaleTypeCode,
+} from './../../shared/constants/invoiceType.constants';
 import { Balance } from './../../shared/entities/balance.entity';
 import { CreditNote } from './../../shared/entities/creditNote.entity';
 import { In, IsNull } from 'typeorm';
@@ -256,9 +260,9 @@ export class EarningService {
         }
 
         const formatted: InvoiceChartItemDto[] = invoices.map((inv) => {
-          // FVE (electrónica) también es venta; se agrupa con FV.
-          const isSale =
-            inv.invoiceTypeCode === 'FV' || inv.invoiceTypeCode === 'FVE';
+          // FVE (electrónica) también es venta; se agrupa con FV. Igual que
+          // DSE (documento soporte) se agrupa con FC del lado de las compras.
+          const isSale = isSaleTypeCode(inv.invoiceTypeCode);
           // El neto solo aplica a ventas (las NC son sobre electrónicas).
           const credited = isSale
             ? (creditedByInvoice.get(Number(inv.invoiceId)) ?? 0)
@@ -266,7 +270,11 @@ export class EarningService {
           return {
             code: inv.code,
             total: Number(inv.total) - credited,
-            type: isSale ? 'FV' : inv.invoiceTypeCode === 'FC' ? 'FC' : 'other',
+            type: isSale
+              ? 'FV'
+              : isPurchaseTypeCode(inv.invoiceTypeCode)
+                ? 'FC'
+                : 'other',
             createdAt: new Date(inv.createdAt),
           };
         });

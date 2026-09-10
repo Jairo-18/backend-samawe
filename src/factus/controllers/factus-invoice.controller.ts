@@ -1,4 +1,12 @@
-import { Controller, Get, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiOperation, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { SkipApiKey } from '../../shared/decorators/skip-api-key.decorator';
@@ -61,7 +69,27 @@ export class FactusInvoiceController {
     return { success: true, data: result };
   }
 
+  @Delete('by-reference/:referenceCode')
+  @Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN)
+  @ApiOperation({
+    summary: 'Eliminar de Factus una factura NO validada (desbloquea la DIAN)',
+    description:
+      'Cuando la DIAN rechaza una factura, el documento se queda atascado en Factus ' +
+      'y bloquea cualquier emisión nueva con 409 ("factura pendiente por enviar a la DIAN"). ' +
+      'Este endpoint lo elimina por su reference_code y limpia los campos Factus de la ' +
+      'factura interna, para poder reenviarla con el MISMO código. ' +
+      'Se niega a borrar facturas ya validadas (con CUFE): esas solo se anulan con nota crédito. ' +
+      'Ojo: si la factura no está validada pero TAMPOCO fue rechazada, es que la DIAN va ' +
+      'demorada — en ese caso NO la elimines, reintenta el envío.',
+  })
+  async deleteByReference(@Param('referenceCode') referenceCode: string) {
+    const result =
+      await this.invoiceService.deleteFactusBillByReference(referenceCode);
+    return { success: true, ...result };
+  }
+
   @Post(':id/reset-factus')
+  @Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN)
   @ApiOperation({
     summary: '⚠️ Limpiar campos Factus de una factura (sandbox → prod)',
     description:

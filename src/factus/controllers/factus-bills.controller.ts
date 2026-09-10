@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiOperation, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { SkipApiKey } from '../../shared/decorators/skip-api-key.decorator';
@@ -40,9 +48,21 @@ export class FactusBillsController {
   }
 
   @Get(':ref')
-  @ApiOperation({ summary: 'Consultar factura por reference_code' })
+  @ApiOperation({
+    summary: 'Consultar factura por reference_code',
+    description:
+      'Devuelve la factura de Factus cuyo reference_code coincide EXACTAMENTE, o 404 ' +
+      'si no existe. Antes devolvía la respuesta paginada cruda de Factus, que con el ' +
+      'filtro mal escrito traía facturas ajenas.',
+  })
   async getBillByReference(@Param('ref') ref: string) {
-    return this.billsService.getBillByReference(ref);
+    const bill = await this.billsService.getBillByReference(ref);
+    if (!bill) {
+      throw new NotFoundException(
+        `No existe en Factus ninguna factura con reference_code "${ref}".`,
+      );
+    }
+    return { success: true, data: this.extractBillData(bill) };
   }
 
   private extractBillData(raw: any): FactusBillResult & { publicUrl?: string } {

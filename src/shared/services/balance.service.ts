@@ -7,6 +7,10 @@ import { Invoice } from './../entities/invoice.entity';
 import { CreditNote } from '../entities/creditNote.entity';
 import { Balance } from '../entities/balance.entity';
 import { BalanceType } from '../constants/balanceType.constants';
+import {
+  isPurchaseTypeCode,
+  isSaleTypeCode,
+} from '../constants/invoiceType.constants';
 
 @Injectable()
 export class BalanceService {
@@ -119,12 +123,13 @@ export class BalanceService {
         }
         const orgTotals = totalsByOrg.get(orgId)!;
 
-        // Las electrónicas (FVE) también son ventas; al emitir, la factura
-        // cambia su tipo de FV a FVE → hay que contar ambos.
-        if (invoiceTypeCode === 'FV' || invoiceTypeCode === 'FVE') {
+        // Al emitir, la factura cambia de tipo: una venta pasa de FV a FVE y
+        // una compra pasa de FC a DSE (documento soporte) → hay que contar
+        // ambas caras de cada grupo.
+        if (isSaleTypeCode(invoiceTypeCode)) {
           orgTotals.totalInvoiceSale += amount;
           saleInvoiceOrgById.set(invoice.invoiceId, orgId);
-        } else if (invoiceTypeCode === 'FC') {
+        } else if (isPurchaseTypeCode(invoiceTypeCode)) {
           orgTotals.totalInvoiceBuy += amount;
         }
       }

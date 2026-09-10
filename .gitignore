@@ -64,3 +64,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 /uploads
 /uploads/*
 /pgdata
+
+# Graphify (grafo de conocimiento del codigo, regenerable con `graphify update src`)
+graphify-out/

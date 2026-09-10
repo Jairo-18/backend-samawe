@@ -27,6 +27,10 @@ import { GeneralInvoiceDetaillService } from 'src/shared/services/generalInvoice
 import { In } from 'typeorm';
 import { Invoice } from './../../shared/entities/invoice.entity';
 import {
+  isPurchaseTypeCode,
+  isSaleTypeCode,
+} from './../../shared/constants/invoiceType.constants';
+import {
   RESERVED_PAID_TYPE_CONDITION,
   RESERVED_PAID_TYPE_PARAMS,
 } from './../../shared/constants/accommodationOccupancy.constant';
@@ -112,8 +116,8 @@ export class InvoiceDetailService {
       }
 
       const isQuote = invoice.invoiceType?.code === 'CO';
-      const isSale = invoice.invoiceType?.code === 'FV';
-      const isBuy = invoice.invoiceType?.code === 'FC';
+      const isSale = isSaleTypeCode(invoice.invoiceType?.code);
+      const isBuy = isPurchaseTypeCode(invoice.invoiceType?.code);
 
       if (createInvoiceDetailDto.taxeTypeId && !taxeType) {
         throw new NotFoundException('Tipo de impuesto no encontrado');
@@ -479,8 +483,8 @@ export class InvoiceDetailService {
 
     const hadOrderTime = !!invoice.orderTime;
     const isQuote = invoice.invoiceType?.code === 'CO';
-    const isSale = invoice.invoiceType?.code === 'FV';
-    const isBuy = invoice.invoiceType?.code === 'FC';
+    const isSale = isSaleTypeCode(invoice.invoiceType?.code);
+    const isBuy = isPurchaseTypeCode(invoice.invoiceType?.code);
 
     const resProductIds = products
       .filter((p) =>
@@ -813,8 +817,8 @@ export class InvoiceDetailService {
 
     const { invoice, product, accommodation, amount: detailAmount } = detail;
     const invoiceTypeCode = invoice.invoiceType.code;
-    const isSale = invoiceTypeCode === 'FV';
-    const isBuy = invoiceTypeCode === 'FC';
+    const isSale = isSaleTypeCode(invoiceTypeCode);
+    const isBuy = isPurchaseTypeCode(invoiceTypeCode);
     const isQuote = invoiceTypeCode === 'CO';
 
     const ops: Promise<any>[] = [];

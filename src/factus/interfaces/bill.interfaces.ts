@@ -55,7 +55,48 @@ export interface FactusNumberingRange {
   prefix: string;
   from: number;
   to: number;
+  /** Siguiente número que se generará (NO el último emitido). */
   current: number;
+  resolution_number?: string;
+  start_date?: string;
+  end_date?: string;
+  technical_key?: string;
   is_active: number | boolean;
   is_expired: number | boolean;
+}
+
+/**
+ * Familias de documento que este sistema emite. Factus devuelve `document`
+ * como texto libre ("Factura de Venta", "Factura Electrónica de Venta"…), así
+ * que la clasificación se hace por palabras, no por igualdad.
+ */
+export type FactusDocumentKind = 'sales' | 'creditNote' | 'supportDocument';
+
+/**
+ * Un rango tal como lo ve el contador: qué documento numera, en qué número va
+ * y cuánto le queda de vigencia. Se calcula en vivo contra Factus — el
+ * consecutivo NO se espeja en la base, porque Factus es su fuente de verdad y
+ * una copia local mentiría en cuanto alguien emitiera desde el portal.
+ */
+export interface FactusNumberingRangeOverview {
+  id: number;
+  /** Clasificación propia; `null` si el documento no es de los que emitimos. */
+  kind: FactusDocumentKind | null;
+  documentName: string;
+  prefix: string;
+  from: number;
+  to: number;
+  /** Siguiente número a emitir. */
+  current: number;
+  /** Cuántos números quedan sin usar en el rango. */
+  remaining: number;
+  resolutionNumber: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  isActive: boolean;
+  isExpired: boolean;
+  /** Días hasta el vencimiento; negativo si ya venció, `null` si no hay fecha. */
+  daysToExpire: number | null;
+  /** Semáforo para la vista: verde / por vencer / vencido / inactivo. */
+  status: 'ok' | 'expiring' | 'expired' | 'inactive';
 }

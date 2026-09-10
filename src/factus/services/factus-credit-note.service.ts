@@ -343,6 +343,32 @@ export class FactusCreditNoteService {
     const raw = await this.createAndValidate(payload);
     const result = this.extractResult(raw, referenceCode, total);
 
+    // No damos la nota por emitida si la DIAN no la validó.
+    //
+    // Aquí importa más que en la factura: lo que sigue es persistir la nota y
+    // DEVOLVER EL INVENTARIO. Hacerlo sobre una nota que la DIAN rechazó
+    // inflaría el stock por una acreditación que legalmente no existe, y la
+    // factura quedaría contada como parcialmente anulada sin serlo.
+    if (result.isValidated !== true) {
+      const errors = this.extractNoteErrors(raw);
+      const rejected = errors.some((e) => /rechazo/i.test(e));
+      this.logger.error(
+        `Nota crédito ${referenceCode} de la factura ${invoice.invoiceId}: ` +
+          `is_validated=false (${rejected ? 'RECHAZO' : 'pendiente en la DIAN'}). ` +
+          `No se persiste ni se revierte inventario. errors=${JSON.stringify(errors)}`,
+      );
+      throw new UnprocessableEntityException({
+        message: rejected
+          ? 'La DIAN rechazó la nota crédito. No se emitió y no se devolvió inventario.'
+          : 'La DIAN aún no ha validado la nota crédito. No se emitió todavía.',
+        pendingInDian: !rejected,
+        rejected,
+        referenceCode,
+        noteNumber: result.number,
+        errors,
+      });
+    }
+
     await this.persist(invoice, {
       referenceCode,
       correctionConceptCode,
@@ -681,6 +707,19 @@ export class FactusCreditNoteService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Normaliza el `errors` de Factus a lista de textos: viene como objeto
+   * indexado por regla (`{"90": "…"}`) o como array, según el endpoint.
+   */
+  private extractNoteErrors(raw: any): string[] {
+    const note = raw?.data?.credit_note ?? raw?.data ?? raw;
+    const errors = note?.errors;
+    if (!errors) return [];
+    if (Array.isArray(errors)) return errors.map((e) => String(e));
+    if (typeof errors === 'object') return Object.values(errors).map(String);
+    return [String(errors)];
   }
 
   private extractResult(
