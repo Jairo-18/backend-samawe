@@ -51,6 +51,9 @@ export const config = async () => {
       password: process.env.MAIL_PASSWORD || '',
       sender: process.env.MAIL_SENDER || 'noreply@samawe.com',
       secure: process.env.MAIL_SECURE === 'true',
+      // Fuera de producción, TODO el correo se desvía aquí en vez de salir a su
+      // destinatario real (ver MailsService). Si no se define, se usa MAIL_USER.
+      redirectTo: process.env.MAIL_REDIRECT_TO || '',
     },
     webPush: {
       publicKey: process.env.VAPID_PUBLIC_KEY || '',

@@ -25,6 +25,7 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
+import compression from 'compression';
 import * as bodyParser from 'body-parser';
 import { MulterExceptionFilter } from './shared/filters/multer-exception.filter';
 import { LoggingInterceptor } from './shared/interceptors/logging.interceptor';
@@ -99,6 +100,23 @@ async function bootstrap() {
     methods: allowedMethods,
     credentials: true,
   });
+
+  // Compresión gzip/brotli de las respuestas.
+  //
+  // Va ANTES de helmet y del resto de middlewares para envolver todo lo que se
+  // escriba después. Los listados paginados son JSON con mucha estructura
+  // repetida (nombres de campo, catálogos embebidos) y comprimen a una fracción;
+  // como la mayor parte del tiempo de una petición se va en la red del usuario
+  // —cientos de ms frente a los ~7 ms que tarda la consulta más pesada—, esto
+  // rinde bastante más que cachear la consulta.
+  //
+  // `threshold` evita gastar CPU en respuestas diminutas, donde comprimir
+  // costaría más que enviarlas tal cual.
+  app.use(
+    compression({
+      threshold: 1024,
+    }),
+  );
 
   app.use(
     helmet({
