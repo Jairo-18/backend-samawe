@@ -25,6 +25,7 @@ import {
   FactusCreditNoteResult,
 } from '../interfaces/credit-note.interfaces';
 import { sumFactusItemsTotal } from '../utils/factus-math.utils';
+import { isSaleTypeCode } from '../../shared/constants/invoiceType.constants';
 import { resolveFactusPayment } from '../utils/factus-payment.utils';
 import * as QRCode from 'qrcode';
 import { createHash } from 'crypto';
@@ -196,6 +197,19 @@ export class FactusCreditNoteService {
     if (!invoice.factusNumber) {
       throw new BadRequestException(
         'Solo se puede generar una nota crédito sobre una factura electrónica ya emitida a la DIAN.',
+      );
+    }
+
+    // La nota crédito es de la FACTURA DE VENTA y de nada más: sus conceptos
+    // DIAN dicen literalmente "anulación de factura electrónica" y su tipo de
+    // operación (20/22) referencia una factura. Un documento soporte se corrige
+    // con NOTA DE AJUSTE, que es otro documento y otro endpoint. Sin esta
+    // guarda, un DSE llegaba a `/v2/credit-notes/validate` con su propio número
+    // en `bill_number`.
+    if (!isSaleTypeCode(invoice.invoiceType?.code)) {
+      throw new BadRequestException(
+        'La nota crédito solo aplica a facturas de venta. Un documento soporte ' +
+          'se corrige o anula con una NOTA DE AJUSTE.',
       );
     }
 
@@ -788,6 +802,7 @@ export class FactusCreditNoteService {
         'invoiceDetails.excursion',
         'invoiceDetails.excursion.taxeType',
         'invoiceDetails.taxeType',
+        'invoiceType',
       ],
     });
     if (!invoice) {

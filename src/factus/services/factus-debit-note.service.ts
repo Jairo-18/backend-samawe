@@ -23,6 +23,7 @@ import {
 } from '../interfaces/debit-note.interfaces';
 import { sumFactusItemsTotal } from '../utils/factus-math.utils';
 import { resolveFactusPayment } from '../utils/factus-payment.utils';
+import { isSaleTypeCode } from '../../shared/constants/invoiceType.constants';
 import * as QRCode from 'qrcode';
 import { createHash } from 'crypto';
 
@@ -97,6 +98,15 @@ export class FactusDebitNoteService {
     if (!invoice.factusNumber) {
       throw new BadRequestException(
         'Solo se puede generar una nota débito sobre una factura electrónica ya emitida a la DIAN.',
+      );
+    }
+
+    // Igual que la nota crédito: solo sobre ventas. Una nota débito cobra de
+    // más sobre una factura; contra una compra o un documento soporte no
+    // significa nada.
+    if (!isSaleTypeCode(invoice.invoiceType?.code)) {
+      throw new BadRequestException(
+        'La nota débito solo aplica a facturas de venta.',
       );
     }
 
@@ -594,6 +604,7 @@ export class FactusDebitNoteService {
         'user.identificationType',
         'organizational',
         'payType',
+        'invoiceType',
       ],
     });
     if (!invoice) {

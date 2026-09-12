@@ -5,7 +5,6 @@ import {
   Logger,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { FactusClient } from '../factus.client';
 import { FactusApiError } from '../errors/factus-api.error';
 import {
@@ -20,26 +19,31 @@ import {
 export class FactusBillsService {
   private readonly logger = new Logger(FactusBillsService.name);
 
-  constructor(
-    private readonly factusClient: FactusClient,
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly factusClient: FactusClient) {}
 
   buildBillPayload(options: CreateBillOptions): Record<string, unknown> {
     const year = new Date().getFullYear();
     const referenceCode = options.referenceCode ?? `FACT-${year}-${Date.now()}`;
     // OJO: numbering_range_id NO es el código de la factura. Es el ID del rango
     // de numeración autorizado por la DIAN (resolución de facturación) en Factus.
-    // El código de la factura va en reference_code (arriba). Validamos que sea un
-    // número válido para no enviar NaN si falta la env FACTUS_NUMBERING_RANGE_ID.
-    const numberingRangeId =
-      options.numberingRangeId ??
-      Number(this.configService.get<string>('FACTUS_NUMBERING_RANGE_ID'));
-    if (!Number.isFinite(numberingRangeId) || numberingRangeId <= 0) {
+    // El código de la factura va en reference_code (arriba).
+    //
+    // Quien emite de verdad (factus-invoice.service y las notas) resuelve el id
+    // antes con `resolveNumberingRangeId`, que mira los rangos REALES de la
+    // cuenta y descarta los vencidos. Aquí solo se valida, y se falla fuerte si
+    // no vino: hubo una env `FACTUS_NUMBERING_RANGE_ID` de respaldo con un id
+    // que ya no existía en la cuenta, y un respaldo que miente es peor que no
+    // tener respaldo — emitiría con un rango ajeno o reventaría en Factus.
+    const numberingRangeId = options.numberingRangeId;
+    if (
+      numberingRangeId == null ||
+      !Number.isFinite(Number(numberingRangeId)) ||
+      Number(numberingRangeId) <= 0
+    ) {
       throw new BadRequestException(
-        'numbering_range_id inválido. Defina la variable de entorno ' +
-          'FACTUS_NUMBERING_RANGE_ID (ID del rango de numeración DIAN en Factus) ' +
-          'o envíela en numberingRangeId.',
+        'Falta numbering_range_id. El rango se elige por documento en la vista ' +
+          'Numeración DIAN y lo resuelve resolveNumberingRangeId; si se llama a ' +
+          'este endpoint a mano, hay que enviar numberingRangeId en el cuerpo.',
       );
     }
 

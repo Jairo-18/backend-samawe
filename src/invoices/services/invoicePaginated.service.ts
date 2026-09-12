@@ -1,5 +1,7 @@
 import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
 import { CreditNoteRepository } from './../../shared/repositories/creditNote.repository';
+import { AdjustmentNoteRepository } from './../../shared/repositories/adjustmentNote.repository';
+import { DebitNoteRepository } from './../../shared/repositories/debitNote.repository';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { Invoice } from './../../shared/entities/invoice.entity';
 import { PaginatedListInvoicesParamsDto } from '../dtos/paginatedInvoice.dto';
@@ -7,13 +9,47 @@ import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { Injectable } from '@nestjs/common';
 import { SimplifiedInvoiceResponse } from '../models/invoice.model';
 import { plainToInstance } from 'class-transformer';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class InvoicedPaginatedService {
   constructor(
     private readonly _invoiceRepository: InvoiceRepository,
     private readonly _creditNoteRepository: CreditNoteRepository,
+    private readonly _adjustmentNoteRepository: AdjustmentNoteRepository,
+    private readonly _debitNoteRepository: DebitNoteRepository,
   ) {}
+
+  /**
+   * Conteo + total por factura de una tabla de notas (crédito, ajuste o
+   * débito). Las tres tienen la misma forma (`invoiceId` + `total`), así que
+   * una sola función agregada evita tres bloques calcados.
+   */
+  private async aggregateNotes(
+    repository: Repository<any>,
+    alias: string,
+    invoiceIds: number[],
+  ): Promise<Map<number, { count: number; total: number }>> {
+    const agg = new Map<number, { count: number; total: number }>();
+    if (!invoiceIds.length) return agg;
+
+    const rows = await repository
+      .createQueryBuilder(alias)
+      .select(`${alias}.invoiceId`, 'invoiceId')
+      .addSelect('COUNT(*)', 'count')
+      .addSelect(`COALESCE(SUM(${alias}.total), 0)`, 'total')
+      .where(`${alias}.invoiceId IN (:...ids)`, { ids: invoiceIds })
+      .groupBy(`${alias}.invoiceId`)
+      .getRawMany<{ invoiceId: number; count: string; total: string }>();
+
+    for (const r of rows) {
+      agg.set(Number(r.invoiceId), {
+        count: Number(r.count),
+        total: Number(r.total),
+      });
+    }
+    return agg;
+  }
 
   async paginatedList(
     params: PaginatedListInvoicesParamsDto,
@@ -193,26 +229,18 @@ export class InvoicedPaginatedService {
 
     const [items, itemCount] = await query.getManyAndCount();
 
-    // Notas crédito por factura (conteo + total acreditado) para mostrar el
-    // badge y el neto en la lista, sin tocar la factura original.
+    // Notas por factura (conteo + total) para mostrar el badge y el neto en la
+    // lista, sin tocar el documento original. Las tres se piden porque cada
+    // tipo de documento tiene la suya: la nota crédito resta de una factura de
+    // venta, la nota de AJUSTE resta de un documento soporte (es su única forma
+    // de anularse) y la nota débito suma. Sin las dos últimas, un DSE anulado o
+    // una factura con nota débito se veían en la lista como si nada.
     const invoiceIds = items.map((i) => i.invoiceId);
-    const creditAgg = new Map<number, { count: number; total: number }>();
-    if (invoiceIds.length) {
-      const rows = await this._creditNoteRepository
-        .createQueryBuilder('cn')
-        .select('cn.invoiceId', 'invoiceId')
-        .addSelect('COUNT(*)', 'count')
-        .addSelect('COALESCE(SUM(cn.total), 0)', 'total')
-        .where('cn.invoiceId IN (:...ids)', { ids: invoiceIds })
-        .groupBy('cn.invoiceId')
-        .getRawMany<{ invoiceId: number; count: string; total: string }>();
-      for (const r of rows) {
-        creditAgg.set(Number(r.invoiceId), {
-          count: Number(r.count),
-          total: Number(r.total),
-        });
-      }
-    }
+    const [creditAgg, adjustmentAgg, debitAgg] = await Promise.all([
+      this.aggregateNotes(this._creditNoteRepository, 'cn', invoiceIds),
+      this.aggregateNotes(this._adjustmentNoteRepository, 'an', invoiceIds),
+      this.aggregateNotes(this._debitNoteRepository, 'dn', invoiceIds),
+    ]);
 
     const transformedItems = items.map((invoice) => {
       let totalTaxes = 0;
@@ -332,6 +360,10 @@ export class InvoicedPaginatedService {
         factusNumber: invoice.factusNumber ?? undefined,
         creditNotesCount: creditAgg.get(invoice.invoiceId)?.count ?? 0,
         creditNotesTotal: creditAgg.get(invoice.invoiceId)?.total ?? 0,
+        adjustmentNotesCount: adjustmentAgg.get(invoice.invoiceId)?.count ?? 0,
+        adjustmentNotesTotal: adjustmentAgg.get(invoice.invoiceId)?.total ?? 0,
+        debitNotesCount: debitAgg.get(invoice.invoiceId)?.count ?? 0,
+        debitNotesTotal: debitAgg.get(invoice.invoiceId)?.total ?? 0,
       };
 
       return plainToInstance(Invoice, simplified);

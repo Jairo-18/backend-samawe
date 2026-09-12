@@ -96,6 +96,17 @@ export class FactusAdjustmentNoteService {
       );
     }
 
+    // Contraparte de la guarda de la nota crédito: la nota de ajuste es del
+    // DOCUMENTO SOPORTE. Sobre una factura de venta no aplica —esa se corrige
+    // con nota crédito o débito— y sus ítems son de un proveedor, no de un
+    // cliente.
+    if (invoice.invoiceType?.code !== 'DSE') {
+      throw new BadRequestException(
+        'La nota de ajuste solo aplica a documentos soporte. Una factura de ' +
+          'venta se corrige con nota crédito o nota débito.',
+      );
+    }
+
     const isTotal = !!options.isTotal;
     const correctionConceptCode =
       options.correctionConceptCode ?? (isTotal ? '2' : '1');

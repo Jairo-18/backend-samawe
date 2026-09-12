@@ -69,4 +69,13 @@
   /** Notas crédito de la factura: conteo y total acreditado (para badge/neto). */
   creditNotesCount?: number;
   creditNotesTotal?: number;
+  /**
+   * Notas de ajuste del documento soporte: conteo y total ajustado. Son a un
+   * DSE lo que las notas crédito a una factura, así que también RESTAN.
+   */
+  adjustmentNotesCount?: number;
+  adjustmentNotesTotal?: number;
+  /** Notas débito: conteo y total. Al contrario de las otras dos, SUMAN. */
+  debitNotesCount?: number;
+  debitNotesTotal?: number;
 }
