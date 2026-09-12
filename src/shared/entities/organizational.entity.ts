@@ -207,7 +207,7 @@ export class Organizational {
   /**
    * Rango de numeración para FACTURAS DE VENTA. Sigue llamándose así por
    * compatibilidad: era el único cuando la cuenta solo emitía ventas.
-   * Los tres son un override opcional — si el id no existe en el entorno
+   * Todos son un override opcional — si el id no existe en el entorno
    * (típico: un id de sandbox en la base de producción), se auto-resuelve.
    */
   @Column({ type: 'integer', nullable: true })
@@ -217,9 +217,17 @@ export class Organizational {
   @Column({ type: 'integer', nullable: true })
   factusNumberingRangeIdCreditNote?: number;
 
+  /** Rango de numeración para NOTAS DÉBITO. */
+  @Column({ type: 'integer', nullable: true })
+  factusNumberingRangeIdDebitNote?: number;
+
   /** Rango de numeración para DOCUMENTOS SOPORTE (prefijo DSE). */
   @Column({ type: 'integer', nullable: true })
   factusNumberingRangeIdSupport?: number;
+
+  /** Rango de numeración para NOTAS DE AJUSTE a documento soporte. */
+  @Column({ type: 'integer', nullable: true })
+  factusNumberingRangeIdAdjustment?: number;
 
   @Column('varchar', { length: 10, nullable: true })
   factusMunicipalityCode?: string;

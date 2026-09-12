@@ -13,6 +13,7 @@ import {
   FactusDocumentKind,
   FactusNumberingRange,
   FactusNumberingRangeOverview,
+  RANGE_DOCUMENT_CODE,
 } from '../interfaces/bill.interfaces';
 
 @Injectable()
@@ -290,8 +291,16 @@ export class FactusBillsService {
         return s.includes('factura') && s.includes('venta');
       case 'creditNote':
         return s.includes('nota') && s.includes('credito');
+      case 'debitNote':
+        return s.includes('nota') && s.includes('debito');
       case 'supportDocument':
         return s.includes('soporte') && !s.includes('ajuste');
+      case 'adjustmentNote':
+        // "Nota de Ajuste Documento Soporte". Lleva "soporte" dentro, por eso
+        // el caso de arriba lo excluye explícitamente: sin ese `!ajuste` los
+        // dos rangos se clasificarían como documento soporte y el documento
+        // soporte podría acabar numerado con el rango de las notas de ajuste.
+        return s.includes('nota') && s.includes('ajuste');
     }
   }
 
@@ -302,8 +311,12 @@ export class FactusBillsService {
         return 'Factura de Venta';
       case 'creditNote':
         return 'Nota Crédito';
+      case 'debitNote':
+        return 'Nota Débito';
       case 'supportDocument':
         return 'Documento Soporte';
+      case 'adjustmentNote':
+        return 'Nota de Ajuste a Documento Soporte';
     }
   }
 
@@ -338,9 +351,15 @@ export class FactusBillsService {
 
     return ranges.map((r) => {
       const kind: FactusDocumentKind | null =
-        (['sales', 'creditNote', 'supportDocument'] as const).find((k) =>
-          FactusBillsService.matchesKind(r.document, k),
-        ) ?? null;
+        (
+          [
+            'sales',
+            'creditNote',
+            'debitNote',
+            'supportDocument',
+            'adjustmentNote',
+          ] as const
+        ).find((k) => FactusBillsService.matchesKind(r.document, k)) ?? null;
 
       const isActive = FactusBillsService.isTrue(r.is_active);
       const isExpired = FactusBillsService.isTrue(r.is_expired);
@@ -372,15 +391,24 @@ export class FactusBillsService {
         status = 'ok';
       }
 
+      // OJO: los rangos de NOTA CRÉDITO vienen con from/to en null — la DIAN no
+      // expide resolución para ellas y en Factus se crean solo con prefijo y
+      // consecutivo. Calcularlos con `Number(null)` daba 0, así que la vista los
+      // pintaba como "0 – 0, quedan 0", es decir, un rango agotado. Sin tope no
+      // hay restantes que contar: va null y la vista muestra "N/A", igual que el
+      // portal de Factus.
+      const from = r.from == null ? null : Number(r.from);
+      const to = r.to == null ? null : Number(r.to);
+
       return {
         id: r.id,
         kind,
         documentName: r.document,
         prefix: r.prefix,
-        from: Number(r.from),
-        to: Number(r.to),
+        from,
+        to,
         current: Number(r.current),
-        remaining: Math.max(0, Number(r.to) - Number(r.current) + 1),
+        remaining: to == null ? null : Math.max(0, to - Number(r.current) + 1),
         resolutionNumber: r.resolution_number ?? null,
         startDate: r.start_date ?? null,
         endDate: r.end_date ?? null,
@@ -437,11 +465,20 @@ export class FactusBillsService {
             'este documento.',
         );
       }
+      // Las NOTAS (crédito, débito, ajuste) no llevan resolución DIAN: su rango
+      // se crea en Factus solo con `document`, `prefix` y `current`. Decirle al
+      // usuario que tramite una resolución para ellas lo manda a un trámite que
+      // no existe, así que el consejo cambia según el documento.
+      const needsResolution = kind === 'sales' || kind === 'supportDocument';
       throw new BadRequestException(
         `Factus no tiene un rango de numeración de "${label}" activo. ` +
-          'Cree/active el rango en Factus antes de emitir. Si la resolución ya ' +
-          'existe en la DIAN pero Factus la rechaza al registrarla, falta ' +
-          'asociarla al software: eso lo resuelve el soporte de Factus.',
+          `Cree el rango en Factus (document ${RANGE_DOCUMENT_CODE[kind]}) antes de emitir. ` +
+          (needsResolution
+            ? 'Necesita número de resolución DIAN. Si la resolución ya existe pero ' +
+              'Factus la rechaza al registrarla, falta asociarla al software: eso ' +
+              'lo resuelve el soporte de Factus.'
+            : 'Este documento NO necesita resolución DIAN: basta prefijo y ' +
+              'consecutivo inicial, y el rango no vence.'),
       );
     }
     if (preferredId && ranges.some((r) => r.id === preferredId)) {

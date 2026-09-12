@@ -15,6 +15,7 @@ import { StateType } from '../../shared/entities/stateType.entity';
 import { Product } from '../../shared/entities/product.entity';
 import { FactusClient } from '../factus.client';
 import { FactusApiError } from '../errors/factus-api.error';
+import { FactusBillsService } from './factus-bills.service';
 import { FactusInvoiceService } from './factus-invoice.service';
 import { RecipeService } from '../../recipes/services/recipe.service';
 import { MailsService } from '../../shared/services/mails.service';
@@ -23,19 +24,10 @@ import {
   CreateCreditNoteOptions,
   FactusCreditNoteResult,
 } from '../interfaces/credit-note.interfaces';
+import { sumFactusItemsTotal } from '../utils/factus-math.utils';
+import { resolveFactusPayment } from '../utils/factus-payment.utils';
 import * as QRCode from 'qrcode';
 import { createHash } from 'crypto';
-
-// Factus payment_form/method por PayType.code (mismo mapa que factus-invoice).
-const PAYMENT_METHOD_MAP: Record<string, { form: string; method: string }> = {
-  EFE: { form: '1', method: '10' },
-  TRAS: { form: '1', method: '42' },
-  CRE: { form: '2', method: '1' },
-  EFECT: { form: '1', method: '10' },
-  NA: { form: '1', method: '42' },
-};
-
-const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 // Productos de receta (RES): al venderlos consumen ingredientes, NO el stock
 // propio, así que tampoco se les devuelve stock al hacer la nota crédito.
@@ -61,6 +53,7 @@ export class FactusCreditNoteService {
     private readonly invoiceRepository: InvoiceRepository,
     private readonly creditNoteRepository: CreditNoteRepository,
     private readonly factusClient: FactusClient,
+    private readonly billsService: FactusBillsService,
     private readonly invoiceService: FactusInvoiceService,
     private readonly recipeService: RecipeService,
     private readonly mailsService: MailsService,
@@ -178,8 +171,9 @@ export class FactusCreditNoteService {
    * Genera y valida una nota crédito sobre una factura electrónica ya emitida.
    * - Total (isTotal): anula la factura completa (concepto '2'), todos los ítems.
    * - Parcial: solo los ítems/cantidades seleccionados (concepto '1').
-   * Se omite `customer` (Factus toma el del bill referenciado) y
-   * `numbering_range_id` (Factus usa el rango NC por defecto de la cuenta).
+   * El `numbering_range_id` va explícito, resuelto contra los rangos reales de
+   * la cuenta (ver `doCreateForInvoice`), para no depender de cuál elija Factus
+   * por defecto.
    */
   async createForInvoice(
     invoiceId: number,
@@ -304,24 +298,30 @@ export class FactusCreditNoteService {
     const customer = this.invoiceService.buildCustomer(invoice);
 
     // Total exacto (neto + IVA por línea, redondeado a 2 decimales como Factus).
-    const total = items.reduce((sum, item) => {
-      const qty = parseFloat(item.quantity as string);
-      const price = parseFloat(item.price as string);
-      const discount = parseFloat(item.discount_rate as string);
-      const taxRate = parseFloat((item.taxes as any[])[0].rate as string);
-      const net = round2(qty * price * (1 - discount / 100));
-      const tax = round2((net * taxRate) / 100);
-      return sum + net + tax;
-    }, 0);
+    const total = sumFactusItemsTotal(items as any);
 
-    const payTypeCode = invoice.payType?.code ?? 'TRAS';
-    const payment = PAYMENT_METHOD_MAP[payTypeCode] ?? PAYMENT_METHOD_MAP.TRAS;
+    const payment = resolveFactusPayment(invoice.payType?.code);
 
     const referenceCode = `NC-${invoice.code}-${Date.now()}`;
     const observation = (options.observation ?? '').slice(0, 250);
 
+    // Rango de numeración explícito, igual que en facturas y documento soporte.
+    //
+    // La doc lo da por opcional —"obligatorio solo si tienes múltiples rangos
+    // activos"— y hoy la cuenta tiene uno solo, así que omitirlo funcionaba. El
+    // problema es lo que pasaba mientras tanto: la vista de Numeración DIAN deja
+    // elegir el rango de notas crédito y lo guardaba en
+    // `factusNumberingRangeIdCreditNote`, pero la emisión no lo miraba. Esa
+    // divergencia es muda hasta el día en que aparece un segundo rango NC, y
+    // entonces Factus elige por su cuenta y numera con el que no era.
+    const numberingRangeId = await this.billsService.resolveNumberingRangeId(
+      'creditNote',
+      invoice.organizational?.factusNumberingRangeIdCreditNote,
+    );
+
     const payload: Record<string, unknown> = {
       reference_code: referenceCode,
+      numbering_range_id: numberingRangeId,
       correction_concept_code: correctionConceptCode,
       // customization_id por defecto 20 (con referencia a factura) → se omite.
       bill_number: invoice.factusNumber,
@@ -336,7 +336,6 @@ export class FactusCreditNoteService {
       // Factus EXIGE customer aunque se referencie la factura por bill_number
       // (la omisión solo aplica con bill_id entero). Se reusa el del cliente.
       customer,
-      // numbering_range_id omitido → Factus usa el rango NC por defecto.
       items,
     };
 

@@ -9,27 +9,19 @@ import {
 import { InvoiceRepository } from '../../shared/repositories/invoice.repository';
 import { InvoiceTypeRepository } from '../../shared/repositories/invoiceType.repository';
 import { Invoice } from '../../shared/entities/invoice.entity';
+import { InvoiceDetaill } from '../../shared/entities/invoiceDetaill.entity';
 import { FactusClient } from '../factus.client';
 import { FactusApiError } from '../errors/factus-api.error';
 import { FactusBillsService } from './factus-bills.service';
 import { FactusInvoiceService } from './factus-invoice.service';
 import { isPurchaseTypeCode } from '../../shared/constants/invoiceType.constants';
+import { sumFactusItemsTotal } from '../utils/factus-math.utils';
+import { resolveFactusPayment } from '../utils/factus-payment.utils';
 import {
   FactusSupportDocumentResult,
   FactusSupportDocumentStatus,
   SUPPORT_DOCUMENT_ID_CODES,
 } from '../interfaces/support-document.interfaces';
-
-// Mismo mapa de medios de pago que facturas y notas crédito.
-const PAYMENT_METHOD_MAP: Record<string, { form: string; method: string }> = {
-  EFE: { form: '1', method: '10' },
-  TRAS: { form: '1', method: '42' },
-  CRE: { form: '2', method: '1' },
-  EFECT: { form: '1', method: '10' },
-  NA: { form: '1', method: '42' },
-};
-
-const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 /** IVA. El documento soporte solo admite este código de impuesto. */
 const TAX_CODE_IVA = '01';
@@ -91,23 +83,14 @@ export class FactusSupportDocumentService {
 
     this.validateInvoice(invoice);
 
-    const provider = this.buildProvider(invoice);
+    const provider = this.buildProviderFor(invoice);
     const items = this.buildItems(invoice);
 
     // Total exacto con el redondeo por línea de Factus (neto y luego IVA, cada
     // uno a 2 decimales), para que payment_details cuadre y no rechace con 422.
-    const total = items.reduce((sum, item) => {
-      const qty = parseFloat(item.quantity as string);
-      const price = parseFloat(item.price as string);
-      const discount = parseFloat(item.discount_rate as string);
-      const taxRate = parseFloat((item.taxes as any[])[0].rate as string);
-      const net = round2(qty * price * (1 - discount / 100));
-      const tax = round2((net * taxRate) / 100);
-      return sum + net + tax;
-    }, 0);
+    const total = sumFactusItemsTotal(items as any);
 
-    const payTypeCode = invoice.payType?.code ?? 'TRAS';
-    const payment = PAYMENT_METHOD_MAP[payTypeCode] ?? PAYMENT_METHOD_MAP.TRAS;
+    const payment = resolveFactusPayment(invoice.payType?.code);
 
     const numberingRangeId = await this.billsService.resolveNumberingRangeId(
       'supportDocument',
@@ -240,7 +223,7 @@ export class FactusSupportDocumentService {
    * guion, documentos extranjeros con letras, dv que viaja aparte) y traduce el
    * resultado al vocabulario del `provider`.
    */
-  private buildProvider(invoice: Invoice): Record<string, string> {
+  buildProviderFor(invoice: Invoice): Record<string, string> {
     const customer = this.invoiceService.buildCustomer(invoice);
     const idCode = customer.identification_document_code;
 
@@ -285,25 +268,37 @@ export class FactusSupportDocumentService {
   private buildItems(invoice: Invoice): Record<string, unknown>[] {
     return invoice.invoiceDetails
       .filter((d) => !d.deletedAt)
-      .map((detail) => {
-        const item = this.invoiceService.mapDetail(detail);
-        const [tax] = item.taxes as { code: string; rate: string }[];
-        const isIva = tax?.code === TAX_CODE_IVA;
-        const rate = parseFloat(tax?.rate ?? '0');
+      .map((detail) => this.buildItemFor(invoice, detail));
+  }
 
-        if (!isIva && rate > 0) {
-          this.logger.warn(
-            `Compra ${invoice.invoiceId}, ítem "${String(item.name)}": el impuesto ` +
-              `${tax.code} al ${tax.rate}% no aplica en un documento soporte ` +
-              '(solo IVA). Se envía como excluido y el total baja en consecuencia.',
-          );
-        }
+  /**
+   * Un ítem con el impuesto ya normalizado a IVA. Es público porque la NOTA DE
+   * AJUSTE tiene que construir sus líneas exactamente igual: si el ajuste
+   * enviara el ICO que el documento original convirtió en excluido, los totales
+   * no cuadrarían con el documento que dice estar corrigiendo.
+   */
+  buildItemFor(
+    invoice: Invoice,
+    detail: InvoiceDetaill,
+    quantityOverride?: number,
+  ): Record<string, unknown> {
+    const item = this.invoiceService.mapDetail(detail, quantityOverride);
+    const [tax] = item.taxes as { code: string; rate: string }[];
+    const isIva = tax?.code === TAX_CODE_IVA;
+    const rate = parseFloat(tax?.rate ?? '0');
 
-        item.taxes = isIva
-          ? [{ code: TAX_CODE_IVA, rate: rate.toFixed(2) }]
-          : [{ code: TAX_CODE_IVA, rate: '0.00', is_excluded: true }];
-        return item;
-      });
+    if (!isIva && rate > 0) {
+      this.logger.warn(
+        `Compra ${invoice.invoiceId}, ítem "${String(item.name)}": el impuesto ` +
+          `${tax.code} al ${tax.rate}% no aplica en un documento soporte ` +
+          '(solo IVA). Se envía como excluido y el total baja en consecuencia.',
+      );
+    }
+
+    item.taxes = isIva
+      ? [{ code: TAX_CODE_IVA, rate: rate.toFixed(2) }]
+      : [{ code: TAX_CODE_IVA, rate: '0.00', is_excluded: true }];
+    return item;
   }
 
   private async createAndValidate(

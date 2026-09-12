@@ -6,6 +6,8 @@ import { BalanceService } from './services/balance.service';
 import { InvoiceDetaillRepository } from './repositories/invoiceDetaill.repository';
 import { InvoiceRepository } from './repositories/invoice.repository';
 import { CreditNoteRepository } from './repositories/creditNote.repository';
+import { DebitNoteRepository } from './repositories/debitNote.repository';
+import { AdjustmentNoteRepository } from './repositories/adjustmentNote.repository';
 import { PayTypeRepository } from './repositories/payType.repository';
 import { PaidTypeRepository } from './repositories/paidType.repository';
 import { AdditionalTypeRepository } from './repositories/additionalType.repository';
@@ -23,6 +25,8 @@ import { AccessSessionsRepository } from './repositories/accessSessions.reposito
 import { AccessSessions } from './entities/accessSessions.entity';
 import { Invoice } from './entities/invoice.entity';
 import { CreditNote } from './entities/creditNote.entity';
+import { DebitNote } from './entities/debitNote.entity';
+import { AdjustmentNote } from './entities/adjustmentNote.entity';
 import { AdditionalType } from './entities/additionalType.entity';
 import { PaidType } from './entities/paidType.entity';
 import { PayType } from './entities/payType.entity';
@@ -169,6 +173,8 @@ export class SharedModule {
           InvoiceDetaill,
           InvoiceType,
           CreditNote,
+          DebitNote,
+          AdjustmentNote,
           Notification,
           PaidType,
           PayType,
@@ -248,6 +254,8 @@ export class SharedModule {
         InvoiceDetaillRepository,
         InvoiceTypeRepository,
         CreditNoteRepository,
+        DebitNoteRepository,
+        AdjustmentNoteRepository,
         NotificationRepository,
         PaidTypeRepository,
         PersonTypeRepository,
@@ -306,6 +314,8 @@ export class SharedModule {
         InvoiceDetaillRepository,
         InvoiceTypeRepository,
         CreditNoteRepository,
+        DebitNoteRepository,
+        AdjustmentNoteRepository,
         NotificationRepository,
         PaidTypeRepository,
         PersonTypeRepository,

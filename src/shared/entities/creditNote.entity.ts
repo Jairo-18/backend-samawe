@@ -12,7 +12,12 @@ import { Invoice } from './invoice.entity';
  * Nota crédito electrónica (Factus / DIAN) emitida sobre una factura electrónica
  * de venta. Una factura puede tener varias (devoluciones parciales). Sirve para
  * "restar" ítems/valores de la factura: parcial (concepto 1) o anulación total
- * (concepto 2). La nota débito NO existe en Factus, por eso solo crédito.
+ * (concepto 2).
+ *
+ * ⚠️ Este comentario decía que "la nota débito NO existe en Factus". Es FALSO:
+ * existe (`POST /v2/debit-notes/validate`, conceptos 1–4 y rango propio). Ese
+ * dato equivocado fue lo que la dejó fuera del alcance en junio de 2026 aunque
+ * el contador la había pedido. Simplemente **no está implementada todavía**.
  */
 @Entity({ name: 'CreditNote' })
 export class CreditNote {

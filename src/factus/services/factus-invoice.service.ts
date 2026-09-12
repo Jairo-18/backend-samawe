@@ -14,16 +14,9 @@ import { MailsService } from '../../shared/services/mails.service';
 import { InvoicePdfService } from '../../shared/services/invoicePdf.service';
 import { InvoiceTypeRepository } from '../../shared/repositories/invoiceType.repository';
 import { MailAttachment } from '../../shared/interfaces/mail.interface';
+import { sumFactusItemsTotal } from '../utils/factus-math.utils';
+import { resolveFactusPayment } from '../utils/factus-payment.utils';
 import * as QRCode from 'qrcode';
-
-// Factus payment_method_code by internal PayType.code
-const PAYMENT_METHOD_MAP: Record<string, { form: string; method: string }> = {
-  EFE: { form: '1', method: '10' }, // Efectivo
-  TRAS: { form: '1', method: '42' }, // Transferencia/Consignación
-  CRE: { form: '2', method: '1' }, // Crédito
-  EFECT: { form: '1', method: '10' }, // Efectivo y Transferencia
-  NA: { form: '1', method: '42' }, // No aplica → default contado
-};
 
 // Respaldo del código de documento Factus por el `code` del IdentificationType,
 // por si la columna factusCode no está poblada (la migración la setea, pero un
@@ -751,9 +744,7 @@ export class FactusInvoiceService {
     invoice: Invoice,
     numberingRangeId: number,
   ): Record<string, unknown> {
-    const payTypeCode = invoice.payType?.code ?? 'TRAS';
-    const payment =
-      PAYMENT_METHOD_MAP[payTypeCode] ?? PAYMENT_METHOD_MAP['TRAS'];
+    const payment = resolveFactusPayment(invoice.payType?.code);
 
     const customer = this.buildCustomer(invoice);
 
@@ -768,16 +759,7 @@ export class FactusInvoiceService {
     // Factus rechaza con 422 ("La suma de todos los detalles de pago no es igual
     // al total de la factura"). Replicamos su redondeo por línea para que
     // payment_details.amount cuadre exactamente con el total que calcula Factus.
-    const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
-    const factusTotal = items.reduce((sum, item) => {
-      const qty = parseFloat(item.quantity as string);
-      const price = parseFloat(item.price as string);
-      const discount = parseFloat(item.discount_rate as string);
-      const taxRate = parseFloat((item.taxes as any[])[0].rate as string);
-      const net = round2(qty * price * (1 - discount / 100));
-      const tax = round2((net * taxRate) / 100);
-      return sum + net + tax;
-    }, 0);
+    const factusTotal = sumFactusItemsTotal(items as any);
 
     const paymentDetail: Record<string, string | number> = {
       payment_form: payment.form,

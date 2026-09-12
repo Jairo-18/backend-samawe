@@ -11,8 +11,19 @@ import {
 export interface FactusRangeSelection {
   sales: number | null;
   creditNote: number | null;
+  debitNote: number | null;
   supportDocument: number | null;
+  adjustmentNote: number | null;
 }
+
+/** Los cinco documentos, en el orden en que se muestran. */
+const DOCUMENT_KINDS: FactusDocumentKind[] = [
+  'sales',
+  'creditNote',
+  'debitNote',
+  'supportDocument',
+  'adjustmentNote',
+];
 
 export interface FactusNumberingOverview {
   ranges: FactusNumberingRangeOverview[];
@@ -29,7 +40,9 @@ export interface FactusNumberingOverview {
 const SELECTION_COLUMN: Record<FactusDocumentKind, keyof Organizational> = {
   sales: 'factusNumberingRangeId',
   creditNote: 'factusNumberingRangeIdCreditNote',
+  debitNote: 'factusNumberingRangeIdDebitNote',
   supportDocument: 'factusNumberingRangeIdSupport',
+  adjustmentNote: 'factusNumberingRangeIdAdjustment',
 };
 
 /**
@@ -54,28 +67,16 @@ export class FactusNumberingService {
     const org = await this.resolveOrganizational(organizationalId);
     const ranges = await this.billsService.getRangesOverview();
 
-    const selection: FactusRangeSelection = {
-      sales: org?.factusNumberingRangeId ?? null,
-      creditNote: org?.factusNumberingRangeIdCreditNote ?? null,
-      supportDocument: org?.factusNumberingRangeIdSupport ?? null,
-    };
-
-    // El efectivo se calcula con la misma lógica que la emisión, pero sin
-    // reventar: si no hay rango usable para un documento, queda en null y la
-    // vista lo muestra como pendiente en vez de romper la pantalla entera.
-    const effective: FactusRangeSelection = {
-      sales: this.resolveEffective(ranges, 'sales', selection.sales),
-      creditNote: this.resolveEffective(
-        ranges,
-        'creditNote',
-        selection.creditNote,
-      ),
-      supportDocument: this.resolveEffective(
-        ranges,
-        'supportDocument',
-        selection.supportDocument,
-      ),
-    };
+    const selection = {} as FactusRangeSelection;
+    const effective = {} as FactusRangeSelection;
+    for (const kind of DOCUMENT_KINDS) {
+      const saved = (org?.[SELECTION_COLUMN[kind]] as number | undefined) ?? null;
+      selection[kind] = saved;
+      // El efectivo se calcula con la misma lógica que la emisión, pero sin
+      // reventar: si no hay rango usable para un documento, queda en null y la
+      // vista lo muestra como pendiente en vez de romper la pantalla entera.
+      effective[kind] = this.resolveEffective(ranges, kind, saved);
+    }
 
     return { ranges, selection, effective };
   }
