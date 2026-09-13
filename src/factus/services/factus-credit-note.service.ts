@@ -27,6 +27,12 @@ import {
 import { sumFactusItemsTotal } from '../utils/factus-math.utils';
 import { isSaleTypeCode } from '../../shared/constants/invoiceType.constants';
 import { resolveFactusPayment } from '../utils/factus-payment.utils';
+import {
+  classifyDianErrors,
+  extractDocumentErrors,
+  parseFactusValidationErrors,
+} from '../utils/factus-errors.utils';
+import { buildNoteReferenceCode } from '../utils/factus-reference.utils';
 import * as QRCode from 'qrcode';
 import { createHash } from 'crypto';
 
@@ -188,10 +194,24 @@ export class FactusCreditNoteService {
     );
   }
 
-  private async doCreateForInvoice(
+  /**
+   * Validaciones y cálculo de la selección de ítems, compartido por la emisión
+   * y por la recuperación (`recoverForInvoice`). Las dos tienen que llegar
+   * exactamente a la misma selección: la recuperación reconstruye el snapshot
+   * de una nota que ya existe en la DIAN, así que si calculara distinto
+   * guardaría un snapshot que no corresponde al documento real y el "restante"
+   * de las notas siguientes saldría mal.
+   */
+  private async prepareNote(
     invoiceId: number,
     options: CreateCreditNoteOptions,
-  ): Promise<FactusCreditNoteResult> {
+  ): Promise<{
+    invoice: Invoice;
+    isTotal: boolean;
+    correctionConceptCode: string;
+    existingNotes: CreditNote[];
+    selected: { detail: InvoiceDetaill; quantity: number }[];
+  }> {
     const invoice = await this.loadInvoice(invoiceId);
 
     if (!invoice.factusNumber) {
@@ -275,6 +295,16 @@ export class FactusCreditNoteService {
       });
     }
 
+    return { invoice, isTotal, correctionConceptCode, existingNotes, selected };
+  }
+
+  private async doCreateForInvoice(
+    invoiceId: number,
+    options: CreateCreditNoteOptions,
+  ): Promise<FactusCreditNoteResult> {
+    const { invoice, isTotal, correctionConceptCode, existingNotes, selected } =
+      await this.prepareNote(invoiceId, options);
+
     // Selección normalizada (lo que se persiste como snapshot) y su hash.
     const selection = selected.map((s) => ({
       invoiceDetailId: s.detail.invoiceDetailId,
@@ -316,7 +346,15 @@ export class FactusCreditNoteService {
 
     const payment = resolveFactusPayment(invoice.payType?.code);
 
-    const referenceCode = `NC-${invoice.code}-${Date.now()}`;
+    // Determinista: secuencial sobre las notas YA persistidas (ver
+    // factus-reference.utils). Antes llevaba `Date.now()`, así que cada
+    // reintento creaba un documento nuevo en Factus en vez de reintentar el
+    // atascado — el mecanismo exacto del incidente A773.
+    const referenceCode = buildNoteReferenceCode(
+      'NC',
+      invoice.code,
+      existingNotes.length,
+    );
     const observation = (options.observation ?? '').slice(0, 250);
 
     // Rango de numeración explícito, igual que en facturas y documento soporte.
@@ -364,21 +402,49 @@ export class FactusCreditNoteService {
     // factura quedaría contada como parcialmente anulada sin serlo.
     if (result.isValidated !== true) {
       const errors = this.extractNoteErrors(raw);
-      const rejected = errors.some((e) => /rechazo/i.test(e));
+      const outcome = classifyDianErrors(errors);
       this.logger.error(
         `Nota crédito ${referenceCode} de la factura ${invoice.invoiceId}: ` +
-          `is_validated=false (${rejected ? 'RECHAZO' : 'pendiente en la DIAN'}). ` +
-          `No se persiste ni se revierte inventario. errors=${JSON.stringify(errors)}`,
+          `is_validated=false (${outcome}). No se persiste ni se revierte ` +
+          `inventario. errors=${JSON.stringify(errors)}`,
       );
+
+      // Regla 90: la DIAN YA tiene esta nota. No es un rechazo de contenido y
+      // no se arregla ni borrando ni reenviando (ver factus-errors.utils).
+      if (outcome === 'already-processed') {
+        throw new UnprocessableEntityException({
+          message:
+            `La DIAN ya procesó esta nota crédito (${result.number ?? 's/n'}): ` +
+            'el envío llegó y lo que se perdió fue la respuesta. NO la elimines ' +
+            'y NO la reenvíes — reenviar repite el mismo consecutivo y el mismo ' +
+            'CUDE, así que vuelve a dar Regla 90. Hay que pedirle a soporte de ' +
+            'Factus que reconcilie su estado contra la DIAN (GetStatus con el ' +
+            'CUDE). Cuando figure como Validada, regístrala aquí con ' +
+            `POST /factus/invoices/${invoice.invoiceId}/credit-notes/recover.`,
+          alreadyProcessed: true,
+          pendingInDian: true,
+          rejected: false,
+          referenceCode,
+          noteNumber: result.number,
+          errors,
+        });
+      }
+
+      const rejected = outcome === 'rejected';
       throw new UnprocessableEntityException({
         message: rejected
           ? 'La DIAN rechazó la nota crédito. No se emitió y no se devolvió inventario.'
           : 'La DIAN aún no ha validado la nota crédito. No se emitió todavía.',
+        alreadyProcessed: false,
         pendingInDian: !rejected,
         rejected,
         referenceCode,
         noteNumber: result.number,
         errors,
+        hint: rejected
+          ? `Elimínala con DELETE /factus/credit-notes/by-reference/${referenceCode}, ` +
+            'corrige los datos y reenvía con el MISMO código.'
+          : 'No elimines nada. Reintenta más tarde con los MISMOS datos.',
       });
     }
 
@@ -400,6 +466,163 @@ export class FactusCreditNoteService {
     this.dispatchNotifications(invoice, result);
 
     return result;
+  }
+
+  /**
+   * Registra en samawe una nota crédito que **ya existe y está validada en la
+   * DIAN** pero que nunca se guardó aquí.
+   *
+   * Es el espejo de `FactusInvoiceService.recoverFromFactus`, y hace falta por
+   * el mismo motivo: cuando la emisión responde Regla 90 ("documento procesado
+   * anteriormente") el documento SÍ llegó a la DIAN y lo que se perdió fue la
+   * respuesta, así que el servicio no persiste nada. Sin esta ruta queda una
+   * nota crédito legalmente válida que la aplicación ignora: los reportes
+   * siguen mostrando la venta completa y el inventario nunca se devuelve.
+   *
+   * Recibe las MISMAS opciones que la emisión (total o selección de ítems)
+   * porque el snapshot de la selección no está en ninguna parte — la nota nunca
+   * se guardó — y hay que reconstruirlo para calcular el restante de las notas
+   * siguientes.
+   *
+   * No emite nada: si en Factus no aparece la nota, o aparece sin validar,
+   * falla y no toca ni la base ni el inventario.
+   */
+  async recoverForInvoice(
+    invoiceId: number,
+    options: CreateCreditNoteOptions,
+  ): Promise<FactusCreditNoteResult> {
+    return this.withInvoiceLock(invoiceId, () =>
+      this.doRecoverForInvoice(invoiceId, options),
+    );
+  }
+
+  private async doRecoverForInvoice(
+    invoiceId: number,
+    options: CreateCreditNoteOptions,
+  ): Promise<FactusCreditNoteResult> {
+    const { invoice, isTotal, correctionConceptCode, existingNotes, selected } =
+      await this.prepareNote(invoiceId, options);
+
+    // La referencia se calcula igual que en la emisión, PERO se puede pasar a
+    // mano. Hace falta para las notas emitidas antes del 13 sep 2026: llevaban
+    // `NC-<code>-<timestamp>` y ese timestamp no quedó guardado en ningún sitio
+    // (la nota nunca se persistió), así que el único modo de recuperarlas es
+    // leer su reference_code del portal de Factus y pasarlo aquí.
+    const referenceCode =
+      options.referenceCode?.trim() ||
+      buildNoteReferenceCode('NC', invoice.code, existingNotes.length);
+
+    const raw = await this.getNoteByReference(referenceCode);
+    if (!raw) {
+      throw new NotFoundException(
+        `En Factus no hay ninguna nota crédito con reference_code "${referenceCode}". ` +
+          'Verifica en el portal que la nota exista y que la selección de ítems ' +
+          'que enviaste sea la misma con la que se intentó emitir (de ella ' +
+          'depende el código de referencia). Si la nota se emitió antes del ' +
+          '13 sep 2026 su referencia lleva un timestamp: cópiala del portal y ' +
+          'pásala en el campo `referenceCode`.',
+      );
+    }
+
+    const items = selected.map(({ detail, quantity }) =>
+      this.invoiceService.mapDetail(detail, quantity),
+    );
+    const total = sumFactusItemsTotal(items as any);
+    const result = this.extractResult(raw, referenceCode, total);
+
+    if (result.isValidated !== true) {
+      const errors = this.extractNoteErrors(raw);
+      const outcome = classifyDianErrors(errors);
+      throw new UnprocessableEntityException({
+        message:
+          `La nota crédito ${result.number ?? 's/n'} existe en Factus pero NO ` +
+          'figura como validada por la DIAN, así que no se puede dar por ' +
+          'emitida. No se guardó nada ni se tocó el inventario.',
+        alreadyProcessed: outcome === 'already-processed',
+        pendingInDian: outcome !== 'rejected',
+        rejected: outcome === 'rejected',
+        referenceCode,
+        noteNumber: result.number,
+        errors,
+        hint:
+          outcome === 'already-processed'
+            ? 'Sigue atascada: pídele a soporte de Factus que reconcilie su ' +
+              'estado contra la DIAN (GetStatus con el CUDE) y reintenta esta ' +
+              'recuperación cuando figure como Validada.'
+            : 'Espera a que la DIAN la valide y reintenta la recuperación.',
+      });
+    }
+
+    const selection = selected.map((s) => ({
+      invoiceDetailId: s.detail.invoiceDetailId,
+      quantity: s.quantity,
+    }));
+
+    await this.persist(invoice, {
+      referenceCode,
+      correctionConceptCode,
+      isTotal,
+      observation: (options.observation ?? '').slice(0, 250),
+      result,
+      selection,
+    });
+
+    // El inventario tampoco se devolvió cuando falló la emisión, así que la
+    // recuperación tiene que hacerlo ahora. Va después de persistir: si el
+    // guardado falla, no se toca el stock.
+    await this.reverseInventory(selected);
+
+    this.logger.warn(
+      `Nota crédito ${result.number} RECUPERADA de Factus para la factura ` +
+        `${invoiceId}: se guardó y se devolvió el inventario. Revisa que no ` +
+        'estuviera ya cuadrado a mano.',
+    );
+
+    return result;
+  }
+
+  /** Busca una nota crédito en Factus por su `reference_code`. */
+  private async getNoteByReference(referenceCode: string): Promise<any | null> {
+    const res = await this.factusClient.get<any>('/v2/credit-notes', {
+      params: { 'filter[reference_code]': referenceCode },
+    });
+    const list: any[] = res?.data?.data ?? res?.data ?? [];
+    const notes = Array.isArray(list) ? list : [list];
+    return (
+      notes.find(
+        (n) => String(n?.reference_code ?? '') === String(referenceCode),
+      ) ?? null
+    );
+  }
+
+  /**
+   * Elimina en Factus una nota crédito NO VALIDADA, por su referencia.
+   *
+   * ⚠️ Solo para un rechazo **de contenido**. Si la nota responde Regla 90
+   * ("documento procesado anteriormente") **no hay que borrarla**: la DIAN ya
+   * la tiene y borrarla aquí solo destruye el vínculo con un documento que
+   * existe legalmente. Ese caso se reconcilia con soporte de Factus.
+   */
+  async deleteByReference(referenceCode: string): Promise<unknown> {
+    try {
+      const res = await this.factusClient.delete<unknown>(
+        `/v2/credit-notes/reference/${encodeURIComponent(referenceCode)}`,
+      );
+      this.logger.warn(
+        `Nota crédito con reference_code "${referenceCode}" eliminada en Factus.`,
+      );
+      return res;
+    } catch (error) {
+      if (error instanceof FactusApiError) {
+        const detail =
+          (error.responseData as any)?.message ?? `HTTP ${error.statusCode}`;
+        throw new BadRequestException(
+          `No se pudo eliminar en Factus la nota crédito "${referenceCode}": ` +
+            `${detail}. Solo se pueden eliminar notas NO validadas por la DIAN.`,
+        );
+      }
+      throw error;
+    }
   }
 
   /**
@@ -702,19 +925,26 @@ export class FactusCreditNoteService {
     } catch (error) {
       if (error instanceof FactusApiError) {
         if (error.statusCode === 409) {
+          const ref = String(payload.reference_code);
           throw new ConflictException(
-            'Hay una nota crédito pendiente por enviar a la DIAN con este reference_code. ' +
-              'Elimínala desde el portal de Factus antes de crear una nueva.',
+            'Factus tiene una nota crédito pendiente por enviar a la DIAN y ' +
+              'mientras siga ahí bloquea cualquier nota crédito nueva. ' +
+              `Búscala con GET /v2/credit-notes?filter[status]=0 — puede NO ser "${ref}", ` +
+              'el bloqueo es de la cuenta, no de este código. Si la pendiente ' +
+              'responde Regla 90 ("procesado anteriormente"), no la borres: la ' +
+              'DIAN ya la tiene y hay que reconciliarla con soporte de Factus.',
           );
         }
         if (error.statusCode === 422) {
-          const errs = (error.responseData as any)?.errors ?? {};
-          const messages = Object.entries(errs).flatMap(([field, msgs]) =>
-            (msgs as string[]).map((m) => `${field}: ${m}`),
-          );
+          // Los errores viven en `data.errors` y pueden venir como array o como
+          // objeto; la lectura está centralizada en factus-errors.utils porque
+          // hacerla mal dejaba al usuario con un "error de validación" pelado.
+          const messages = parseFactusValidationErrors(error.responseData);
           throw new UnprocessableEntityException({
             message: 'Error de validación en Factus (nota crédito)',
-            errors: messages.length ? messages : [String((error.responseData as any)?.message ?? '')],
+            errors: messages,
+            alreadyProcessed:
+              classifyDianErrors(messages) === 'already-processed',
           });
         }
       }
@@ -722,17 +952,9 @@ export class FactusCreditNoteService {
     }
   }
 
-  /**
-   * Normaliza el `errors` de Factus a lista de textos: viene como objeto
-   * indexado por regla (`{"90": "…"}`) o como array, según el endpoint.
-   */
+  /** Errores del documento devuelto por Factus (ver factus-errors.utils). */
   private extractNoteErrors(raw: any): string[] {
-    const note = raw?.data?.credit_note ?? raw?.data ?? raw;
-    const errors = note?.errors;
-    if (!errors) return [];
-    if (Array.isArray(errors)) return errors.map((e) => String(e));
-    if (typeof errors === 'object') return Object.values(errors).map(String);
-    return [String(errors)];
+    return extractDocumentErrors(raw, 'credit_note');
   }
 
   private extractResult(

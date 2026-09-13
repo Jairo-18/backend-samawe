@@ -14,6 +14,10 @@ import {
   FactusNumberingRangeOverview,
   RANGE_DOCUMENT_CODE,
 } from '../interfaces/bill.interfaces';
+import {
+  classifyDianErrors,
+  parseFactusValidationErrors,
+} from '../utils/factus-errors.utils';
 
 @Injectable()
 export class FactusBillsService {
@@ -136,13 +140,15 @@ export class FactusBillsService {
           );
         }
         if (error.statusCode === 422) {
-          const errs = (error.responseData as any)?.errors ?? {};
-          const messages = Object.entries(errs).flatMap(([field, msgs]) =>
-            (msgs as string[]).map((m) => `${field}: ${m}`),
-          );
+          // `data.errors`, en array o en objeto. Ver factus-errors.utils: leer
+          // `errors` en la raíz devolvía SIEMPRE una lista vacía y el motivo
+          // real de la DIAN (p. ej. la Regla 90) no llegaba al usuario.
+          const messages = parseFactusValidationErrors(error.responseData);
           throw new UnprocessableEntityException({
             message: 'Error de validación en Factus',
             errors: messages,
+            alreadyProcessed:
+              classifyDianErrors(messages) === 'already-processed',
           });
         }
       }

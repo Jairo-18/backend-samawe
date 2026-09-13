@@ -59,6 +59,12 @@ class CreateAdjustmentNoteDto {
   @IsString()
   @MaxLength(250)
   observation?: string;
+
+  /** Solo para /recover: reference_code real del documento en Factus. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  referenceCode?: string;
 }
 
 @ApiTags('Factus - Adjustment Notes')
@@ -101,9 +107,31 @@ export class FactusAdjustmentNotesController {
   }
 
   /**
+   * Registra una nota de ajuste ya VALIDADA en la DIAN que nunca se guardó aquí
+   * (típicamente tras una Regla 90). No emite nada ante la DIAN, pero SÍ
+   * descuenta el inventario, que es lo que quedó sin hacer.
+   */
+  @Post('invoices/:id/adjustment-notes/recover')
+  @Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN)
+  @ApiOperation({
+    summary:
+      'Recuperar de Factus una nota de ajuste ya validada que no quedó registrada',
+  })
+  async recover(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: CreateAdjustmentNoteDto,
+  ) {
+    const data = await this.adjustmentNoteService.recoverForInvoice(id, body);
+    return { success: true, data };
+  }
+
+  /**
    * Endpoint destructivo: solo elimina notas NO validadas por la DIAN, que son
    * las que bloquean los envíos siguientes con 409. Una nota validada es
    * inmutable. Restringido a SUPERADMIN/ADMIN igual que el borrado de facturas.
+   *
+   * ⚠️ NO sirve ante Regla 90 ("documento procesado anteriormente"): la DIAN ya
+   * tiene el documento y borrarlo aquí no lo borra allá.
    */
   @Delete('adjustment-notes/by-reference/:referenceCode')
   @Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN)

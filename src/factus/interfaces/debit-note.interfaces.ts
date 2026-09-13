@@ -33,6 +33,12 @@ export interface CreateDebitNoteOptions {
   correctionConceptCode?: string;
   /** Líneas a cobrar. Al menos una. */
   items: DebitNoteItemInput[];
+  /**
+   * SOLO para la recuperación (`/recover`): el `reference_code` real del
+   * documento en Factus. Al emitir se ignora. Ver la nota equivalente en
+   * `credit-note.interfaces.ts`.
+   */
+  referenceCode?: string;
   observation?: string;
 }
 

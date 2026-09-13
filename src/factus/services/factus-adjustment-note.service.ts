@@ -24,6 +24,12 @@ import {
 } from '../interfaces/adjustment-note.interfaces';
 import { sumFactusItemsTotal } from '../utils/factus-math.utils';
 import { resolveFactusPayment } from '../utils/factus-payment.utils';
+import {
+  classifyDianErrors,
+  extractDocumentErrors,
+  parseFactusValidationErrors,
+} from '../utils/factus-errors.utils';
+import { buildNoteReferenceCode } from '../utils/factus-reference.utils';
 import { createHash } from 'crypto';
 
 /** Motivos DIAN de la nota de ajuste a documento soporte. */
@@ -84,10 +90,23 @@ export class FactusAdjustmentNoteService {
     );
   }
 
-  private async doCreateForInvoice(
+  /**
+   * Validaciones y cálculo de la selección, compartido por la emisión y por la
+   * recuperación. Las dos tienen que llegar a la misma selección: la
+   * recuperación reconstruye el snapshot de una nota que ya existe en la DIAN,
+   * y si calculara distinto guardaría un snapshot que no corresponde al
+   * documento real.
+   */
+  private async prepareNote(
     invoiceId: number,
     options: CreateAdjustmentNoteOptions,
-  ): Promise<FactusAdjustmentNoteResult> {
+  ): Promise<{
+    invoice: Invoice;
+    isTotal: boolean;
+    correctionConceptCode: string;
+    existingNotes: AdjustmentNote[];
+    selected: { detail: InvoiceDetaill; quantity: number }[];
+  }> {
     const invoice = await this.loadInvoice(invoiceId);
 
     if (!invoice.factusNumber) {
@@ -174,6 +193,16 @@ export class FactusAdjustmentNoteService {
       });
     }
 
+    return { invoice, isTotal, correctionConceptCode, existingNotes, selected };
+  }
+
+  private async doCreateForInvoice(
+    invoiceId: number,
+    options: CreateAdjustmentNoteOptions,
+  ): Promise<FactusAdjustmentNoteResult> {
+    const { invoice, isTotal, correctionConceptCode, existingNotes, selected } =
+      await this.prepareNote(invoiceId, options);
+
     const selection = selected.map((s) => ({
       invoiceDetailId: s.detail.invoiceDetailId,
       quantity: s.quantity,
@@ -214,7 +243,14 @@ export class FactusAdjustmentNoteService {
       invoice.organizational?.factusNumberingRangeIdAdjustment,
     );
 
-    const referenceCode = `NA-${invoice.code}-${Date.now()}`;
+    // Determinista: secuencial sobre las notas YA persistidas (ver
+    // factus-reference.utils). Con `Date.now()` cada reintento creaba un
+    // documento nuevo en Factus en vez de reintentar el atascado.
+    const referenceCode = buildNoteReferenceCode(
+      'NA',
+      invoice.code,
+      existingNotes.length,
+    );
     const observation = (options.observation ?? '').slice(0, 250);
 
     const payload: Record<string, unknown> = {
@@ -244,16 +280,40 @@ export class FactusAdjustmentNoteService {
     // dejaría el stock descuadrado por un ajuste que legalmente no existe.
     if (result.isValidated !== true) {
       const errors = this.extractNoteErrors(raw);
-      const rejected = errors.some((e) => /rechazo/i.test(e));
+      const outcome = classifyDianErrors(errors);
       this.logger.error(
         `Nota de ajuste ${referenceCode} de la compra ${invoice.invoiceId}: ` +
-          `is_validated=false (${rejected ? 'RECHAZO' : 'pendiente en la DIAN'}). ` +
-          `No se persiste ni se toca inventario. errors=${JSON.stringify(errors)}`,
+          `is_validated=false (${outcome}). No se persiste ni se toca ` +
+          `inventario. errors=${JSON.stringify(errors)}`,
       );
+
+      // Regla 90: la DIAN YA tiene esta nota (ver factus-errors.utils). Ni
+      // borrar ni reenviar; se reconcilia con soporte de Factus.
+      if (outcome === 'already-processed') {
+        throw new UnprocessableEntityException({
+          message:
+            `La DIAN ya procesó esta nota de ajuste (${result.number ?? 's/n'}): ` +
+            'el envío llegó y lo que se perdió fue la respuesta. NO la elimines ' +
+            'y NO la reenvíes — reenviar repite el mismo consecutivo y el mismo ' +
+            'CUDS, así que vuelve a dar Regla 90. Hay que pedirle a soporte de ' +
+            'Factus que reconcilie su estado contra la DIAN. Cuando figure como ' +
+            'Validada, regístrala aquí con ' +
+            `POST /factus/invoices/${invoice.invoiceId}/adjustment-notes/recover.`,
+          alreadyProcessed: true,
+          pendingInDian: true,
+          rejected: false,
+          referenceCode,
+          noteNumber: result.number,
+          errors,
+        });
+      }
+
+      const rejected = outcome === 'rejected';
       throw new UnprocessableEntityException({
         message: rejected
           ? 'La DIAN rechazó la nota de ajuste. No quedó emitida y no se movió inventario.'
           : 'La DIAN aún no ha validado la nota de ajuste. No se emitió todavía.',
+        alreadyProcessed: false,
         pendingInDian: !rejected,
         rejected,
         referenceCode,
@@ -277,6 +337,119 @@ export class FactusAdjustmentNoteService {
     await this.reverseInventory(selected);
 
     return result;
+  }
+
+  /**
+   * Registra en samawe una nota de ajuste que **ya existe y está validada en la
+   * DIAN** pero que nunca se guardó aquí (típicamente tras una Regla 90: el
+   * envío llegó y lo que se perdió fue la respuesta).
+   *
+   * Sin esta ruta queda un ajuste legalmente válido que la aplicación ignora, y
+   * con él un stock inflado: la compra sumó mercancía que el ajuste declara no
+   * comprada y que nadie descontó.
+   *
+   * No emite nada: si en Factus no aparece, o aparece sin validar, falla y no
+   * toca ni la base ni el inventario.
+   */
+  async recoverForInvoice(
+    invoiceId: number,
+    options: CreateAdjustmentNoteOptions,
+  ): Promise<FactusAdjustmentNoteResult> {
+    return this.withInvoiceLock(invoiceId, () =>
+      this.doRecoverForInvoice(invoiceId, options),
+    );
+  }
+
+  private async doRecoverForInvoice(
+    invoiceId: number,
+    options: CreateAdjustmentNoteOptions,
+  ): Promise<FactusAdjustmentNoteResult> {
+    const { invoice, isTotal, correctionConceptCode, existingNotes, selected } =
+      await this.prepareNote(invoiceId, options);
+
+    // Igual que en la nota crédito: la referencia se puede pasar a mano, que es
+    // el único modo de recuperar las notas emitidas antes del 13 sep 2026 (su
+    // referencia llevaba un timestamp que nunca se guardó).
+    const referenceCode =
+      options.referenceCode?.trim() ||
+      buildNoteReferenceCode('NA', invoice.code, existingNotes.length);
+
+    const raw = await this.getNoteByReference(referenceCode);
+    if (!raw) {
+      throw new NotFoundException(
+        `En Factus no hay ninguna nota de ajuste con reference_code "${referenceCode}". ` +
+          'Verifica en el portal que exista y que la selección de ítems que ' +
+          'enviaste sea la misma con la que se intentó emitir. Si se emitió ' +
+          'antes del 13 sep 2026 su referencia lleva un timestamp: cópiala del ' +
+          'portal y pásala en el campo `referenceCode`.',
+      );
+    }
+
+    const items = selected.map(({ detail, quantity }) =>
+      this.supportDocumentService.buildItemFor(invoice, detail, quantity),
+    );
+    const total = sumFactusItemsTotal(items as any);
+    const result = this.extractResult(raw, referenceCode, total);
+
+    if (result.isValidated !== true) {
+      const errors = this.extractNoteErrors(raw);
+      const outcome = classifyDianErrors(errors);
+      throw new UnprocessableEntityException({
+        message:
+          `La nota de ajuste ${result.number ?? 's/n'} existe en Factus pero NO ` +
+          'figura como validada por la DIAN. No se guardó nada ni se tocó el ' +
+          'inventario.',
+        alreadyProcessed: outcome === 'already-processed',
+        pendingInDian: outcome !== 'rejected',
+        rejected: outcome === 'rejected',
+        referenceCode,
+        noteNumber: result.number,
+        errors,
+        hint:
+          outcome === 'already-processed'
+            ? 'Sigue atascada: pídele a soporte de Factus que reconcilie su ' +
+              'estado contra la DIAN y reintenta cuando figure como Validada.'
+            : 'Espera a que la DIAN la valide y reintenta la recuperación.',
+      });
+    }
+
+    const selection = selected.map((s) => ({
+      invoiceDetailId: s.detail.invoiceDetailId,
+      quantity: s.quantity,
+    }));
+
+    await this.persist(invoice, {
+      referenceCode,
+      correctionConceptCode,
+      isTotal,
+      observation: (options.observation ?? '').slice(0, 250),
+      result,
+      selection,
+    });
+
+    await this.reverseInventory(selected);
+
+    this.logger.warn(
+      `Nota de ajuste ${result.number} RECUPERADA de Factus para la compra ` +
+        `${invoiceId}: se guardó y se descontó el inventario. Revisa que no ` +
+        'estuviera ya cuadrado a mano.',
+    );
+
+    return result;
+  }
+
+  /** Busca una nota de ajuste en Factus por su `reference_code`. */
+  private async getNoteByReference(referenceCode: string): Promise<any | null> {
+    const res = await this.factusClient.get<any>('/v2/adjustment-notes', {
+      params: { 'filter[reference_code]': referenceCode },
+    });
+    const list: any[] = res?.data?.data ?? res?.data ?? [];
+    const notes = Array.isArray(list) ? list : [list];
+    return (
+      notes.find(
+        (n) => String(n?.reference_code ?? '') === String(referenceCode),
+      ) ?? null
+    );
   }
 
   /**
@@ -338,14 +511,36 @@ export class FactusAdjustmentNoteService {
         },
       );
 
-      const negativos = selected.filter(
-        (s) => s.detail.product && Number(s.detail.product.amount ?? 0) < s.quantity,
-      );
+      // Qué productos quedan en negativo, CON NOMBRE Y CANTIDADES.
+      //
+      // Antes solo decía "N producto(s)", que es inaccionable: el aviso existe
+      // justamente para que alguien cuadre el stock a mano, y sin saber cuáles
+      // son no hay nada que cuadrar. `product.amount` es el valor cargado ANTES
+      // del decrement, que es exactamente lo que hace falta para calcular cómo
+      // queda.
+      const negativos = selected
+        .filter(
+          (s) =>
+            s.detail.product &&
+            Number(s.detail.product.amount ?? 0) < s.quantity,
+        )
+        .map(({ detail, quantity }) => {
+          const antes = Number(detail.product!.amount ?? 0);
+          const nombre =
+            detail.product!.name?.['es'] ??
+            Object.values(detail.product!.name ?? {})[0] ??
+            's/n';
+          return (
+            `#${detail.product!.productId} "${nombre}": ` +
+            `${antes} − ${quantity} = ${antes - quantity}`
+          );
+        });
+
       if (negativos.length) {
         this.logger.warn(
           `La nota de ajuste deja ${negativos.length} producto(s) con stock por ` +
             'debajo de cero: la mercancía de esa compra ya se había vendido o ' +
-            'consumido. Hay que cuadrarlo a mano.',
+            `consumido. Hay que cuadrarlo a mano. → ${negativos.join(' · ')}`,
         );
       }
 
@@ -467,15 +662,13 @@ export class FactusAdjustmentNoteService {
           );
         }
         if (error.statusCode === 422) {
-          const errs = (error.responseData as any)?.errors ?? {};
-          const messages = Object.entries(errs).flatMap(([field, msgs]) =>
-            (msgs as string[]).map((m) => `${field}: ${m}`),
-          );
+          // `data.errors`, en array o en objeto. Ver factus-errors.utils.
+          const messages = parseFactusValidationErrors(error.responseData);
           throw new UnprocessableEntityException({
             message: 'Error de validación en Factus (nota de ajuste)',
-            errors: messages.length
-              ? messages
-              : [String((error.responseData as any)?.message ?? '')],
+            errors: messages,
+            alreadyProcessed:
+              classifyDianErrors(messages) === 'already-processed',
           });
         }
       }
@@ -483,13 +676,9 @@ export class FactusAdjustmentNoteService {
     }
   }
 
+  /** Errores del documento devuelto por Factus (ver factus-errors.utils). */
   private extractNoteErrors(raw: any): string[] {
-    const note = raw?.data?.adjustment_note ?? raw?.data ?? raw;
-    const errors = note?.errors;
-    if (!errors) return [];
-    if (Array.isArray(errors)) return errors.map((e) => String(e));
-    if (typeof errors === 'object') return Object.values(errors).map(String);
-    return [String(errors)];
+    return extractDocumentErrors(raw, 'adjustment_note');
   }
 
   private extractResult(

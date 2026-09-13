@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -67,6 +68,12 @@ class CreateDebitNoteDto {
   @IsString()
   @MaxLength(250)
   observation?: string;
+
+  /** Solo para /recover: reference_code real del documento en Factus. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  referenceCode?: string;
 }
 
 @ApiTags('Factus - Debit Notes')
@@ -81,11 +88,13 @@ class CreateDebitNoteDto {
   RolesUser.MES,
   RolesUser.EMP,
 ) // Todos menos USER, igual que las notas crédito
-@Controller('factus/invoices')
+// Base `factus` para poder colgar también las rutas que no van por factura.
+// Las de factura llevan el prefijo explícito: las URLs públicas no cambian.
+@Controller('factus')
 export class FactusDebitNotesController {
   constructor(private readonly debitNoteService: FactusDebitNoteService) {}
 
-  @Post(':id/debit-notes')
+  @Post('invoices/:id/debit-notes')
   @ApiOperation({
     summary: 'Generar y validar una nota débito sobre una factura electrónica',
   })
@@ -97,10 +106,46 @@ export class FactusDebitNotesController {
     return { success: true, data };
   }
 
-  @Get(':id/debit-notes')
+  @Get('invoices/:id/debit-notes')
   @ApiOperation({ summary: 'Listar las notas débito de una factura' })
   async list(@Param('id', ParseIntPipe) id: number) {
     const data = await this.debitNoteService.listForInvoice(id);
+    return { success: true, data };
+  }
+
+  /**
+   * Registra una nota débito ya VALIDADA en la DIAN que nunca se guardó aquí
+   * (típicamente tras una Regla 90). No emite nada. El cuerpo es el mismo que
+   * el de la emisión: de los conceptos sale el `reference_code`.
+   */
+  @Post('invoices/:id/debit-notes/recover')
+  @Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN)
+  @ApiOperation({
+    summary:
+      'Recuperar de Factus una nota débito ya validada que no quedó registrada',
+  })
+  async recover(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: CreateDebitNoteDto,
+  ) {
+    const data = await this.debitNoteService.recoverForInvoice(id, body);
+    return { success: true, data };
+  }
+
+  /**
+   * Endpoint destructivo: solo notas NO validadas, que son las que bloquean los
+   * envíos con 409.
+   *
+   * ⚠️ NO sirve ante Regla 90 ("documento procesado anteriormente"): la DIAN ya
+   * tiene el documento y borrarlo aquí no lo borra allá.
+   */
+  @Delete('debit-notes/by-reference/:referenceCode')
+  @Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN)
+  @ApiOperation({
+    summary: 'Eliminar en Factus una nota débito no validada, por referencia',
+  })
+  async deleteByReference(@Param('referenceCode') referenceCode: string) {
+    const data = await this.debitNoteService.deleteByReference(referenceCode);
     return { success: true, data };
   }
 }

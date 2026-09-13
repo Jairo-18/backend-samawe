@@ -17,6 +17,12 @@ export interface CreateAdjustmentNoteOptions {
   isTotal?: boolean;
   /** Ítems a ajustar cuando no es total. */
   items?: AdjustmentNoteItemSelection[];
+  /**
+   * SOLO para la recuperación (`/recover`): el `reference_code` real del
+   * documento en Factus. Al emitir se ignora. Ver la nota equivalente en
+   * `credit-note.interfaces.ts`.
+   */
+  referenceCode?: string;
   observation?: string;
 }
 

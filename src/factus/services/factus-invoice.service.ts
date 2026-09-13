@@ -16,6 +16,10 @@ import { InvoiceTypeRepository } from '../../shared/repositories/invoiceType.rep
 import { MailAttachment } from '../../shared/interfaces/mail.interface';
 import { sumFactusItemsTotal } from '../utils/factus-math.utils';
 import { resolveFactusPayment } from '../utils/factus-payment.utils';
+import {
+  classifyDianErrors,
+  extractDocumentErrors,
+} from '../utils/factus-errors.utils';
 import * as QRCode from 'qrcode';
 
 // Respaldo del código de documento Factus por el `code` del IdentificationType,
@@ -128,16 +132,40 @@ export class FactusInvoiceService {
     // factura como electrónica: hacerlo dejaba facturas "emitidas" sin CUFE.
     if (result.isValidated !== true) {
       const errors = this.extractErrors(raw);
-      const rejected = FactusInvoiceService.looksRejected(errors);
+      const outcome = classifyDianErrors(errors);
       this.logger.error(
         `Factura ${invoiceId}: Factus la registró como ${result.billNumber ?? 's/n'} ` +
-          `pero is_validated=false (${rejected ? 'RECHAZO' : 'pendiente en la DIAN'}). ` +
-          `errors=${JSON.stringify(errors)}`,
+          `pero is_validated=false (${outcome}). errors=${JSON.stringify(errors)}`,
       );
+
+      // Regla 90: la DIAN YA tiene esta factura. Es literalmente el caso A773 y
+      // durante el incidente el sistema aconsejaba borrarla y reenviarla, que
+      // son las dos cosas que lo alargan (ver factus-errors.utils).
+      if (outcome === 'already-processed') {
+        throw new UnprocessableEntityException({
+          message:
+            `La DIAN ya procesó esta factura (${result.billNumber ?? 's/n'}): el ` +
+            'envío llegó y lo que se perdió fue la respuesta. NO la elimines y ' +
+            'NO la reenvíes — reenviar regenera el mismo consecutivo y el mismo ' +
+            'CUFE, así que repite la Regla 90. Hay que pedirle a soporte de ' +
+            'Factus que reconcilie su estado contra la DIAN (GetStatus con el ' +
+            'CUFE). Cuando figure como Validada, recupérala con ' +
+            `POST /factus/invoices/${invoiceId}/recover.`,
+          alreadyProcessed: true,
+          pendingInDian: true,
+          rejected: false,
+          billNumber: result.billNumber,
+          referenceCode: invoice.code,
+          errors,
+        });
+      }
+
+      const rejected = outcome === 'rejected';
       throw new UnprocessableEntityException({
         message: rejected
           ? 'La DIAN rechazó la factura. No quedó emitida.'
           : 'La DIAN aún no ha validado la factura. No quedó emitida todavía.',
+        alreadyProcessed: false,
         pendingInDian: !rejected,
         rejected,
         billNumber: result.billNumber,
@@ -530,7 +558,8 @@ export class FactusInvoiceService {
 
     if (!result.isValidated) {
       const errors = this.extractErrors(raw);
-      const rejected = FactusInvoiceService.looksRejected(errors);
+      const outcome = classifyDianErrors(errors);
+      const rejected = outcome === 'rejected';
       this.logger.warn(
         `Factura ${invoiceId}: existe en Factus como ${result.billNumber ?? 's/n'} ` +
           `pero NO está validada por la DIAN (${rejected ? 'rechazada' : 'pendiente'}). ` +
@@ -540,14 +569,21 @@ export class FactusInvoiceService {
         message: rejected
           ? `La factura existe en Factus (${result.billNumber ?? 's/n'}) pero la DIAN la RECHAZÓ. No se puede dar por emitida.`
           : `La factura existe en Factus (${result.billNumber ?? 's/n'}) pero sigue PENDIENTE en la DIAN. No se puede dar por emitida todavía.`,
+        alreadyProcessed: outcome === 'already-processed',
         pendingInDian: !rejected,
         rejected,
         billNumber: result.billNumber,
         referenceCode: invoice.code,
         errors,
-        hint: rejected
-          ? `Elimínala con DELETE /factus/invoices/by-reference/${invoice.code}, corrige los datos y reenvíala.`
-          : 'No elimines nada. Reintenta POST :id/send más tarde con los mismos datos.',
+        hint:
+          outcome === 'rejected'
+            ? `Elimínala con DELETE /factus/invoices/by-reference/${invoice.code}, corrige los datos y reenvíala.`
+            : outcome === 'already-processed'
+              ? 'Sigue atascada en Regla 90: la DIAN ya la procesó pero Factus no ' +
+                'lo registró. Reenviarla no sirve. Pídele a soporte de Factus que ' +
+                'reconcilie su estado contra la DIAN (GetStatus con el CUFE) y ' +
+                'reintenta esta recuperación cuando figure como Validada.'
+              : 'No elimines nada. Reintenta POST :id/send más tarde con los mismos datos.',
       });
     }
 
@@ -862,22 +898,7 @@ export class FactusInvoiceService {
    * consultar por número. Hay que soportar las dos.
    */
   private extractErrors(raw: any): string[] {
-    const bill = raw?.data?.bill ?? raw?.data ?? raw;
-    const errors = bill?.errors;
-    if (!errors) return [];
-    if (Array.isArray(errors)) return errors.map((e) => String(e));
-    if (typeof errors === 'object') return Object.values(errors).map(String);
-    return [String(errors)];
-  }
-
-  /**
-   * ¿Los `errors` de la DIAN son un RECHAZO o solo una notificación?
-   * No todo lo que aparece en `errors` invalida el documento: reglas como
-   * FAJ44b o RUT01 son avisos informativos y la factura es válida igual. Solo
-   * cuenta como rechazo si el texto dice "Rechazo".
-   */
-  private static looksRejected(errors: string[]): boolean {
-    return errors.some((e) => /rechazo/i.test(e));
+    return extractDocumentErrors(raw, 'bill');
   }
 
   private extractResult(raw: any): FactusBillResult {

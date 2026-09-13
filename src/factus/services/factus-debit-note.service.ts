@@ -24,6 +24,12 @@ import {
 import { sumFactusItemsTotal } from '../utils/factus-math.utils';
 import { resolveFactusPayment } from '../utils/factus-payment.utils';
 import { isSaleTypeCode } from '../../shared/constants/invoiceType.constants';
+import {
+  classifyDianErrors,
+  extractDocumentErrors,
+  parseFactusValidationErrors,
+} from '../utils/factus-errors.utils';
+import { buildNoteReferenceCode } from '../utils/factus-reference.utils';
 import * as QRCode from 'qrcode';
 import { createHash } from 'crypto';
 
@@ -165,7 +171,14 @@ export class FactusDebitNoteService {
       invoice.organizational?.factusNumberingRangeIdDebitNote,
     );
 
-    const referenceCode = `ND-${invoice.code}-${Date.now()}`;
+    // Determinista: secuencial sobre las notas YA persistidas (ver
+    // factus-reference.utils). Con `Date.now()` cada reintento creaba un
+    // documento nuevo en Factus en vez de reintentar el atascado.
+    const referenceCode = buildNoteReferenceCode(
+      'ND',
+      invoice.code,
+      existing.length,
+    );
     const observation = (options.observation ?? '').slice(0, 250);
 
     const payload: Record<string, unknown> = {
@@ -196,23 +209,48 @@ export class FactusDebitNoteService {
     // los reportes del negocio.
     if (result.isValidated !== true) {
       const errors = this.extractNoteErrors(raw);
-      const rejected = errors.some((e) => /rechazo/i.test(e));
+      const outcome = classifyDianErrors(errors);
       this.logger.error(
         `Nota débito ${referenceCode} de la factura ${invoice.invoiceId}: ` +
-          `is_validated=false (${rejected ? 'RECHAZO' : 'pendiente en la DIAN'}). ` +
-          `No se persiste. errors=${JSON.stringify(errors)}`,
+          `is_validated=false (${outcome}). No se persiste. ` +
+          `errors=${JSON.stringify(errors)}`,
       );
+
+      // Regla 90: la DIAN YA tiene esta nota (ver factus-errors.utils). Ni
+      // borrar ni reenviar; se reconcilia con soporte de Factus.
+      if (outcome === 'already-processed') {
+        throw new UnprocessableEntityException({
+          message:
+            `La DIAN ya procesó esta nota débito (${result.number ?? 's/n'}): ` +
+            'el envío llegó y lo que se perdió fue la respuesta. NO la elimines ' +
+            'y NO la reenvíes — reenviar repite el mismo consecutivo y el mismo ' +
+            'CUDE, así que vuelve a dar Regla 90. Hay que pedirle a soporte de ' +
+            'Factus que reconcilie su estado contra la DIAN (GetStatus con el ' +
+            'CUDE). Cuando figure como Validada, regístrala aquí con ' +
+            `POST /factus/invoices/${invoice.invoiceId}/debit-notes/recover.`,
+          alreadyProcessed: true,
+          pendingInDian: true,
+          rejected: false,
+          referenceCode,
+          noteNumber: result.number,
+          errors,
+        });
+      }
+
+      const rejected = outcome === 'rejected';
       throw new UnprocessableEntityException({
         message: rejected
           ? 'La DIAN rechazó la nota débito. No quedó emitida.'
           : 'La DIAN aún no ha validado la nota débito. No se emitió todavía.',
+        alreadyProcessed: false,
         pendingInDian: !rejected,
         rejected,
         referenceCode,
         noteNumber: result.number,
         errors,
         hint: rejected
-          ? 'Corrige los datos y reenvía con el MISMO reference_code.'
+          ? `Elimínala con DELETE /factus/debit-notes/by-reference/${referenceCode}, ` +
+            'corrige los datos y reenvía con el MISMO código.'
           : 'No elimines nada. Reintenta más tarde con los MISMOS datos.',
       });
     }
@@ -231,6 +269,149 @@ export class FactusDebitNoteService {
     this.dispatchNotifications(invoice, result);
 
     return result;
+  }
+
+  /**
+   * Registra en samawe una nota débito que **ya existe y está validada en la
+   * DIAN** pero que nunca se guardó aquí. Espejo de la recuperación de notas
+   * crédito y de `FactusInvoiceService.recoverFromFactus`.
+   *
+   * Hace falta cuando la emisión respondió Regla 90 ("documento procesado
+   * anteriormente"): el documento llegó a la DIAN y lo que se perdió fue la
+   * respuesta, así que el servicio no persistió nada y queda un cobro que
+   * existe legalmente y que la aplicación ignora.
+   *
+   * Recibe las MISMAS opciones que la emisión (los conceptos cobrados), porque
+   * el snapshot nunca se guardó y de ellos depende el `reference_code`.
+   */
+  async recoverForInvoice(
+    invoiceId: number,
+    options: CreateDebitNoteOptions,
+  ): Promise<FactusDebitNoteResult> {
+    return this.withInvoiceLock(invoiceId, () =>
+      this.doRecoverForInvoice(invoiceId, options),
+    );
+  }
+
+  private async doRecoverForInvoice(
+    invoiceId: number,
+    options: CreateDebitNoteOptions,
+  ): Promise<FactusDebitNoteResult> {
+    const invoice = await this.loadInvoice(invoiceId);
+
+    const correctionConceptCode = options.correctionConceptCode ?? '1';
+    const inputs = options.items ?? [];
+    if (inputs.length === 0) {
+      throw new BadRequestException(
+        'Para recuperar una nota débito hay que enviar los mismos conceptos ' +
+          'con los que se intentó emitir: de ellos sale el código de referencia.',
+      );
+    }
+    const items = inputs.map((input, index) => this.mapItem(input, index));
+    const total = sumFactusItemsTotal(items as any);
+
+    const existing = await this.debitNoteRepository.find({
+      where: { invoiceId },
+    });
+    // Igual que en la nota crédito: la referencia se puede pasar a mano, que es
+    // el único modo de recuperar las notas emitidas antes del 13 sep 2026 (su
+    // referencia llevaba un timestamp que nunca se guardó).
+    const referenceCode =
+      options.referenceCode?.trim() ||
+      buildNoteReferenceCode('ND', invoice.code, existing.length);
+
+    const raw = await this.getNoteByReference(referenceCode);
+    if (!raw) {
+      throw new NotFoundException(
+        `En Factus no hay ninguna nota débito con reference_code "${referenceCode}". ` +
+          'Verifica en el portal que exista y que los conceptos que enviaste ' +
+          'sean los mismos con los que se intentó emitir. Si se emitió antes ' +
+          'del 13 sep 2026 su referencia lleva un timestamp: cópiala del portal ' +
+          'y pásala en el campo `referenceCode`.',
+      );
+    }
+
+    const result = this.extractResult(raw, referenceCode, total);
+
+    if (result.isValidated !== true) {
+      const errors = this.extractNoteErrors(raw);
+      const outcome = classifyDianErrors(errors);
+      throw new UnprocessableEntityException({
+        message:
+          `La nota débito ${result.number ?? 's/n'} existe en Factus pero NO ` +
+          'figura como validada por la DIAN, así que no se puede dar por ' +
+          'emitida. No se guardó nada.',
+        alreadyProcessed: outcome === 'already-processed',
+        pendingInDian: outcome !== 'rejected',
+        rejected: outcome === 'rejected',
+        referenceCode,
+        noteNumber: result.number,
+        errors,
+        hint:
+          outcome === 'already-processed'
+            ? 'Sigue atascada: pídele a soporte de Factus que reconcilie su ' +
+              'estado contra la DIAN (GetStatus con el CUDE) y reintenta esta ' +
+              'recuperación cuando figure como Validada.'
+            : 'Espera a que la DIAN la valide y reintenta la recuperación.',
+      });
+    }
+
+    await this.persist(invoice, {
+      referenceCode,
+      correctionConceptCode,
+      observation: (options.observation ?? '').slice(0, 250),
+      result,
+      items,
+    });
+
+    this.logger.warn(
+      `Nota débito ${result.number} RECUPERADA de Factus para la factura ${invoiceId}.`,
+    );
+
+    return result;
+  }
+
+  /** Busca una nota débito en Factus por su `reference_code`. */
+  private async getNoteByReference(referenceCode: string): Promise<any | null> {
+    const res = await this.factusClient.get<any>('/v2/debit-notes', {
+      params: { 'filter[reference_code]': referenceCode },
+    });
+    const list: any[] = res?.data?.data ?? res?.data ?? [];
+    const notes = Array.isArray(list) ? list : [list];
+    return (
+      notes.find(
+        (n) => String(n?.reference_code ?? '') === String(referenceCode),
+      ) ?? null
+    );
+  }
+
+  /**
+   * Elimina en Factus una nota débito NO VALIDADA, por su referencia.
+   *
+   * ⚠️ Solo para un rechazo **de contenido**. Ante Regla 90 ("documento
+   * procesado anteriormente") no hay que borrar nada: la DIAN ya tiene el
+   * documento y se reconcilia con soporte de Factus.
+   */
+  async deleteByReference(referenceCode: string): Promise<unknown> {
+    try {
+      const res = await this.factusClient.delete<unknown>(
+        `/v2/debit-notes/reference/${encodeURIComponent(referenceCode)}`,
+      );
+      this.logger.warn(
+        `Nota débito con reference_code "${referenceCode}" eliminada en Factus.`,
+      );
+      return res;
+    } catch (error) {
+      if (error instanceof FactusApiError) {
+        const detail =
+          (error.responseData as any)?.message ?? `HTTP ${error.statusCode}`;
+        throw new BadRequestException(
+          `No se pudo eliminar en Factus la nota débito "${referenceCode}": ` +
+            `${detail}. Solo se pueden eliminar notas NO validadas por la DIAN.`,
+        );
+      }
+      throw error;
+    }
   }
 
   /** Convierte una línea de entrada al ítem del payload de Factus. */
@@ -516,23 +697,24 @@ export class FactusDebitNoteService {
     } catch (error) {
       if (error instanceof FactusApiError) {
         if (error.statusCode === 409) {
+          const ref = String(payload.reference_code);
           throw new ConflictException(
-            'Hay una nota débito pendiente por enviar a la DIAN con este ' +
-              'reference_code. Elimínala desde el portal de Factus y reintenta ' +
-              'con el MISMO código: Factus deduplica por reference_code, y ' +
-              'cambiarlo crea un documento nuevo en vez de reintentar.',
+            'Factus tiene una nota débito pendiente por enviar a la DIAN y ' +
+              'mientras siga ahí bloquea cualquier nota débito nueva. ' +
+              `Búscala con GET /v2/debit-notes?filter[status]=0 — puede NO ser "${ref}", ` +
+              'el bloqueo es de la cuenta, no de este código. Si la pendiente ' +
+              'responde Regla 90 ("procesado anteriormente"), no la borres: la ' +
+              'DIAN ya la tiene y hay que reconciliarla con soporte de Factus.',
           );
         }
         if (error.statusCode === 422) {
-          const errs = (error.responseData as any)?.errors ?? {};
-          const messages = Object.entries(errs).flatMap(([field, msgs]) =>
-            (msgs as string[]).map((m) => `${field}: ${m}`),
-          );
+          // `data.errors`, en array o en objeto. Ver factus-errors.utils.
+          const messages = parseFactusValidationErrors(error.responseData);
           throw new UnprocessableEntityException({
             message: 'Error de validación en Factus (nota débito)',
-            errors: messages.length
-              ? messages
-              : [String((error.responseData as any)?.message ?? '')],
+            errors: messages,
+            alreadyProcessed:
+              classifyDianErrors(messages) === 'already-processed',
           });
         }
       }
@@ -540,14 +722,9 @@ export class FactusDebitNoteService {
     }
   }
 
-  /** Normaliza `errors` de Factus: llega como objeto indexado o como array. */
+  /** Errores del documento devuelto por Factus (ver factus-errors.utils). */
   private extractNoteErrors(raw: any): string[] {
-    const note = raw?.data?.debit_note ?? raw?.data ?? raw;
-    const errors = note?.errors;
-    if (!errors) return [];
-    if (Array.isArray(errors)) return errors.map((e) => String(e));
-    if (typeof errors === 'object') return Object.values(errors).map(String);
-    return [String(errors)];
+    return extractDocumentErrors(raw, 'debit_note');
   }
 
   private extractResult(

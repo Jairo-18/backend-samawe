@@ -18,6 +18,11 @@ import { isPurchaseTypeCode } from '../../shared/constants/invoiceType.constants
 import { sumFactusItemsTotal } from '../utils/factus-math.utils';
 import { resolveFactusPayment } from '../utils/factus-payment.utils';
 import {
+  classifyDianErrors,
+  extractDocumentErrors,
+  parseFactusValidationErrors,
+} from '../utils/factus-errors.utils';
+import {
   FactusSupportDocumentResult,
   FactusSupportDocumentStatus,
   SUPPORT_DOCUMENT_ID_CODES,
@@ -127,24 +132,36 @@ export class FactusSupportDocumentService {
     // estado inconsistente que hubo que limpiar a mano en producción.
     if (result.isValidated !== true) {
       const errors = this.extractErrors(raw);
-      const rejected = errors.some((e) => /rechazo/i.test(e));
+      const outcome = classifyDianErrors(errors);
+      const rejected = outcome === 'rejected';
       this.logger.error(
         `Documento soporte ${referenceCode} (compra ${invoiceId}): ` +
-          `is_validated=false (${rejected ? 'RECHAZO' : 'pendiente en la DIAN'}). ` +
-          `No se persiste nada. errors=${JSON.stringify(errors)}`,
+          `is_validated=false (${outcome}). No se persiste nada. ` +
+          `errors=${JSON.stringify(errors)}`,
       );
       throw new UnprocessableEntityException({
-        message: rejected
-          ? 'La DIAN rechazó el documento soporte. No quedó emitido.'
-          : 'La DIAN aún no ha validado el documento soporte. No quedó emitido todavía.',
+        message:
+          outcome === 'already-processed'
+            ? `La DIAN ya procesó este documento soporte (${result.number ?? 's/n'}): ` +
+              'el envío llegó y lo que se perdió fue la respuesta. NO lo elimines ' +
+              'y NO lo reenvíes — reenviar repite el mismo consecutivo y el mismo ' +
+              'CUDS, así que vuelve a dar Regla 90. Hay que pedirle a soporte de ' +
+              'Factus que reconcilie su estado contra la DIAN.'
+            : rejected
+              ? 'La DIAN rechazó el documento soporte. No quedó emitido.'
+              : 'La DIAN aún no ha validado el documento soporte. No quedó emitido todavía.',
+        alreadyProcessed: outcome === 'already-processed',
         pendingInDian: !rejected,
         rejected,
         referenceCode,
         number: result.number,
         errors,
-        hint: rejected
-          ? `Elimínalo con DELETE /factus/support-documents/by-reference/${referenceCode}, corrige y reenvía.`
-          : 'No elimines nada. Reintenta más tarde con los MISMOS datos.',
+        hint:
+          outcome === 'rejected'
+            ? `Elimínalo con DELETE /factus/support-documents/by-reference/${referenceCode}, corrige y reenvía.`
+            : outcome === 'already-processed'
+              ? 'No elimines nada y no reenvíes: hay que reconciliarlo con soporte de Factus.'
+              : 'No elimines nada. Reintenta más tarde con los MISMOS datos.',
       });
     }
 
@@ -326,15 +343,13 @@ export class FactusSupportDocumentService {
           );
         }
         if (error.statusCode === 422) {
-          const errs = (error.responseData as any)?.errors ?? {};
-          const messages = Object.entries(errs).flatMap(([field, msgs]) =>
-            (msgs as string[]).map((m) => `${field}: ${m}`),
-          );
+          // `data.errors`, en array o en objeto. Ver factus-errors.utils.
+          const messages = parseFactusValidationErrors(error.responseData);
           throw new UnprocessableEntityException({
             message: 'Error de validación en Factus (documento soporte)',
-            errors: messages.length
-              ? messages
-              : [String((error.responseData as any)?.message ?? '')],
+            errors: messages,
+            alreadyProcessed:
+              classifyDianErrors(messages) === 'already-processed',
           });
         }
       }
@@ -342,13 +357,9 @@ export class FactusSupportDocumentService {
     }
   }
 
+  /** Errores del documento devuelto por Factus (ver factus-errors.utils). */
   private extractErrors(raw: any): string[] {
-    const doc = raw?.data?.support_document ?? raw?.data ?? raw;
-    const errors = doc?.errors;
-    if (!errors) return [];
-    if (Array.isArray(errors)) return errors.map((e) => String(e));
-    if (typeof errors === 'object') return Object.values(errors).map(String);
-    return [String(errors)];
+    return extractDocumentErrors(raw, 'support_document');
   }
 
   private extractResult(

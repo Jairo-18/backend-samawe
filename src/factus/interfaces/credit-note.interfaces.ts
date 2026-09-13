@@ -16,6 +16,17 @@ export interface CreateCreditNoteOptions {
   isTotal?: boolean;
   /** Ítems a acreditar en una devolución parcial (si isTotal es false). */
   items?: CreditNoteItemSelection[];
+  /**
+   * SOLO para la recuperación (`/recover`): el `reference_code` real del
+   * documento en Factus. Al emitir se ignora — ahí la referencia siempre se
+   * calcula.
+   *
+   * Existe por las notas emitidas antes del 13 sep 2026, cuya referencia
+   * llevaba un `Date.now()` que no quedó guardado en ninguna parte (la nota no
+   * se persiste si la DIAN no la valida). La única forma de recuperarlas es
+   * leer su `reference_code` del portal de Factus y pasarlo aquí.
+   */
+  referenceCode?: string;
   observation?: string;
 }
 
