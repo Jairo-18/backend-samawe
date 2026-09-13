@@ -6,6 +6,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InvoiceRepository } from '../../shared/repositories/invoice.repository';
 import { CreditNoteRepository } from '../../shared/repositories/creditNote.repository';
 import { Invoice } from '../../shared/entities/invoice.entity';
@@ -64,6 +65,7 @@ export class FactusCreditNoteService {
     private readonly invoiceService: FactusInvoiceService,
     private readonly recipeService: RecipeService,
     private readonly mailsService: MailsService,
+    private readonly _eventEmitter: EventEmitter2,
   ) {}
 
   /** Notas crédito ya emitidas de una factura (más recientes primero). */
@@ -461,6 +463,14 @@ export class FactusCreditNoteService {
     // factura): productos → stock; accommodations → estado Disponible.
     await this.reverseInventory(selected);
 
+    // Recalcula el balance cacheado: la venta de esta factura acaba de bajar.
+    // Sin esto el widget de Balance —y Ganancias, que lee la misma tabla— se
+    // quedaba con el bruto. Era el pendiente 0.2 del plan.
+    this._eventEmitter.emit('invoice.note.emitted', {
+      invoiceId: invoice.invoiceId,
+      kind: 'creditNote',
+    });
+
     // Correo + PDF oficial en segundo plano (best-effort; no afecta la validez
     // fiscal ni bloquea la respuesta), igual que la emisión de facturas.
     this.dispatchNotifications(invoice, result);
@@ -571,6 +581,11 @@ export class FactusCreditNoteService {
     // recuperación tiene que hacerlo ahora. Va después de persistir: si el
     // guardado falla, no se toca el stock.
     await this.reverseInventory(selected);
+
+    this._eventEmitter.emit('invoice.note.emitted', {
+      invoiceId: invoice.invoiceId,
+      kind: 'creditNote',
+    });
 
     this.logger.warn(
       `Nota crédito ${result.number} RECUPERADA de Factus para la factura ` +

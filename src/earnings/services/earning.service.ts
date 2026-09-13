@@ -16,8 +16,12 @@ import {
   isSaleTypeCode,
 } from './../../shared/constants/invoiceType.constants';
 import { Balance } from './../../shared/entities/balance.entity';
-import { CreditNote } from './../../shared/entities/creditNote.entity';
-import { In, IsNull } from 'typeorm';
+import {
+  getNoteTotalsByInvoice,
+  netPurchaseTotal,
+  netSaleTotal,
+} from './../../shared/utils/invoice-notes.utils';
+import { IsNull } from 'typeorm';
 
 @Injectable()
 export class EarningService {
@@ -241,40 +245,37 @@ export class EarningService {
           .orderBy('invoice.createdAt', 'ASC')
           .getRawMany();
 
-        // Total acreditado por factura (notas crédito) → para mostrar el neto.
+        // Notas DIAN de esas facturas → para mostrar el neto (ver
+        // shared/utils/invoice-notes.utils). Antes solo se restaban las notas
+        // crédito, así que una compra ajustada seguía pesando entera.
         const invoiceIds = invoices
           .map((inv) => Number(inv.invoiceId))
           .filter((id) => id > 0);
-        const creditedByInvoice = new Map<number, number>();
-        if (invoiceIds.length) {
-          const creditNotes = await this._invoiceRepository.manager.find(
-            CreditNote,
-            { where: { invoiceId: In(invoiceIds) } },
-          );
-          for (const cn of creditNotes) {
-            creditedByInvoice.set(
-              cn.invoiceId,
-              (creditedByInvoice.get(cn.invoiceId) ?? 0) + (Number(cn.total) || 0),
-            );
-          }
-        }
+        const noteTotals = await getNoteTotalsByInvoice(
+          this._invoiceRepository.manager,
+          invoiceIds,
+        );
 
         const formatted: InvoiceChartItemDto[] = invoices.map((inv) => {
           // FVE (electrónica) también es venta; se agrupa con FV. Igual que
           // DSE (documento soporte) se agrupa con FC del lado de las compras.
+          const invoiceId = Number(inv.invoiceId);
           const isSale = isSaleTypeCode(inv.invoiceTypeCode);
-          // El neto solo aplica a ventas (las NC son sobre electrónicas).
-          const credited = isSale
-            ? (creditedByInvoice.get(Number(inv.invoiceId)) ?? 0)
-            : 0;
+          const isPurchase = isPurchaseTypeCode(inv.invoiceTypeCode);
+          const gross = Number(inv.total);
+
+          // Ventas: −NC +ND. Compras: −NA. Lo que no es ninguna de las dos
+          // (cotizaciones) no lleva notas y va en bruto.
+          const total = isSale
+            ? netSaleTotal(gross, invoiceId, noteTotals)
+            : isPurchase
+              ? netPurchaseTotal(gross, invoiceId, noteTotals)
+              : gross;
+
           return {
             code: inv.code,
-            total: Number(inv.total) - credited,
-            type: isSale
-              ? 'FV'
-              : isPurchaseTypeCode(inv.invoiceTypeCode)
-                ? 'FC'
-                : 'other',
+            total,
+            type: isSale ? 'FV' : isPurchase ? 'FC' : 'other',
             createdAt: new Date(inv.createdAt),
           };
         });

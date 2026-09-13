@@ -3,6 +3,7 @@ import { ExcursionRepository } from './../../shared/repositories/excursion.repos
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { CreditNote } from './../../shared/entities/creditNote.entity';
+import { AdjustmentNote } from './../../shared/entities/adjustmentNote.entity';
 import {
   PURCHASE_CODES_SQL,
   SALE_CODES_SQL,
@@ -169,12 +170,7 @@ export class StatisticsService {
     }
 
     const raw = await query.getRawOne();
-    return this.applyCreditNoteNetting(
-      raw,
-      startOfDay,
-      endOfDay,
-      organizationalId,
-    );
+    return this.applyNoteNetting(raw, startOfDay, endOfDay, organizationalId);
   }
 
   /**
@@ -218,32 +214,44 @@ export class StatisticsService {
     }
 
     const raw = await query.getRawOne();
-    return this.applyCreditNoteNetting(
-      raw,
-      startOfDay,
-      endOfDay,
-      organizationalId,
-    );
+    return this.applyNoteNetting(raw, startOfDay, endOfDay, organizationalId);
   }
 
   /**
-   * Resta a las ventas brutas (por categoría y total) lo acreditado por notas
-   * crédito de las facturas del rango → ventas NETAS. El neteo se hace por línea:
-   * para cada ítem acreditado, `subtotal × (cantidadAcreditada / cantidad)`, en
-   * la misma base que `detail.subtotal` (independiente de impuestos). Las compras
-   * (FC) no se tocan: las NC solo existen sobre ventas electrónicas.
+   * Aplica a los totales brutos las notas DIAN de las facturas del rango:
+   *
+   *  - **Ventas** − notas crédito.
+   *  - **Compras** − notas de ajuste (cuelgan de un documento soporte).
+   *
+   * El neteo es por línea: para cada ítem, `subtotal × (cantidad / cantidad
+   * total)`, en la misma base que `detail.subtotal` (independiente de
+   * impuestos). Todo se atribuye al periodo de la FACTURA, no al de la nota.
+   *
+   * ⚠️ **Las notas débito quedan fuera a propósito.** Sus ítems son conceptos
+   * libres (intereses, gastos de cobranza) que no existen como líneas de la
+   * factura, así que no se pueden repartir por categoría sin inventar una.
+   * Donde sí suman es en el Balance, que trabaja sobre totales de factura.
    */
-  private async applyCreditNoteNetting(
+  private async applyNoteNetting(
     raw: any,
     startOfDay: Date,
     endOfDay: Date,
     organizationalId?: string,
   ): Promise<any> {
-    const credited = await this.getCreditedSubtotalsByType(
-      startOfDay,
-      endOfDay,
-      organizationalId,
-    );
+    const [credited, adjusted] = await Promise.all([
+      this.getNettedSubtotalsByType(
+        CreditNote,
+        startOfDay,
+        endOfDay,
+        organizationalId,
+      ),
+      this.getNettedSubtotalsByType(
+        AdjustmentNote,
+        startOfDay,
+        endOfDay,
+        organizationalId,
+      ),
+    ]);
 
     const num = (v: unknown) => Number(v) || 0;
     raw.totalProductsSold = num(raw.totalProductsSold) - credited.products;
@@ -252,14 +260,26 @@ export class StatisticsService {
     raw.totalExcursionsSold =
       num(raw.totalExcursionsSold) - credited.excursions;
     raw.totalSales = num(raw.totalSales) - credited.total;
+
+    // Compras netas. Una compra solo tiene productos, así que basta con esos
+    // dos campos.
+    raw.totalProductsPurchased =
+      num(raw.totalProductsPurchased) - adjusted.products;
+    raw.totalPurchases = num(raw.totalPurchases) - adjusted.total;
     return raw;
   }
 
   /**
-   * Subtotal acreditado (por notas crédito) en el rango, separado por tipo de
-   * ítem (producto / hospedaje / excursión). Atribuido al periodo de la FACTURA.
+   * Subtotal neteado por un tipo de nota en el rango, separado por tipo de ítem
+   * (producto / hospedaje / excursión). Atribuido al periodo de la FACTURA.
+   *
+   * Sirve para nota crédito y nota de ajuste indistintamente: las dos guardan la
+   * misma forma de `itemsSnapshot` (`{invoiceDetailId, quantity}`) y cuelgan de
+   * una factura. Lo que cambia es de qué lado restan, y eso lo decide quien
+   * llama.
    */
-  private async getCreditedSubtotalsByType(
+  private async getNettedSubtotalsByType(
+    noteEntity: typeof CreditNote | typeof AdjustmentNote,
     startOfDay: Date,
     endOfDay: Date,
     organizationalId?: string,
@@ -271,9 +291,9 @@ export class StatisticsService {
   }> {
     const empty = { products: 0, accommodations: 0, excursions: 0, total: 0 };
 
-    // Notas crédito cuyas facturas caen en el rango (y org).
+    // Notas cuyas facturas caen en el rango (y org).
     const cnQuery = this._invoiceDetailRepository.manager
-      .getRepository(CreditNote)
+      .getRepository(noteEntity)
       .createQueryBuilder('cn')
       .innerJoin('cn.invoice', 'invoice')
       .where('invoice.createdAt >= :startOfDay', { startOfDay })

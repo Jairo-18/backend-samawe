@@ -6,6 +6,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InvoiceRepository } from '../../shared/repositories/invoice.repository';
 import { AdjustmentNoteRepository } from '../../shared/repositories/adjustmentNote.repository';
 import { Invoice } from '../../shared/entities/invoice.entity';
@@ -71,6 +72,7 @@ export class FactusAdjustmentNoteService {
     private readonly billsService: FactusBillsService,
     private readonly invoiceService: FactusInvoiceService,
     private readonly supportDocumentService: FactusSupportDocumentService,
+    private readonly _eventEmitter: EventEmitter2,
   ) {}
 
   /** Notas de ajuste ya emitidas sobre una compra (más recientes primero). */
@@ -336,6 +338,13 @@ export class FactusAdjustmentNoteService {
 
     await this.reverseInventory(selected);
 
+    // Recalcula el balance: una nota de ajuste RESTA a la compra que soporta.
+    // Es la que más se notaba, porque hay tres emitidas y ninguna descontaba.
+    this._eventEmitter.emit('invoice.note.emitted', {
+      invoiceId: invoice.invoiceId,
+      kind: 'adjustmentNote',
+    });
+
     return result;
   }
 
@@ -428,6 +437,11 @@ export class FactusAdjustmentNoteService {
     });
 
     await this.reverseInventory(selected);
+
+    this._eventEmitter.emit('invoice.note.emitted', {
+      invoiceId: invoice.invoiceId,
+      kind: 'adjustmentNote',
+    });
 
     this.logger.warn(
       `Nota de ajuste ${result.number} RECUPERADA de Factus para la compra ` +

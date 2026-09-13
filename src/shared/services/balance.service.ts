@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Between, In, IsNull } from 'typeorm';
+import { Between, IsNull } from 'typeorm';
 import { ProductRepository } from './../repositories/product.repository';
 import { BalanceRepository } from './../repositories/balance.repository';
 import { InvoiceRepository } from './../repositories/invoice.repository';
 import { Invoice } from './../entities/invoice.entity';
-import { CreditNote } from '../entities/creditNote.entity';
 import { Balance } from '../entities/balance.entity';
+import {
+  getNoteTotalsByInvoice,
+  netPurchaseTotal,
+  netSaleTotal,
+} from '../utils/invoice-notes.utils';
 import { BalanceType } from '../constants/balanceType.constants';
 import {
   isPurchaseTypeCode,
@@ -109,47 +113,64 @@ export class BalanceService {
         { totalInvoiceSale: number; totalInvoiceBuy: number }
       >();
 
-      // Facturas de venta del periodo (FV + FVE) → su org, para luego restarles
-      // las notas crédito (solo las electrónicas las tienen).
-      const saleInvoiceOrgById = new Map<number, string>();
+      // Facturas del periodo, separadas por lado. Se clasifican primero y se
+      // suman después, porque el total de cada una es el NETO de sus notas y
+      // esas hay que leerlas de una sola vez para todas.
+      //
+      // Al emitir, la factura cambia de tipo: una venta pasa de FV a FVE y una
+      // compra pasa de FC a DSE (documento soporte) → hay que contar ambas
+      // caras de cada grupo.
+      const sales: { invoiceId: number; orgId: string; gross: number }[] = [];
+      const purchases: { invoiceId: number; orgId: string; gross: number }[] =
+        [];
 
       for (const invoice of invoices) {
         const orgId = invoice.organizational?.organizationalId || 'global';
-        const amount = Number(invoice.total) || 0;
+        const gross = Number(invoice.total) || 0;
         const invoiceTypeCode = invoice.invoiceType?.code;
 
         if (!totalsByOrg.has(orgId)) {
           totalsByOrg.set(orgId, { totalInvoiceSale: 0, totalInvoiceBuy: 0 });
         }
-        const orgTotals = totalsByOrg.get(orgId)!;
 
-        // Al emitir, la factura cambia de tipo: una venta pasa de FV a FVE y
-        // una compra pasa de FC a DSE (documento soporte) → hay que contar
-        // ambas caras de cada grupo.
         if (isSaleTypeCode(invoiceTypeCode)) {
-          orgTotals.totalInvoiceSale += amount;
-          saleInvoiceOrgById.set(invoice.invoiceId, orgId);
+          sales.push({ invoiceId: invoice.invoiceId, orgId, gross });
         } else if (isPurchaseTypeCode(invoiceTypeCode)) {
-          orgTotals.totalInvoiceBuy += amount;
+          purchases.push({ invoiceId: invoice.invoiceId, orgId, gross });
         }
       }
 
-      // Ventas NETAS: resta el total de las notas crédito a la venta de su
-      // factura. Se atribuye al periodo de la factura original (mismo criterio
-      // que la columna "Neto" del listado), no al de emisión de la NC.
-      const saleInvoiceIds = [...saleInvoiceOrgById.keys()];
-      if (saleInvoiceIds.length) {
-        const creditNotes = await manager.find(CreditNote, {
-          where: { invoiceId: In(saleInvoiceIds) },
-        });
-        for (const cn of creditNotes) {
-          const orgId = saleInvoiceOrgById.get(cn.invoiceId);
-          if (!orgId) continue;
-          const orgTotals = totalsByOrg.get(orgId);
-          if (orgTotals) {
-            orgTotals.totalInvoiceSale -= Number(cn.total) || 0;
-          }
-        }
+      // Totales NETOS: a cada factura se le aplican sus notas DIAN.
+      //
+      //   ventas  = bruto − notas crédito + notas débito
+      //   compras = bruto − notas de ajuste
+      //
+      // Todo se atribuye al periodo de la FACTURA original (mismo criterio que
+      // la columna "Neto" del listado), no al de emisión de la nota.
+      //
+      // Antes solo se restaban las notas crédito. Las de ajuste, que corrigen un
+      // documento soporte, no descontaban de las compras: con NA1, NA2 y NA3 ya
+      // emitidas, `totalInvoiceBuy` venía inflado por $275.630 de mercancía
+      // declarada como no comprada.
+      const noteTotals = await getNoteTotalsByInvoice(manager, [
+        ...sales.map((s) => s.invoiceId),
+        ...purchases.map((p) => p.invoiceId),
+      ]);
+
+      for (const { invoiceId, orgId, gross } of sales) {
+        totalsByOrg.get(orgId)!.totalInvoiceSale += netSaleTotal(
+          gross,
+          invoiceId,
+          noteTotals,
+        );
+      }
+
+      for (const { invoiceId, orgId, gross } of purchases) {
+        totalsByOrg.get(orgId)!.totalInvoiceBuy += netPurchaseTotal(
+          gross,
+          invoiceId,
+          noteTotals,
+        );
       }
 
       const today = this.getTodayDate();

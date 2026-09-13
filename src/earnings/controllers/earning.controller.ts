@@ -3,8 +3,8 @@ import {
   InventoryLowParamsDto,
   LowAmountProductDto,
 } from './../dtos/inventoryAmount.dto';
-import { Controller, Get, UseGuards, Query, Req } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Post, UseGuards, Query, Req } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   AllInvoiceSummariesDto,
   BalanceProductSummaryDto,
@@ -25,6 +25,7 @@ import {
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
+import { BalanceService } from '../../shared/services/balance.service';
 
 @Controller('balance')
 @ApiTags('Ganancias / Reportes')
@@ -37,7 +38,40 @@ import { RolesUser } from '../../shared/roles/RolesUser.enum';
   RolesUser.CHE,
 )
 export class EarningController {
-  constructor(private readonly _earningUC: EarningUC) {}
+  constructor(
+    private readonly _earningUC: EarningUC,
+    private readonly _balanceService: BalanceService,
+  ) {}
+
+  /**
+   * Recalcula de cero TODOS los balances guardados, periodo por periodo, y el
+   * valor de inventario actual.
+   *
+   * La tabla `Balance` es un caché: se actualiza sola cuando pasa algo en una
+   * factura, pero no cuando cambia la FÓRMULA. Tras corregir el neteo —hasta el
+   * 13 sep 2026 solo restaba notas crédito, e ignoraba las de ajuste sobre
+   * compras y las de débito sobre ventas— los valores viejos siguen guardados
+   * con el cálculo antiguo. Esta ruta es la que los cuadra.
+   *
+   * Es idempotente: recalcula desde las facturas, no acumula. Se puede llamar
+   * las veces que haga falta. Restringida a SUPERADMIN/ADMIN porque recorre
+   * todo el histórico y puede tardar.
+   */
+  @Post('recalculate')
+  @Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN)
+  @ApiOperation({
+    summary:
+      'Recalcular todos los balances guardados (tras cambiar la fórmula de neteo)',
+  })
+  async recalculate(): Promise<{ success: boolean; message: string }> {
+    await this._balanceService.recalculateAllBalances();
+    await this._balanceService.updateBalanceWithCurrentProducts();
+    return {
+      success: true,
+      message:
+        'Balances recalculados con el neteo de notas crédito, débito y de ajuste.',
+    };
+  }
 
   @Get('general')
   @GetGeneralStatisticsDocs()

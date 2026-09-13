@@ -26,6 +26,32 @@ export class InvoiceEventsListener {
     }
   }
 
+  /**
+   * Una nota DIAN (crédito, débito o de ajuste) cambia el neto de su factura,
+   * así que el balance cacheado hay que recalcularlo.
+   *
+   * Sin esto el widget de Balance —y Ganancias, que lee de la misma tabla— se
+   * quedaba con el valor bruto hasta que algo *ajeno* disparara un recálculo:
+   * la nota se emitía bien, la DIAN la validaba, y en pantalla no pasaba nada.
+   * Era el pendiente 0.2 del plan de los cinco documentos.
+   *
+   * No toca inventario: de eso ya se encarga cada servicio de notas (la crédito
+   * devuelve stock, la de ajuste lo descuenta y la débito no lo mueve).
+   */
+  @OnEvent('invoice.note.emitted', { async: true })
+  async handleInvoiceNoteEmitted(payload: { invoiceId: number; kind: string }) {
+    try {
+      await this._balanceService.updateBalanceByInvoiceId(payload.invoiceId);
+    } catch (err) {
+      // Best-effort, igual que el resto de post-emisión: la nota ya es válida
+      // ante la DIAN y no se va a revertir porque falle un recálculo.
+      console.error(
+        `Error recalculando el balance tras la nota ${payload.kind} de la factura ${payload.invoiceId}:`,
+        err,
+      );
+    }
+  }
+
   @OnEvent('invoice.detail.created')
   async handleInvoiceDetailCreated(payload: {
     invoice: Invoice;

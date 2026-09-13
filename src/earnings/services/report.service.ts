@@ -1,6 +1,8 @@
 ﻿import { PayTypeRepository } from './../../shared/repositories/payType.repository';
 import { InvoiceRepository } from './../../shared/repositories/invoice.repository';
 import { CreditNote } from './../../shared/entities/creditNote.entity';
+import { DebitNote } from './../../shared/entities/debitNote.entity';
+import { AdjustmentNote } from './../../shared/entities/adjustmentNote.entity';
 import { InvoiceDetaill } from './../../shared/entities/invoiceDetaill.entity';
 import { Injectable } from '@nestjs/common';
 import {
@@ -97,11 +99,20 @@ export class ReportService {
             .getRawOne();
         };
 
-        // Notas crédito a restar: mismo filtro (tipo de pago + estado), pero
-        // sobre las facturas de la NC → total acreditado por periodo.
-        const creditQuery = async (startDate: Date, endDate: Date) => {
+        // Notas a aplicar: mismo filtro (tipo de pago + estado), pero sobre las
+        // facturas de cada nota → total por periodo.
+        //
+        // Este reporte suma `invoice.total` de TODAS las facturas del tipo de
+        // pago, ventas y compras juntas, así que le afectan las tres notas: la
+        // crédito y la de ajuste restan, y la débito suma. Antes solo restaba
+        // las de crédito.
+        const noteQuery = async (
+          noteEntity: typeof CreditNote | typeof DebitNote | typeof AdjustmentNote,
+          startDate: Date,
+          endDate: Date,
+        ) => {
           return await this._invoiceRepository.manager
-            .getRepository(CreditNote)
+            .getRepository(noteEntity)
             .createQueryBuilder('cn')
             .innerJoin('cn.invoice', 'invoice')
             .leftJoin('invoice.payType', 'payType')
@@ -120,41 +131,38 @@ export class ReportService {
             .getRawOne();
         };
 
-        const [
-          daily,
-          weekly,
-          monthly,
-          yearly,
-          dailyCr,
-          weeklyCr,
-          monthlyCr,
-          yearlyCr,
-        ] = await Promise.all([
-          query(dateRanges.daily.start, dateRanges.daily.end),
-          query(dateRanges.weekly.start, dateRanges.weekly.end),
-          query(dateRanges.monthly.start, dateRanges.monthly.end),
-          query(dateRanges.yearly.start, dateRanges.yearly.end),
-          creditQuery(dateRanges.daily.start, dateRanges.daily.end),
-          creditQuery(dateRanges.weekly.start, dateRanges.weekly.end),
-          creditQuery(dateRanges.monthly.start, dateRanges.monthly.end),
-          creditQuery(dateRanges.yearly.start, dateRanges.yearly.end),
-        ]);
+        const periods = ['daily', 'weekly', 'monthly', 'yearly'] as const;
+        const perPeriod = await Promise.all(
+          periods.map(async (p) => {
+            const { start, end } = dateRanges[p];
+            const [gross, credit, debit, adjustment] = await Promise.all([
+              query(start, end),
+              noteQuery(CreditNote, start, end),
+              noteQuery(DebitNote, start, end),
+              noteQuery(AdjustmentNote, start, end),
+            ]);
+            const num = (r: { total?: string } | undefined) =>
+              parseFloat(r?.total ?? '0') || 0;
+            return {
+              count: parseInt(gross?.count) || 0,
+              total:
+                num(gross) - num(credit) + num(debit) - num(adjustment),
+            };
+          }),
+        );
 
-        const net = (
-          gross: { total?: string } | undefined,
-          credit: { total?: string } | undefined,
-        ) => (parseFloat(gross?.total ?? '0') || 0) - (parseFloat(credit?.total ?? '0') || 0);
+        const [daily, weekly, monthly, yearly] = perPeriod;
 
         return {
           paymentType: paymentTypeName,
-          dailyCount: parseInt(daily?.count) || 0,
-          weeklyCount: parseInt(weekly?.count) || 0,
-          monthlyCount: parseInt(monthly?.count) || 0,
-          yearlyCount: parseInt(yearly?.count) || 0,
-          dailyTotal: net(daily, dailyCr),
-          weeklyTotal: net(weekly, weeklyCr),
-          monthlyTotal: net(monthly, monthlyCr),
-          yearlyTotal: net(yearly, yearlyCr),
+          dailyCount: daily.count,
+          weeklyCount: weekly.count,
+          monthlyCount: monthly.count,
+          yearlyCount: yearly.count,
+          dailyTotal: daily.total,
+          weeklyTotal: weekly.total,
+          monthlyTotal: monthly.total,
+          yearlyTotal: yearly.total,
         };
       }),
     );

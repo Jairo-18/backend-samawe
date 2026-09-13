@@ -6,6 +6,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InvoiceRepository } from '../../shared/repositories/invoice.repository';
 import { DebitNoteRepository } from '../../shared/repositories/debitNote.repository';
 import { Invoice } from '../../shared/entities/invoice.entity';
@@ -76,6 +77,7 @@ export class FactusDebitNoteService {
     private readonly billsService: FactusBillsService,
     private readonly invoiceService: FactusInvoiceService,
     private readonly mailsService: MailsService,
+    private readonly _eventEmitter: EventEmitter2,
   ) {}
 
   /** Notas débito ya emitidas de una factura (más recientes primero). */
@@ -266,6 +268,12 @@ export class FactusDebitNoteService {
     // A diferencia de la nota crédito, aquí NO se toca el inventario: cobrar
     // intereses o gastos no devuelve mercancía a la bodega.
 
+    // Pero el balance SÍ cambia: una nota débito SUMA a la venta de su factura.
+    this._eventEmitter.emit('invoice.note.emitted', {
+      invoiceId: invoice.invoiceId,
+      kind: 'debitNote',
+    });
+
     this.dispatchNotifications(invoice, result);
 
     return result;
@@ -362,6 +370,11 @@ export class FactusDebitNoteService {
       observation: (options.observation ?? '').slice(0, 250),
       result,
       items,
+    });
+
+    this._eventEmitter.emit('invoice.note.emitted', {
+      invoiceId: invoice.invoiceId,
+      kind: 'debitNote',
     });
 
     this.logger.warn(
