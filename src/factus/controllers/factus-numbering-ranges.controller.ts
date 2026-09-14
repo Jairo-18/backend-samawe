@@ -31,11 +31,28 @@ class UpdateRangeSelectionDto {
   @Min(1)
   creditNote?: number | null;
 
+  // Nota débito y nota de ajuste faltaban aquí desde que el plan de los cinco
+  // documentos pasó de 3 tipos a 5: el servicio siempre las manejó (es genérico
+  // sobre FactusDocumentKind, ver SELECTION_COLUMN), pero con
+  // `forbidNonWhitelisted: true` en main.ts el PATCH las rechazaba con 400 y su
+  // rango no se podía fijar desde la app.
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsInt()
+  @Min(1)
+  debitNote?: number | null;
+
   @IsOptional()
   @ValidateIf((_, value) => value !== null)
   @IsInt()
   @Min(1)
   supportDocument?: number | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsInt()
+  @Min(1)
+  adjustmentNote?: number | null;
 }
 
 /**
