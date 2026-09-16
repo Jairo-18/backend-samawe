@@ -56,6 +56,7 @@ import { Balance } from './entities/balance.entity';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MailsService } from './services/mails.service';
 import { InvoicePdfService } from './services/invoicePdf.service';
+import { InvoiceNotesService } from './services/invoiceNotes.service';
 import { MailTemplateService } from './services/mail-template.service';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { GeneralInvoiceDetaillService } from './services/generalInvoiceDetaill.service';
@@ -277,6 +278,7 @@ export class SharedModule {
         InvoiceEventsListener,
         MailsService,
         InvoicePdfService,
+        InvoiceNotesService,
         MailTemplateService,
         PasswordService,
         GeneralInvoiceDetaillService,
@@ -336,6 +338,7 @@ export class SharedModule {
         InvoiceEventsListener,
         MailsService,
         InvoicePdfService,
+        InvoiceNotesService,
         MailTemplateService,
         PasswordService,
         GeneralInvoiceDetaillService,

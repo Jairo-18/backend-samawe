@@ -12,6 +12,10 @@ import { FactusBillsService } from './factus-bills.service';
 import { FactusBillResult } from '../interfaces/bill.interfaces';
 import { MailsService } from '../../shared/services/mails.service';
 import { InvoicePdfService } from '../../shared/services/invoicePdf.service';
+import {
+  InvoiceNotesService,
+  InvoiceNotesSummary,
+} from '../../shared/services/invoiceNotes.service';
 import { InvoiceTypeRepository } from '../../shared/repositories/invoiceType.repository';
 import { MailAttachment } from '../../shared/interfaces/mail.interface';
 import { sumFactusItemsTotal } from '../utils/factus-math.utils';
@@ -43,12 +47,27 @@ export class FactusInvoiceService {
   // cambia en caliente, así que basta con resolverlo una vez por proceso.
   private readonly invoiceTypeIdByCode = new Map<string, number>();
 
+  // Serializa por factura todo lo que escribe sus campos Factus: emitir,
+  // recuperar y resetear. Las cuatro notas y el documento soporte ya tenían este
+  // lock; la EMISIÓN era el único camino sin proteger, justo el más caro de
+  // duplicar — una factura repetida ante la DIAN no se puede borrar y es lo que
+  // originó el incidente A773.
+  //
+  // El guard de `invoice.factusNumber` NO basta: dos peticiones simultáneas
+  // pasan las dos por el `if` antes de que ninguna haya guardado, y acaban
+  // emitiendo dos veces.
+  //
+  // En memoria → válido con UNA instancia, igual que el token de Factus y el
+  // resto de locks. Si se escala horizontalmente hay que moverlo a Redis.
+  private readonly invoiceLocks = new Map<number, Promise<void>>();
+
   constructor(
     private readonly invoiceRepository: InvoiceRepository,
     private readonly billsService: FactusBillsService,
     private readonly mailsService: MailsService,
     private readonly invoicePdfService: InvoicePdfService,
     private readonly invoiceTypeRepository: InvoiceTypeRepository,
+    private readonly invoiceNotesService: InvoiceNotesService,
   ) {}
 
   /**
@@ -75,7 +94,45 @@ export class FactusInvoiceService {
     return type.invoiceTypeId;
   }
 
+  /**
+   * Encola por `invoiceId`: la segunda llamada espera a que termine la primera,
+   * en vez de correr en paralelo con ella. Mismo patrón que en notas crédito,
+   * débito, ajuste y documento soporte.
+   */
+  private async withInvoiceLock<T>(
+    invoiceId: number,
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    const previous = this.invoiceLocks.get(invoiceId) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => (release = resolve));
+    const tail = previous.then(() => current);
+    this.invoiceLocks.set(invoiceId, tail);
+
+    await previous.catch(() => undefined); // espera al anterior (sin propagar su error)
+    try {
+      return await fn();
+    } finally {
+      release();
+      // Si nadie se encadenó después, limpia la entrada para no acumular memoria.
+      if (this.invoiceLocks.get(invoiceId) === tail) {
+        this.invoiceLocks.delete(invoiceId);
+      }
+    }
+  }
+
   async sendInvoiceToFactus(invoiceId: number): Promise<FactusBillResult> {
+    return this.withInvoiceLock(invoiceId, () =>
+      this.doSendInvoiceToFactus(invoiceId),
+    );
+  }
+
+  private async doSendInvoiceToFactus(
+    invoiceId: number,
+  ): Promise<FactusBillResult> {
+    // Dentro del lock: el segundo clic llega aquí cuando el primero ya guardó
+    // `factusNumber`, así que este guard sí lo detiene y devuelve la factura ya
+    // emitida en vez de emitir una segunda.
     const invoice = await this.loadInvoice(invoiceId);
 
     // If already sent, return stored data without re-sending
@@ -196,10 +253,11 @@ export class FactusInvoiceService {
    * Tareas posteriores a la emisión, ejecutadas en segundo plano (no bloquean
    * la respuesta ni afectan la validez fiscal de la factura):
    *  - Construye los adjuntos (QR inline + PDF branded) una sola vez.
-   *  - Envía las copias al cliente y al negocio EN PARALELO.
-   * Todo best-effort: notifyCustomer/notifyBusiness ya capturan sus propios
-   * errores; el try/catch externo es defensivo para evitar unhandled rejections
-   * (p. ej. si fallara la generación de adjuntos).
+   *  - Envía la copia al cliente. El negocio NO recibe copia por correo: ya
+   *    tiene el documento en la aplicación y en el portal de Factus.
+   * Todo best-effort: notifyCustomer ya captura sus propios errores; el
+   * try/catch externo es defensivo para evitar unhandled rejections (p. ej. si
+   * fallara la generación de adjuntos).
    */
   private dispatchPostEmissionNotifications(
     invoice: Invoice,
@@ -208,10 +266,7 @@ export class FactusInvoiceService {
     void (async () => {
       try {
         const attachments = await this.buildInvoiceAttachments(invoice, result);
-        await Promise.allSettled([
-          this.notifyCustomer(invoice, result, attachments),
-          this.notifyBusiness(invoice, result, attachments),
-        ]);
+        await this.notifyCustomer(invoice, result, attachments);
       } catch (error) {
         this.logger.error(
           `Fallo en las notificaciones posteriores a la emisión de la factura ${invoice.invoiceId}: ${
@@ -234,6 +289,8 @@ export class FactusInvoiceService {
   private async buildInvoiceAttachments(
     invoice: Invoice,
     result: FactusBillResult,
+    /** Solo en el reenvío: añade el anexo de notas y la marca de anulada. */
+    notes?: InvoiceNotesSummary | null,
   ): Promise<MailAttachment[]> {
     const attachments: MailAttachment[] = [];
 
@@ -264,7 +321,10 @@ export class FactusInvoiceService {
 
     // PDF "branded" (la misma representación del botón Descargar de ver-facturas),
     // generado en el servidor con pdfmake. Best-effort.
-    const branded = await this.invoicePdfService.generateInvoicePdf(invoice);
+    const branded = await this.invoicePdfService.generateInvoicePdf(
+      invoice,
+      notes,
+    );
     if (branded) {
       attachments.push({
         filename: `factura-${number ?? invoice.code}.pdf`,
@@ -305,18 +365,19 @@ export class FactusInvoiceService {
     const clientName =
       `${invoice.user?.firstName ?? ''} ${invoice.user?.lastName ?? ''}`.trim();
     try {
-      await this.mailsService.sendEmail({
+      const { deliveredTo } = await this.mailsService.sendEmail({
         to: to!,
         subject: `Tu factura electrónica ${result.billNumber ?? invoice.code} — ${orgName}`,
         body: this.buildInvoiceEmailHtml(invoice, result, orgName, {
-          audience: 'customer',
           name: clientName,
           hasQr: this.hasInlineQr(attachments),
         }),
         attachments,
       });
+      // `deliveredTo`, no `to`: fuera de producción el guard de correo redirige
+      // al buzón del negocio y el log diría que le llegó al cliente real.
       this.logger.log(
-        `Copia de factura ${invoice.invoiceId} enviada al cliente (${to}).`,
+        `Copia de factura ${invoice.invoiceId} entregada a ${deliveredTo}.`,
       );
     } catch (error) {
       this.logger.error(
@@ -328,8 +389,7 @@ export class FactusInvoiceService {
   }
 
   /**
-   * Plantilla de correo de la factura electrónica, reutilizada para el cliente
-   * y para el negocio (cambia solo el encabezado/saludo según 'audience').
+   * Plantilla de correo de la factura electrónica que se envía al cliente.
    * El QR se referencia como imagen inline (cid:qr-dian) — adjunta por
    * buildInvoiceAttachments — para que se renderice en Gmail/Outlook.
    */
@@ -337,22 +397,13 @@ export class FactusInvoiceService {
     invoice: Invoice,
     result: FactusBillResult,
     orgName: string,
-    opts: { audience: 'customer' | 'business'; name: string; hasQr: boolean },
+    opts: { name: string; hasQr: boolean },
   ): string {
     const url = result.publicUrl ?? invoice.factusPublicUrl ?? '';
     const number = result.billNumber ?? invoice.code;
-    const isCustomer = opts.audience === 'customer';
-    const title = isCustomer
-      ? 'Tu factura electrónica'
-      : 'Factura electrónica emitida';
-    const intro = isCustomer
-      ? `Hola ${opts.name || ''}, gracias por tu compra en <strong>${orgName}</strong>. Adjuntamos tu factura electrónica en PDF.`
-      : `<strong>${orgName}</strong> — copia de la factura emitida${
-          opts.name ? ` a ${opts.name}` : ''
-        }.`;
-    const ctaText = isCustomer
-      ? 'Ver / descargar tu factura oficial'
-      : 'Ver la factura oficial';
+    const title = 'Tu factura electrónica';
+    const intro = `Hola ${opts.name || ''}, gracias por tu compra en <strong>${orgName}</strong>. Adjuntamos tu factura electrónica en PDF.`;
+    const ctaText = 'Ver / descargar tu factura oficial';
 
     const row = (label: string, value: string) => `
             <tr>
@@ -420,60 +471,6 @@ export class FactusInvoiceService {
   }
 
   /**
-   * Envía una copia de la factura electrónica al correo del negocio. La copia al
-   * cliente la envía Factus automáticamente (send_email). Es best-effort: si el
-   * correo falla NO se interrumpe la emisión, que ya quedó válida ante la DIAN.
-   * Solo corre en la primera emisión (el camino "ya enviada" retorna antes).
-   */
-  private async notifyBusiness(
-    invoice: Invoice,
-    result: FactusBillResult,
-    attachments: MailAttachment[],
-  ): Promise<void> {
-    // En desarrollo NO enviamos la copia al negocio (ya está verificada).
-    // Solo se envía en producción.
-    if (process.env.APP_ENV !== 'production') {
-      this.logger.log(
-        `Factura ${invoice.invoiceId}: APP_ENV=${process.env.APP_ENV ?? 'undefined'}; ` +
-          `se omite la copia al negocio (solo se envía en producción).`,
-      );
-      return;
-    }
-    const to = invoice.organizational?.email?.trim();
-    if (!to) {
-      this.logger.warn(
-        `Factura ${invoice.invoiceId}: la organización no tiene email; no se envió copia al negocio.`,
-      );
-      return;
-    }
-    const orgName =
-      invoice.organizational?.legalName ?? invoice.organizational?.name ?? '';
-    const clientName =
-      `${invoice.user?.firstName ?? ''} ${invoice.user?.lastName ?? ''}`.trim();
-    try {
-      await this.mailsService.sendEmail({
-        to,
-        subject: `Factura electrónica ${result.billNumber ?? invoice.code} — ${orgName}`,
-        body: this.buildInvoiceEmailHtml(invoice, result, orgName, {
-          audience: 'business',
-          name: clientName,
-          hasQr: this.hasInlineQr(attachments),
-        }),
-        attachments,
-      });
-      this.logger.log(
-        `Copia de factura ${invoice.invoiceId} enviada al negocio (${to}).`,
-      );
-    } catch (error) {
-      this.logger.error(
-        `No se pudo enviar la copia al negocio (factura ${invoice.invoiceId}): ${
-          (error as Error).message
-        }`,
-      );
-    }
-  }
-
-  /**
    * Consulta de SOLO LECTURA del estado Factus de una factura interna.
    * No envía nada a la DIAN: devuelve los campos factus* ya guardados.
    */
@@ -514,6 +511,14 @@ export class FactusInvoiceService {
    * volver a emitir (idempotencia normal).
    */
   async recoverFromFactus(invoiceId: number): Promise<FactusBillResult> {
+    return this.withInvoiceLock(invoiceId, () =>
+      this.doRecoverFromFactus(invoiceId),
+    );
+  }
+
+  private async doRecoverFromFactus(
+    invoiceId: number,
+  ): Promise<FactusBillResult> {
     const invoice = await this.loadInvoice(invoiceId);
 
     if (invoice.factusNumber) {
@@ -666,6 +671,66 @@ export class FactusInvoiceService {
         `Documento "${referenceCode}"${billNumber ? ` (${billNumber})` : ''} eliminado de Factus. ` +
         'Ya se puede volver a emitir con el MISMO código.',
     };
+  }
+
+  /**
+   * Reenvía por correo al cliente una factura electrónica YA emitida.
+   *
+   * A diferencia del correo de la emisión, este PDF se genera **con las notas
+   * asociadas**: lleva el anexo de documentos y, si el neto quedó cubierto, la
+   * marca de agua "ANULADA". Es la única vía por la que sale del sistema un PDF
+   * de una factura que ya no vale — el de la emisión se construye segundos
+   * después de validarla, cuando todavía no puede tener notas.
+   *
+   * Es una acción manual y a petición: no reenvía nada por su cuenta.
+   */
+  async resendInvoiceEmail(
+    invoiceId: number,
+  ): Promise<{ deliveredTo: string; annulled: boolean }> {
+    const invoice = await this.loadInvoice(invoiceId);
+
+    if (!invoice.factusNumber) {
+      throw new BadRequestException(
+        'Solo se puede reenviar una factura ya emitida a la DIAN.',
+      );
+    }
+
+    const to = invoice.user?.email?.trim();
+    const isValidEmail = !!to && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to);
+    if (!isValidEmail) {
+      throw new BadRequestException(
+        'El cliente de esta factura no tiene un correo válido.',
+      );
+    }
+
+    const notes = await this.invoiceNotesService.loadFor(invoice);
+
+    // Se reconstruye desde lo persistido: la respuesta original de Factus no se
+    // guarda entera, pero número, CUFE, QR y URL sí, que es todo lo que el
+    // correo necesita.
+    const result: FactusBillResult = {
+      billNumber: invoice.factusNumber ?? null,
+      cufe: invoice.factusCufe ?? null,
+      qrCode: invoice.factusQrCode ?? null,
+      publicUrl: invoice.factusPublicUrl ?? null,
+      isValidated: true,
+      referenceCode: invoice.factusReferenceCode ?? invoice.code ?? null,
+      createdAt: (invoice.factusSentAt ?? new Date()).toISOString(),
+    };
+
+    const attachments = await this.buildInvoiceAttachments(
+      invoice,
+      result,
+      notes,
+    );
+    await this.notifyCustomer(invoice, result, attachments);
+
+    this.logger.log(
+      `Factura ${invoiceId} (${invoice.factusNumber}) reenviada a ${to}` +
+        `${notes.annulled ? ' — marcada como ANULADA' : ''}.`,
+    );
+
+    return { deliveredTo: to!, annulled: notes.annulled };
   }
 
   private async loadInvoice(invoiceId: number): Promise<Invoice> {
@@ -951,6 +1016,14 @@ export class FactusInvoiceService {
    * vez de este endpoint para recuperar el número real sin re-emitir.
    */
   async resetFactusFields(invoiceId: number): Promise<{ reset: boolean; message: string }> {
+    return this.withInvoiceLock(invoiceId, () =>
+      this.doResetFactusFields(invoiceId),
+    );
+  }
+
+  private async doResetFactusFields(
+    invoiceId: number,
+  ): Promise<{ reset: boolean; message: string }> {
     const invoice = await this.invoiceRepository.findOne({
       where: { invoiceId },
     });

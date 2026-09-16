@@ -6,6 +6,7 @@ import { Invoice } from '../entities/invoice.entity';
 import { InvoiceDetaill } from '../entities/invoiceDetaill.entity';
 import { Organizational } from '../entities/organizational.entity';
 import { OrganizationalMedia } from '../entities/organizationalMedia.entity';
+import { InvoiceNotesSummary } from './invoiceNotes.service';
 
 // pdfmake 0.3.x expone en node una instancia singleton (require('pdfmake')).
 // @types/pdfmake no la tipa, así que la cargamos vía require como any.
@@ -172,6 +173,8 @@ function itemConcept(d: InvoiceDetaill): string {
 async function buildInvoiceDoc(
   invoice: Invoice,
   org?: Organizational | null,
+  /** Notas asociadas, para el anexo y la marca de agua. Ver `generateInvoicePdf`. */
+  notes?: InvoiceNotesSummary | null,
 ): Promise<Record<string, unknown>> {
   const color = getColor(org);
 
@@ -603,6 +606,106 @@ async function buildInvoiceDoc(
     marginBottom: 2,
   });
 
+  // ── Anexo de notas asociadas ────────────────────────────────────────────
+  //
+  // Gemelo del bloque de `invoicePrint.service.ts` en el frontend: los dos
+  // generadores deben pintar lo mismo. Va DESPUÉS de los totales y NO los
+  // modifica — el total impreso tiene que seguir siendo el que la DIAN validó
+  // para ESTE documento; una nota es otro documento electrónico, con su propio
+  // número, CUDE y PDF oficial. Lo que aporta es la referencia cruzada.
+  //
+  // En la EMISIÓN este bloque nunca se pinta: `buildInvoiceAttachments` llama
+  // sin `notes` porque una factura recién validada no puede tener ninguna. Solo
+  // aparece al REENVIAR una factura antigua por correo.
+  if (notes?.any) {
+    const noteLine = (
+      label: string,
+      number: string,
+      amount: number,
+      sign: '+' | '−',
+    ) => [
+      { text: `${label} ${number}`, fontSize: 7, margin: [4, 2, 4, 2] },
+      {
+        text: `${sign} ${formatCop(amount)}`,
+        fontSize: 7,
+        alignment: 'right' as const,
+        margin: [4, 2, 4, 2],
+      },
+    ];
+
+    content.push({
+      columns: [
+        { width: '*', text: '' },
+        {
+          width: 230,
+          table: {
+            widths: ['*', 100],
+            body: [
+              [
+                {
+                  text: 'DOCUMENTOS ASOCIADOS / Associated documents',
+                  bold: true,
+                  fontSize: 7.5,
+                  colSpan: 2,
+                  margin: [4, 3, 4, 3],
+                },
+                {},
+              ],
+              ...notes.creditNotes.map((n) =>
+                noteLine(
+                  'Nota crédito / Credit note',
+                  n.factusNumber || n.referenceCode,
+                  Number(n.total ?? 0),
+                  '−',
+                ),
+              ),
+              ...notes.debitNotes.map((n) =>
+                noteLine(
+                  'Nota débito / Debit note',
+                  n.factusNumber || n.referenceCode,
+                  Number(n.total ?? 0),
+                  '+',
+                ),
+              ),
+              ...notes.adjustmentNotes.map((n) =>
+                noteLine(
+                  'Nota de ajuste / Adjustment note',
+                  n.factusNumber || n.referenceCode,
+                  Number(n.total ?? 0),
+                  '−',
+                ),
+              ),
+              [
+                {
+                  text: notes.annulled
+                    ? 'DOCUMENTO ANULADO / Annulled document'
+                    : 'VALOR NETO / Net value',
+                  bold: true,
+                  fontSize: 7.5,
+                  margin: [4, 2, 4, 2],
+                },
+                {
+                  text: formatCop(notes.net),
+                  bold: true,
+                  fontSize: 7.5,
+                  alignment: 'right' as const,
+                  margin: [4, 2, 4, 2],
+                },
+              ],
+            ],
+          },
+          layout: {
+            hLineWidth: () => 0.5,
+            vLineWidth: () => 0.5,
+            hLineColor: () => '#cccccc',
+            vLineColor: () => '#cccccc',
+          },
+        },
+      ],
+      marginBottom: 4,
+    });
+  }
+
   content.push({
     text: '* Todos los precios incluyen impuestos. / All prices include taxes.',
     fontSize: 6.5,
@@ -725,6 +828,20 @@ async function buildInvoiceDoc(
     pageSize: 'LETTER' as const,
     pageMargins: [18, 18, 18, 18],
     defaultStyle: { font: 'Roboto', fontSize: 9 },
+    // Marca de agua en los documentos sin valor. Gemela de la del frontend: va
+    // en `watermark` y no en `background` para que pdfmake la repita en TODAS
+    // las páginas.
+    ...(notes?.annulled
+      ? {
+          watermark: {
+            text: 'ANULADA',
+            color: '#d82323',
+            opacity: 0.18,
+            bold: true,
+            italics: false,
+          },
+        }
+      : {}),
     content,
   };
 }
@@ -753,11 +870,21 @@ export class InvoicePdfService {
     pdfmake.setLocalAccessPolicy((p: string) => p.startsWith(ROBOTO_DIR));
   }
 
-  async generateInvoicePdf(invoice: Invoice): Promise<Buffer | null> {
+  /**
+   * @param notes Notas asociadas. Se pasa al REENVIAR una factura antigua, para
+   * que el PDF lleve el anexo de documentos asociados y, si está anulada, la
+   * marca de agua. En la emisión se omite: la factura acaba de validarse y no
+   * puede tener notas, así que serían tres consultas para nada.
+   */
+  async generateInvoicePdf(
+    invoice: Invoice,
+    notes?: InvoiceNotesSummary | null,
+  ): Promise<Buffer | null> {
     try {
       const docDefinition = await buildInvoiceDoc(
         invoice,
         invoice.organizational,
+        notes,
       );
       const buffer = await pdfmake.createPdf(docDefinition).getBuffer();
       return Buffer.from(buffer);

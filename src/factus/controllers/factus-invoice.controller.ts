@@ -43,6 +43,23 @@ export class FactusInvoiceController {
     return { success: true, data: result };
   }
 
+  @Post(':id/resend-email')
+  @ApiOperation({
+    summary: 'Reenviar por correo una factura electrónica ya emitida',
+    description:
+      'Vuelve a mandarle al cliente la factura con su PDF y el QR de la DIAN. ' +
+      'A diferencia del correo de la emisión, este PDF incluye las notas ' +
+      'asociadas (crédito, débito, ajuste) y, si el neto quedó cubierto, la ' +
+      'marca de agua "ANULADA". Es la única vía por la que sale un PDF de una ' +
+      'factura que ya no vale: el de la emisión se genera segundos después de ' +
+      'validarla, cuando todavía no puede tener notas. ' +
+      'Fuera de producción el correo se redirige al buzón del negocio.',
+  })
+  async resendInvoiceEmail(@Param('id', ParseIntPipe) id: number) {
+    const result = await this.invoiceService.resendInvoiceEmail(id);
+    return { success: true, data: result };
+  }
+
   @Post(':id/recover')
   @ApiOperation({
     summary: 'Recuperar factura ya procesada por la DIAN (Regla 90)',

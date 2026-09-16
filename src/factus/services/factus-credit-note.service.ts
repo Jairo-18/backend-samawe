@@ -642,8 +642,9 @@ export class FactusCreditNoteService {
 
   /**
    * Notificaciones posteriores a la emisión (segundo plano): arma el QR inline y
-   * el PDF oficial de Factus una sola vez y envía las copias al cliente y al
-   * negocio en paralelo. Best-effort: cualquier fallo solo queda en logs.
+   * el PDF oficial de Factus y envía la copia al cliente. El negocio NO recibe
+   * copia por correo (ya tiene el documento en la aplicación y en el portal de
+   * Factus). Best-effort: cualquier fallo solo queda en logs.
    */
   private dispatchNotifications(
     invoice: Invoice,
@@ -652,10 +653,7 @@ export class FactusCreditNoteService {
     void (async () => {
       try {
         const attachments = await this.buildAttachments(result);
-        await Promise.allSettled([
-          this.notifyCustomer(invoice, result, attachments),
-          this.notifyBusiness(invoice, result, attachments),
-        ]);
+        await this.notifyCustomer(invoice, result, attachments);
       } catch (error) {
         this.logger.error(
           `Fallo en notificaciones de la nota crédito ${result.number ?? result.referenceCode}: ${
@@ -743,44 +741,20 @@ export class FactusCreditNoteService {
     const orgName =
       invoice.organizational?.legalName ?? invoice.organizational?.name ?? '';
     try {
-      await this.mailsService.sendEmail({
+      const { deliveredTo } = await this.mailsService.sendEmail({
         to: to!,
         subject: `Nota crédito ${result.number ?? result.referenceCode} — ${orgName}`,
-        body: this.buildEmailHtml(invoice, result, orgName, 'customer'),
+        body: this.buildEmailHtml(invoice, result, orgName),
         attachments,
       });
-      this.logger.log(`Copia de la nota crédito ${result.number} enviada al cliente (${to}).`);
+      // `deliveredTo`, no `to`: fuera de producción el guard de correo redirige
+      // al buzón del negocio y el log diría que le llegó al cliente real.
+      this.logger.log(
+        `Copia de la nota crédito ${result.number} entregada a ${deliveredTo}.`,
+      );
     } catch (error) {
       this.logger.error(
         `No se pudo enviar la nota crédito ${result.number} al cliente: ${
-          (error as Error).message
-        }`,
-      );
-    }
-  }
-
-  private async notifyBusiness(
-    invoice: Invoice,
-    result: FactusCreditNoteResult,
-    attachments: MailAttachment[],
-  ): Promise<void> {
-    // Igual que las facturas: la copia al negocio solo se envía en producción.
-    if (process.env.APP_ENV !== 'production') return;
-    const to = invoice.organizational?.email?.trim();
-    if (!to) return;
-    const orgName =
-      invoice.organizational?.legalName ?? invoice.organizational?.name ?? '';
-    try {
-      await this.mailsService.sendEmail({
-        to,
-        subject: `Nota crédito ${result.number ?? result.referenceCode} — ${orgName}`,
-        body: this.buildEmailHtml(invoice, result, orgName, 'business'),
-        attachments,
-      });
-      this.logger.log(`Copia de la nota crédito ${result.number} enviada al negocio (${to}).`);
-    } catch (error) {
-      this.logger.error(
-        `No se pudo enviar la nota crédito ${result.number} al negocio: ${
           (error as Error).message
         }`,
       );
@@ -791,14 +765,10 @@ export class FactusCreditNoteService {
     invoice: Invoice,
     result: FactusCreditNoteResult,
     orgName: string,
-    audience: 'customer' | 'business',
   ): string {
     const clientName =
       `${invoice.user?.firstName ?? ''} ${invoice.user?.lastName ?? ''}`.trim();
-    const isCustomer = audience === 'customer';
-    const intro = isCustomer
-      ? `Hola ${clientName || ''}, te compartimos la nota crédito asociada a tu factura <strong>${invoice.factusNumber ?? invoice.code}</strong> de <strong>${orgName}</strong>.`
-      : `<strong>${orgName}</strong> — copia de la nota crédito emitida${clientName ? ` a ${clientName}` : ''}.`;
+    const intro = `Hola ${clientName || ''}, te compartimos la nota crédito asociada a tu factura <strong>${invoice.factusNumber ?? invoice.code}</strong> de <strong>${orgName}</strong>.`;
     const url = result.publicUrl ?? '';
     const row = (label: string, value: string) => `
             <tr>

@@ -9,6 +9,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InvoiceRepository } from '../../shared/repositories/invoice.repository';
 import { DebitNoteRepository } from '../../shared/repositories/debitNote.repository';
+import { CreditNoteRepository } from '../../shared/repositories/creditNote.repository';
 import { Invoice } from '../../shared/entities/invoice.entity';
 import { DebitNote } from '../../shared/entities/debitNote.entity';
 import { FactusClient } from '../factus.client';
@@ -22,7 +23,7 @@ import {
   DebitNoteItemInput,
   FactusDebitNoteResult,
 } from '../interfaces/debit-note.interfaces';
-import { sumFactusItemsTotal } from '../utils/factus-math.utils';
+import { round2, sumFactusItemsTotal } from '../utils/factus-math.utils';
 import { resolveFactusPayment } from '../utils/factus-payment.utils';
 import { isSaleTypeCode } from '../../shared/constants/invoiceType.constants';
 import {
@@ -73,6 +74,7 @@ export class FactusDebitNoteService {
   constructor(
     private readonly invoiceRepository: InvoiceRepository,
     private readonly debitNoteRepository: DebitNoteRepository,
+    private readonly creditNoteRepository: CreditNoteRepository,
     private readonly factusClient: FactusClient,
     private readonly billsService: FactusBillsService,
     private readonly invoiceService: FactusInvoiceService,
@@ -117,6 +119,8 @@ export class FactusDebitNoteService {
         'La nota débito solo aplica a facturas de venta.',
       );
     }
+
+    await this.assertNotAnnulled(invoice);
 
     const correctionConceptCode = options.correctionConceptCode ?? '1';
     if (!DEBIT_CONCEPTS[correctionConceptCode]) {
@@ -427,7 +431,52 @@ export class FactusDebitNoteService {
     }
   }
 
-  /** Convierte una línea de entrada al ítem del payload de Factus. */
+  /**
+   * Rechaza la nota débito si la factura ya está anulada por notas crédito.
+   *
+   * Una factura anulada vale cero a efectos fiscales: aumentarle el valor deja
+   * un documento que cobra sobre algo que ya no existe, y el neto de los
+   * reportes queda descuadrado. Si hay que volver a cobrar, lo que corresponde
+   * es una factura nueva.
+   *
+   * El margen de un peso es el mismo que usa el badge del listado: los totales
+   * de la DIAN vienen redondeados y la suma de varias notas parciales puede
+   * quedar unos céntimos por debajo del total sin que eso signifique que queda
+   * algo vivo.
+   */
+  private async assertNotAnnulled(invoice: Invoice): Promise<void> {
+    const notes = await this.creditNoteRepository.find({
+      where: { invoiceId: invoice.invoiceId },
+    });
+    if (!notes.length) return;
+
+    const credited = notes.reduce(
+      (sum, note) => sum + Number(note.total ?? 0),
+      0,
+    );
+    const total = Number(invoice.total ?? 0);
+    if (total > 0 && credited >= total - 1) {
+      throw new BadRequestException(
+        `La factura ${invoice.factusNumber ?? invoice.code} está anulada por ` +
+          'nota crédito: no se le puede emitir una nota débito. Si hay que ' +
+          'cobrar de nuevo, emite una factura nueva.',
+      );
+    }
+  }
+
+  /**
+   * Convierte una línea de entrada al ítem del payload de Factus.
+   *
+   * ⚠️ **El `price` que llega INCLUYE el impuesto** — misma convención que el
+   * resto del sistema: en `invoice.service.ts` el precio de venta es lo que paga
+   * el cliente y de ahí se extrae la base (`priceSale / (1 + tasa)`). Factus, en
+   * cambio, espera el precio SIN impuesto y le suma la tasa encima, así que hay
+   * que dividir antes de mandarlo.
+   *
+   * Sin esta conversión, teclear 1.000 con IVA 19 % emitía una nota de **1.190**
+   * ante la DIAN: el impuesto se cobraba por fuera y el documento no cuadraba
+   * con lo que el usuario había escrito ni con cómo se factura todo lo demás.
+   */
   private mapItem(
     input: DebitNoteItemInput,
     index: number,
@@ -452,12 +501,16 @@ export class FactusDebitNoteService {
     }
     const taxRate = Number(input.taxRate ?? 0);
 
+    // Impuesto "por dentro": el precio recibido es el que paga el cliente.
+    const priceWithoutTax =
+      taxRate > 0 ? round2(price / (1 + taxRate / 100)) : price;
+
     return {
       code_reference: input.codeReference ?? `ND-${index + 1}`,
       name: name.slice(0, 200),
       quantity: quantity.toFixed(2),
       discount_rate: '0.00',
-      price: price.toFixed(2),
+      price: priceWithoutTax.toFixed(2),
       unit_measure_code: '94',
       standard_code: '999',
       // El `rate` va como PORCENTAJE ("19.00"), no como fracción.
@@ -525,6 +578,11 @@ export class FactusDebitNoteService {
 
   // ── Notificaciones ────────────────────────────────────────────────────────
 
+  /**
+   * Segundo plano: arma los adjuntos y envía la copia al cliente. El negocio NO
+   * recibe copia por correo (ya tiene el documento en la aplicación y en el
+   * portal de Factus).
+   */
   private dispatchNotifications(
     invoice: Invoice,
     result: FactusDebitNoteResult,
@@ -532,10 +590,7 @@ export class FactusDebitNoteService {
     void (async () => {
       try {
         const attachments = await this.buildAttachments(result);
-        await Promise.allSettled([
-          this.notifyCustomer(invoice, result, attachments),
-          this.notifyBusiness(invoice, result, attachments),
-        ]);
+        await this.notifyCustomer(invoice, result, attachments);
       } catch (error) {
         this.logger.error(
           `Fallo en notificaciones de la nota débito ${
@@ -620,45 +675,20 @@ export class FactusDebitNoteService {
     const orgName =
       invoice.organizational?.legalName ?? invoice.organizational?.name ?? '';
     try {
-      await this.mailsService.sendEmail({
+      const { deliveredTo } = await this.mailsService.sendEmail({
         to: to!,
         subject: `Nota débito ${result.number ?? result.referenceCode} — ${orgName}`,
         body: this.buildEmailHtml(invoice, result, orgName),
         attachments,
       });
+      // `deliveredTo`, no `to`: fuera de producción el guard de correo redirige
+      // al buzón del negocio y el log diría que le llegó al cliente real.
       this.logger.log(
-        `Copia de la nota débito ${result.number} enviada al cliente (${to}).`,
+        `Copia de la nota débito ${result.number} entregada a ${deliveredTo}.`,
       );
     } catch (error) {
       this.logger.error(
         `No se pudo enviar la nota débito ${result.number} al cliente: ${
-          (error as Error).message
-        }`,
-      );
-    }
-  }
-
-  private async notifyBusiness(
-    invoice: Invoice,
-    result: FactusDebitNoteResult,
-    attachments: MailAttachment[],
-  ): Promise<void> {
-    // Igual que facturas y notas crédito: la copia al negocio solo en producción.
-    if (process.env.APP_ENV !== 'production') return;
-    const to = invoice.organizational?.email?.trim();
-    if (!to) return;
-    const orgName =
-      invoice.organizational?.legalName ?? invoice.organizational?.name ?? '';
-    try {
-      await this.mailsService.sendEmail({
-        to,
-        subject: `Nota débito ${result.number ?? result.referenceCode} — ${orgName}`,
-        body: this.buildEmailHtml(invoice, result, orgName),
-        attachments,
-      });
-    } catch (error) {
-      this.logger.error(
-        `No se pudo enviar la copia interna de la nota débito ${result.number}: ${
           (error as Error).message
         }`,
       );

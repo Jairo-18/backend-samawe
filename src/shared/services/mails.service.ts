@@ -12,13 +12,20 @@ export class MailsService {
     private readonly configService: ConfigService,
   ) {}
 
+  /**
+   * Devuelve el destinatario al que REALMENTE se entregó. Fuera de producción
+   * no coincide con el pedido (ver `applyEnvironmentGuard`), así que quien
+   * quiera loguear a quién le llegó el correo tiene que usar esto y no su
+   * propia variable: si no, el log afirma que se envió al cliente real cuando
+   * en dev fue al buzón del negocio.
+   */
   async sendEmail({
     from,
     to,
     subject,
     body,
     attachments,
-  }: SendEmailOptions): Promise<void> {
+  }: SendEmailOptions): Promise<{ deliveredTo: string }> {
     const recipient = to || this.configService.get<string>('mail.to');
     if (!recipient) {
       throw new HttpException(
@@ -32,13 +39,15 @@ export class MailsService {
       subject,
     );
 
-    return await this.mailerService.sendMail({
+    await this.mailerService.sendMail({
       from: from || this.configService.get<string>('mail.sender'),
       to: finalTo,
       subject: finalSubject,
       html: body,
       ...(attachments?.length ? { attachments } : {}),
     });
+
+    return { deliveredTo: finalTo };
   }
 
   /**
