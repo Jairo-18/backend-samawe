@@ -7,6 +7,7 @@ import {
 } from '../dtos/menu.dto';
 import { Menu } from './../../shared/entities/menu.entity';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
+import { MenuPublicListItem } from '../interface/menu.interface';
 
 @Injectable()
 export class MenuUC {
@@ -28,6 +29,12 @@ export class MenuUC {
     params: PaginatedMenuParamsDto,
   ): Promise<ResponsePaginationDto<Menu>> {
     return await this._menuService.findAllPaginated(params);
+  }
+
+  async findAllPaginatedPublic(
+    params: PaginatedMenuParamsDto,
+  ): Promise<ResponsePaginationDto<MenuPublicListItem>> {
+    return await this._menuService.findAllPaginatedPublic(params);
   }
 
   async delete(menuId: number): Promise<void> {

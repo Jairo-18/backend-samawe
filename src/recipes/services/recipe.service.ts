@@ -89,6 +89,7 @@ export class RecipeService {
         grouped.set(pid, {
           productId: pid,
           productName: row.product.name?.['es'] ?? Object.values(row.product.name ?? {})[0] ?? '',
+          priceSale: Number(row.product.priceSale),
           images:
             row.product.images?.map((img) => ({
               productImageId: img.productImageId,
@@ -327,6 +328,7 @@ export class RecipeService {
       return {
         productId: product.productId,
         productName: product.name?.['es'] ?? Object.values(product.name ?? {})[0] ?? '',
+        priceSale: Number(product.priceSale),
         images:
           product.images?.map((img) => ({
             productImageId: img.productImageId,
@@ -362,6 +364,7 @@ export class RecipeService {
     return {
       productId: product.productId,
       productName: product.name?.['es'] ?? Object.values(product.name ?? {})[0] ?? '',
+      priceSale: Number(product.priceSale),
       images:
         product.images?.map((img) => ({
           productImageId: img.productImageId,

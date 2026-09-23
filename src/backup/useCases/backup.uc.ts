@@ -19,4 +19,13 @@ export class BackupUC {
   async generateManualBackup() {
     return this.backupService.createBackupStream();
   }
+
+  async cleanupOldBackups(keep: number): Promise<number> {
+    try {
+      return await this.backupService.cleanupOldBackups(keep);
+    } catch (error) {
+      this.logger.error(`Backup cleanup failed: ${error.message}`);
+      throw error;
+    }
+  }
 }

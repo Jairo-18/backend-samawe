@@ -10,6 +10,7 @@ import { FactusAdjustmentNoteService } from '../../factus/services/factus-adjust
 @Injectable()
 export class CronJobService {
   private readonly logger = new Logger(CronJobService.name);
+  private readonly KEEP_LAST_BACKUPS = 7;
 
   constructor(
     private readonly _invoiceDetaillService: InvoiceDetailService,
@@ -106,6 +107,21 @@ export class CronJobService {
     } catch (error) {
       this.logger.error(
         `Automated backup failed: ${error.message}`,
+        error.stack,
+      );
+      return;
+    }
+
+    try {
+      const deleted = await this._backupUC.cleanupOldBackups(
+        this.KEEP_LAST_BACKUPS,
+      );
+      this.logger.log(
+        `Limpieza de backups: ${deleted} archivo(s) eliminado(s), se conservan los últimos ${this.KEEP_LAST_BACKUPS}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Limpieza de backups fallida: ${error.message}`,
         error.stack,
       );
     }

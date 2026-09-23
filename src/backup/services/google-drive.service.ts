@@ -36,6 +36,34 @@ export class GoogleDriveService {
     }
   }
 
+  /** Backups de la carpeta configurada, más nuevo primero. */
+  async listBackupFiles(): Promise<
+    { id: string; name: string; createdTime: string }[]
+  > {
+    if (!this.drive) {
+      throw new Error('Google Drive client not initialized');
+    }
+
+    const folderId = this.configService.get<string>('GOOGLE_DRIVE_FOLDER_ID');
+
+    const response = await this.drive.files.list({
+      q: `'${folderId}' in parents and trashed = false`,
+      orderBy: 'createdTime desc',
+      fields: 'files(id, name, createdTime)',
+      pageSize: 100,
+    });
+
+    return response.data.files || [];
+  }
+
+  async deleteFile(fileId: string): Promise<void> {
+    if (!this.drive) {
+      throw new Error('Google Drive client not initialized');
+    }
+
+    await this.drive.files.delete({ fileId });
+  }
+
   async uploadFile(fileStream: Readable, fileName: string): Promise<string> {
     if (!this.drive) {
       throw new Error('Google Drive client not initialized');

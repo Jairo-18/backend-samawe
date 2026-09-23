@@ -76,6 +76,19 @@ export class BackupService {
     return uploadPromise;
   }
 
+  /** Borra los backups más viejos de Drive, dejando solo los `keep` más recientes. */
+  async cleanupOldBackups(keep: number): Promise<number> {
+    const files = await this.googleDriveService.listBackupFiles();
+    const toDelete = files.slice(keep);
+
+    for (const file of toDelete) {
+      await this.googleDriveService.deleteFile(file.id);
+      this.logger.log(`Backup eliminado: ${file.name} (${file.id})`);
+    }
+
+    return toDelete.length;
+  }
+
   private readonly BATCH_SIZE = 500;
 
   private async generateSqlDump(): Promise<string> {

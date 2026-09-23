@@ -2,6 +2,7 @@ import { MenuRepository } from './../../shared/repositories/menu.repository';
 import { RecipeRepository } from './../../shared/repositories/recipe.repository';
 import { OrganizationalRepository } from './../../shared/repositories/organizational.repository';
 import { Menu } from './../../shared/entities/menu.entity';
+import { Recipe } from './../../shared/entities/recipe.entity';
 import {
   CreateMenuDto,
   UpdateMenuDto,
@@ -15,6 +16,7 @@ import {
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { TranslationService } from '../../shared/services/translation.service';
+import { MenuPublicListItem } from '../interface/menu.interface';
 
 @Injectable()
 export class MenuService {
@@ -197,6 +199,100 @@ export class MenuService {
 
     const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto: params });
     return new ResponsePaginationDto(data, pageMetaDto);
+  }
+
+  /**
+   * Listado público (sin sesión) para la página de gastronomía. Solo une
+   * `recipe.product.images` — a diferencia de `findAllPaginated`, no hace
+   * falta el ingrediente ni la unidad de medida, que son costo interno.
+   */
+  async findAllPaginatedPublic(
+    params: PaginatedMenuParamsDto,
+  ): Promise<ResponsePaginationDto<MenuPublicListItem>> {
+    const qb = this._menuRepository
+      .createQueryBuilder('menu')
+      .leftJoinAndSelect('menu.recipes', 'recipe')
+      .leftJoinAndSelect('recipe.product', 'product')
+      .leftJoinAndSelect('product.images', 'productImages')
+      .where('menu.deletedAt IS NULL');
+
+    if (params.search) {
+      qb.andWhere(`LOWER(menu.name->>'es') LIKE LOWER(:search)`, {
+        search: `%${params.search.trim()}%`,
+      });
+    }
+
+    const order = params.order === 'DESC' ? 'DESC' : 'ASC';
+    qb.orderBy(`menu.name->>'es'`, order);
+
+    const itemCount = await qb
+      .clone()
+      .orderBy()
+      .select('COUNT(DISTINCT menu.menuId)', 'count')
+      .getRawOne()
+      .then((r) => Number(r?.count ?? 0));
+
+    const skip = ((params.page ?? 1) - 1) * (params.perPage ?? 10);
+
+    const menuIds = await qb
+      .clone()
+      .select('menu.menuId', 'menuId')
+      .addSelect(`menu.name->>'es'`, 'name')
+      .distinct(true)
+      .offset(skip)
+      .limit(params.perPage ?? 10)
+      .getRawMany()
+      .then((rows) => rows.map((r) => Number(r.menuId)));
+
+    let menus: Menu[] = [];
+    if (menuIds.length > 0) {
+      menus = await this._menuRepository
+        .createQueryBuilder('menu')
+        .leftJoinAndSelect('menu.recipes', 'recipe')
+        .leftJoinAndSelect('recipe.product', 'product')
+        .leftJoinAndSelect('product.images', 'productImages')
+        .where('menu.menuId IN (:...menuIds)', { menuIds })
+        .orderBy(`menu.name->>'es'`, order)
+        .getMany();
+    }
+
+    const data: MenuPublicListItem[] = menus.map((menu) => ({
+      menuId: menu.menuId,
+      name: menu.name,
+      description: menu.description,
+      dishes: this._groupRecipesByDish(menu.recipes),
+    }));
+
+    const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto: params });
+    return new ResponsePaginationDto(data, pageMetaDto);
+  }
+
+  /**
+   * `menu.recipes` trae UNA fila por ingrediente (un plato con 9 ingredientes
+   * son 9 `Recipe` con el mismo `product`), igual que agrupa
+   * `see-menus.component.ts` en el panel de staff. Sin este paso el listado
+   * público repetiría cada platillo tantas veces como ingredientes tenga.
+   */
+  private _groupRecipesByDish(recipes: Recipe[] | undefined): MenuPublicListItem['dishes'] {
+    const byProduct = new Map<number, MenuPublicListItem['dishes'][number]>();
+
+    for (const recipe of recipes ?? []) {
+      const productId = recipe.product.productId;
+      if (byProduct.has(productId)) continue;
+
+      byProduct.set(productId, {
+        productId,
+        name: recipe.product.name,
+        priceSale: recipe.product.priceSale,
+        images: (recipe.product.images ?? []).map((img) => ({
+          productImageId: img.productImageId,
+          imageUrl: img.imageUrl,
+          publicId: img.publicId,
+        })),
+      });
+    }
+
+    return Array.from(byProduct.values());
   }
 
   async removeProductFromMenu(menuId: number, productId: number): Promise<Menu> {
