@@ -236,6 +236,20 @@ export class OrganizationalService {
     await this._organizationalRepository.delete({ organizationalId });
   }
 
+  /**
+   * ¿Esta ranura guarda un vídeo en vez de una imagen?
+   *
+   * Se decide por el CÓDIGO del tipo, nunca por su id: los ids los asigna un
+   * SERIAL al sembrar el catálogo y difieren entre bases —es la misma trampa
+   * que con `InvoiceType`, donde `DSE` es 5 en producción y 6 en desarrollo—.
+   */
+  async isVideoMediaType(mediaTypeId: number): Promise<boolean> {
+    const mediaType = await this._mediaTypeRepository.findOne({
+      where: { mediaTypeId },
+    });
+    return mediaType?.code === 'HOME_VIDEO';
+  }
+
   async addMedia(organizationalId: string, dto: CreateOrganizationalMediaDto) {
     const organizational = await this.findOne(organizationalId);
 

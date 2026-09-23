@@ -50,7 +50,7 @@ export interface UpdateUserModel {
   lastName: string;
   email: string;
   phoneCode: string;
-  phone: string;
+  phone?: string;
   isActive: boolean;
   roleType: string;
   personType: string;
@@ -60,6 +60,10 @@ export interface UpdateUserModel {
   municipalityId?: number | null;
   password?: string;
   confirmPassword?: string;
+  /** `tribute_code` de Factus: 01 IVA, 04 INC, ZA IVA e INC, ZZ No aplica. */
+  factusTributeCode?: string;
+  /** `legal_organization_code` de Factus: '1' jurídica, '2' natural. */
+  factusLegalOrganizationCode?: string;
 }
 
 export interface IdentificationType {

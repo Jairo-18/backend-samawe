@@ -74,6 +74,21 @@ export class AdjustmentNote {
   @Column({ type: 'jsonb', nullable: true })
   itemsSnapshot?: unknown;
 
+  // ── Movimiento de inventario ──────────────────────────────────────────────
+  //
+  // El caso simétrico de la nota crédito: esta DESCUENTA stock (ajusta una
+  // compra, que lo había sumado). Le basta una bandera porque todo ocurre en
+  // una sola transacción — no hay recetas que restaurar.
+
+  @Column('boolean', { default: false })
+  inventoryApplied: boolean;
+
+  @Column('timestamp', { nullable: true })
+  inventoryAppliedAt?: Date | null;
+
+  @Column('text', { nullable: true })
+  inventoryApplyError?: string | null;
+
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
 }

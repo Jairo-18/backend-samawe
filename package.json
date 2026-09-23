@@ -27,6 +27,7 @@
     "migration:revert:prod": "cross-env NODE_ENV=production ts-node ./node_modules/typeorm/cli -d typeorm.config.ts migration:revert"
   },
   "dependencies": {
+    "@nest-lab/throttler-storage-redis": "^1.2.0",
     "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/common": "^11.0.11",
     "@nestjs/config": "^4.0.1",
@@ -42,6 +43,7 @@
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "^11.0.0",
     "@nestjs/websockets": "^11.1.14",
+    "@socket.io/redis-adapter": "^8.3.0",
     "@types/passport-google-oauth20": "^2.0.17",
     "@types/passport-jwt": "^4.0.1",
     "@vitalets/google-translate-api": "^9.2.1",
@@ -62,6 +64,7 @@
     "form-data": "^4.0.5",
     "googleapis": "^171.4.0",
     "helmet": "^8.0.0",
+    "ioredis": "^6.0.0",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
     "nodemailer": "^7.0.3",

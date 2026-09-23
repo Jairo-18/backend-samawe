@@ -67,6 +67,36 @@ export class CreditNote {
   @Column({ type: 'jsonb', nullable: true })
   itemsSnapshot?: unknown;
 
+  // ── Reversión de inventario ───────────────────────────────────────────────
+  //
+  // La nota ya es válida ante la DIAN antes de tocar el inventario, así que la
+  // reversión no puede tumbar la emisión: lo que se hace es dejar rastro de si
+  // llegó a aplicarse y poder reintentarla. Ver la migración
+  // `1780600000000-AddInventoryReversalTracking` para el porqué de las fases.
+
+  /** Todo terminado. Es por la que filtra el reintento. */
+  @Column('boolean', { default: false })
+  inventoryReversed: boolean;
+
+  /** Fase 1: la transacción de stock y estados de hospedaje ya se aplicó. */
+  @Column('boolean', { default: false })
+  inventoryStockReversed: boolean;
+
+  /**
+   * Fase 2: cuántos ítems de receta van restaurados. Es un CONTADOR y no un
+   * booleano para poder reanudar por donde se quedó — repetir la lista entera
+   * restauraría dos veces los ingredientes de los que sí funcionaron.
+   */
+  @Column('integer', { default: 0 })
+  inventoryRecipesRestored: number;
+
+  @Column('timestamp', { nullable: true })
+  inventoryReversedAt?: Date | null;
+
+  /** Último error, para que el fallo se pueda ver sin bucear en los logs. */
+  @Column('text', { nullable: true })
+  inventoryReverseError?: string | null;
+
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
 }

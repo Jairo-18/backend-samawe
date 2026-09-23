@@ -11,6 +11,7 @@ import { InvoiceTypeRepository } from '../../shared/repositories/invoiceType.rep
 import { Invoice } from '../../shared/entities/invoice.entity';
 import { InvoiceDetaill } from '../../shared/entities/invoiceDetaill.entity';
 import { FactusClient } from '../factus.client';
+import { DocumentLockService } from '../../shared/services/documentLock.service';
 import { FactusApiError } from '../errors/factus-api.error';
 import { FactusBillsService } from './factus-bills.service';
 import { FactusInvoiceService } from './factus-invoice.service';
@@ -35,10 +36,6 @@ const TAX_CODE_IVA = '01';
 export class FactusSupportDocumentService {
   private readonly logger = new Logger(FactusSupportDocumentService.name);
 
-  // Serializa la emisión por factura dentro de la instancia, igual que en las
-  // notas crédito: cierra el doble-submit concurrente. En memoria → válido con
-  // una sola instancia; si se escala, mover a un lock distribuido (Redis).
-  private readonly invoiceLocks = new Map<number, Promise<void>>();
 
   private readonly invoiceTypeIdByCode = new Map<string, number>();
 
@@ -48,6 +45,7 @@ export class FactusSupportDocumentService {
     private readonly factusClient: FactusClient,
     private readonly billsService: FactusBillsService,
     private readonly invoiceService: FactusInvoiceService,
+    private readonly documentLock: DocumentLockService,
   ) {}
 
   /**
@@ -426,25 +424,24 @@ export class FactusSupportDocumentService {
     return type.invoiceTypeId;
   }
 
+  /**
+   * Serializa por factura. Delega en `DocumentLockService`, que además del
+   * encolado en memoria toma un lock distribuido en Redis cuando hay
+   * `REDIS_URL` — necesario en cuanto haya más de una instancia.
+   *
+   * ⚠️ El scope es `'invoice'` en los CINCO servicios a propósito: factura,
+   * nota crédito, nota débito, documento soporte y nota de ajuste comparten
+   * un único lock por factura. Antes cada uno tenía su propio `Map`, así que
+   * una nota crédito y una emisión sobre la misma factura podían correr a la
+   * vez. No hay riesgo de bloqueo mutuo: ninguno de los cinco llama a una
+   * operación bloqueada de otro (solo a `buildCustomer` / `mapDetail`, que no
+   * lo están).
+   */
   private async withInvoiceLock<T>(
     invoiceId: number,
     fn: () => Promise<T>,
   ): Promise<T> {
-    const previous = this.invoiceLocks.get(invoiceId) ?? Promise.resolve();
-    let release!: () => void;
-    const current = new Promise<void>((resolve) => (release = resolve));
-    const tail = previous.then(() => current);
-    this.invoiceLocks.set(invoiceId, tail);
-
-    await previous.catch(() => undefined);
-    try {
-      return await fn();
-    } finally {
-      release();
-      if (this.invoiceLocks.get(invoiceId) === tail) {
-        this.invoiceLocks.delete(invoiceId);
-      }
-    }
+    return this.documentLock.withLock('invoice', invoiceId, fn);
   }
 
   private async loadInvoice(invoiceId: number): Promise<Invoice> {

@@ -105,6 +105,7 @@ import { DepartmentRepository } from './repositories/department.repository';
 import { MunicipalityRepository } from './repositories/municipality.repository';
 import { RolesGuard } from './guards/roles.guard';
 import { TranslationService } from './services/translation.service';
+import { DocumentLockService } from './services/documentLock.service';
 import { LocalStorageService } from '../local-storage/services/local-storage.service';
 import { UserService } from '../user/services/user.service';
 
@@ -297,6 +298,7 @@ export class SharedModule {
         MunicipalityRepository,
         RolesGuard,
         TranslationService,
+        DocumentLockService,
         LocalStorageService,
         UserService,
       ],
@@ -358,6 +360,7 @@ export class SharedModule {
         MunicipalityRepository,
         RolesGuard,
         TranslationService,
+        DocumentLockService,
         LocalStorageService,
         UserService,
       ],

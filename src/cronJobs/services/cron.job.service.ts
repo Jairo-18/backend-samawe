@@ -4,6 +4,8 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { BackupUC } from '../../backup/useCases/backup.uc';
 import { ConfigService } from '@nestjs/config';
 import { UserRepository } from '../../shared/repositories/user.repository';
+import { FactusCreditNoteService } from '../../factus/services/factus-credit-note.service';
+import { FactusAdjustmentNoteService } from '../../factus/services/factus-adjustment-note.service';
 
 @Injectable()
 export class CronJobService {
@@ -14,6 +16,8 @@ export class CronJobService {
     private readonly _backupUC: BackupUC,
     private readonly _configService: ConfigService,
     private readonly _userRepository: UserRepository,
+    private readonly _factusCreditNoteService: FactusCreditNoteService,
+    private readonly _factusAdjustmentNoteService: FactusAdjustmentNoteService,
   ) {}
 
   @Cron('*/10 * * * *')
@@ -51,6 +55,42 @@ export class CronJobService {
   @Cron('0 */2 * * *')
   async handleReservationsJob() {
     await this._invoiceDetaillService.handleScheduledReservation();
+  }
+
+  /**
+   * Reintenta las reversiones de inventario de notas crédito y de ajuste que
+   * quedaron a medias.
+   *
+   * Por qué existe: la nota ya es válida ante la DIAN antes de tocar el
+   * inventario, así que si el movimiento de stock falla no se puede deshacer la
+   * emisión — lo único sensato es reintentarlo. Antes solo quedaba una línea de
+   * log y la mercancía nunca volvía al inventario.
+   *
+   * Cada 15 min y no más seguido porque lo normal es que no haya NADA que
+   * hacer: ambas consultas van contra un índice parcial sobre las pendientes.
+   */
+  @Cron('*/15 * * * *')
+  async handlePendingInventoryReversals() {
+    try {
+      const credito =
+        await this._factusCreditNoteService.retryPendingInventoryReversals();
+      const ajuste =
+        await this._factusAdjustmentNoteService.retryPendingInventoryReversals();
+
+      const pendientes = credito.pending + ajuste.pending;
+      if (pendientes === 0) return;
+
+      const recuperadas = credito.recovered + ajuste.recovered;
+      this.logger.warn(
+        `Reintento de inventario: ${recuperadas}/${pendientes} nota(s) ` +
+          'resueltas. Las que sigan pendientes se reintentan en la próxima pasada.',
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error reintentando las reversiones de inventario: ${error.message}`,
+        error.stack,
+      );
+    }
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)

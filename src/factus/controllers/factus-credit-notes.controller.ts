@@ -113,6 +113,26 @@ export class FactusCreditNotesController {
    * El cuerpo es el MISMO que el de la emisión: de la selección de ítems sale
    * el `reference_code` con el que se busca la nota en Factus.
    */
+  /**
+   * Reintenta a mano las reversiones de inventario que quedaron a medias, sin
+   * esperar a la pasada del cron (cada 15 min).
+   *
+   * Existe porque la nota ya es válida ante la DIAN cuando se toca el
+   * inventario: si el movimiento de stock falla no hay forma de deshacer la
+   * emisión, solo de reintentarlo. Es **idempotente** — cada nota guarda qué
+   * fases ya aplicó, así que llamarlo de más no duplica stock.
+   */
+  @Post('credit-notes/retry-inventory')
+  @Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN)
+  @ApiOperation({
+    summary:
+      'Reintentar las reversiones de inventario de notas crédito pendientes',
+  })
+  async retryInventory() {
+    const data = await this.creditNoteService.retryPendingInventoryReversals();
+    return { success: true, data };
+  }
+
   @Post('invoices/:id/credit-notes/recover')
   @Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN)
   @ApiOperation({

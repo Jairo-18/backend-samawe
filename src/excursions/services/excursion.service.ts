@@ -199,7 +199,9 @@ export class ExcursionService {
 
     const { name: rawName, description: rawDesc, ...restUpdate } = updateExcursionDto;
     if (rawName) restUpdate['name'] = await this._translationService.toTranslatedField(rawName);
-    if (rawDesc) restUpdate['description'] = await this._translationService.toTranslatedField(rawDesc);
+    // `!== undefined` y no un truthy: la descripción SÍ se puede dejar vacía
+    // (ver el mismo comentario en `accommodation.service.ts`).
+    if (rawDesc !== undefined) restUpdate['description'] = await this._translationService.toTranslatedField(rawDesc);
     Object.assign(excursion, restUpdate);
 
     return await this._excursionRepository.save(excursion);
@@ -217,7 +219,10 @@ export class ExcursionService {
 
     const excursion = await this._excursionRepository.findOne({
       where: { excursionId: id },
-      relations: ['categoryType', 'stateType', 'taxeType'],
+      // 'images' es imprescindible: el panel de edición se alimenta de aquí y
+      // el mapper hace `excursion.images?.map(...)`, así que sin la relación
+      // cargada la galería abre vacía aunque las fotos existan.
+      relations: ['categoryType', 'stateType', 'taxeType', 'images'],
     });
 
     if (!excursion) {

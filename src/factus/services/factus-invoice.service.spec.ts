@@ -1,4 +1,5 @@
 import { FactusInvoiceService } from './factus-invoice.service';
+import { DocumentLockService } from '../../shared/services/documentLock.service';
 
 /**
  * El lock de emisión por factura.
@@ -43,6 +44,11 @@ describe('FactusInvoiceService — lock de emisión', () => {
       () => new Promise((resolve) => setTimeout(() => resolve({}), delayMs)),
     );
 
+    // El lock ya no vive dentro del servicio: se inyecta `DocumentLockService`,
+    // que encola en memoria y, si hay `REDIS_URL`, toma además un lock
+    // distribuido. Aquí se construye con `null` como cliente Redis, que es
+    // justo el camino en memoria — el mismo comportamiento que estos tests
+    // fijaban antes, ahora verificado a través del servicio compartido.
     const service = new FactusInvoiceService(
       {} as never,
       { createAndValidateBill, resolveNumberingRangeId: jest.fn(async () => 1) } as never,
@@ -50,6 +56,7 @@ describe('FactusInvoiceService — lock de emisión', () => {
       {} as never,
       {} as never,
       {} as never,
+      new DocumentLockService(null),
     );
 
     const s = service as unknown as Record<string, unknown>;

@@ -224,7 +224,11 @@ export class AccommodationService {
 
     const { taxeTypeId: _t, name: rawName, description: rawDesc, ...updateData } = updateAccommodationDto;
     if (rawName) updateData['name'] = await this._translationService.toTranslatedField(rawName);
-    if (rawDesc) updateData['description'] = await this._translationService.toTranslatedField(rawDesc);
+    // `!== undefined` y no un truthy: la descripción SÍ se puede dejar vacía, y
+    // con el truthy el borrado se ignoraba en silencio (el campo volvía a salir
+    // con el texto viejo al recargar). `toTranslatedField` ya corta en seco con
+    // un string vacío, así que esto no llama a Google Translate.
+    if (rawDesc !== undefined) updateData['description'] = await this._translationService.toTranslatedField(rawDesc);
     Object.assign(accommodation, updateData);
 
     return await this._accommodationRepository.save(accommodation);
@@ -242,7 +246,10 @@ export class AccommodationService {
 
     const accommodation = await this._accommodationRepository.findOne({
       where: { accommodationId: id },
-      relations: ['categoryType', 'bedType', 'stateType', 'taxeType'],
+      // 'images' es imprescindible: el panel de edición se alimenta de aquí y
+      // el mapper hace `accommodation.images?.map(...)`, así que sin la
+      // relación cargada la galería abre vacía aunque las fotos existan.
+      relations: ['categoryType', 'bedType', 'stateType', 'taxeType', 'images'],
     });
 
     if (!accommodation) {

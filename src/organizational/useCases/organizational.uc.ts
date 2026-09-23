@@ -37,6 +37,11 @@ export class OrganizationalUC {
     return await this._organizationalService.delete(id);
   }
 
+  /** ¿Esta ranura de medios guarda un vídeo? Decide cómo se procesa el archivo. */
+  async isVideoMediaType(mediaTypeId: number): Promise<boolean> {
+    return await this._organizationalService.isVideoMediaType(mediaTypeId);
+  }
+
   async addMedia(organizationalId: string, dto: CreateOrganizationalMediaDto) {
     return await this._organizationalService.addMedia(organizationalId, dto);
   }

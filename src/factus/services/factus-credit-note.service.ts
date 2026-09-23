@@ -15,6 +15,7 @@ import { CreditNote } from '../../shared/entities/creditNote.entity';
 import { StateType } from '../../shared/entities/stateType.entity';
 import { Product } from '../../shared/entities/product.entity';
 import { FactusClient } from '../factus.client';
+import { DocumentLockService } from '../../shared/services/documentLock.service';
 import { FactusApiError } from '../errors/factus-api.error';
 import { FactusBillsService } from './factus-bills.service';
 import { FactusInvoiceService } from './factus-invoice.service';
@@ -50,12 +51,6 @@ const DEDUP_WINDOW_MS = 2 * 60 * 1000;
 export class FactusCreditNoteService {
   private readonly logger = new Logger(FactusCreditNoteService.name);
 
-  // Serializa la emisión de notas crédito por factura dentro de la instancia.
-  // Evita la condición de carrera del doble-submit (dos solicitudes en paralelo
-  // pasando ambas la validación de "restante" antes de que cualquiera persista).
-  // OJO: es en memoria → válido para una sola instancia (igual que el token
-  // Factus). Si se escala horizontalmente, mover a un lock distribuido (Redis).
-  private readonly invoiceLocks = new Map<number, Promise<void>>();
 
   constructor(
     private readonly invoiceRepository: InvoiceRepository,
@@ -66,6 +61,7 @@ export class FactusCreditNoteService {
     private readonly recipeService: RecipeService,
     private readonly mailsService: MailsService,
     private readonly _eventEmitter: EventEmitter2,
+    private readonly documentLock: DocumentLockService,
   ) {}
 
   /** Notas crédito ya emitidas de una factura (más recientes primero). */
@@ -81,27 +77,24 @@ export class FactusCreditNoteService {
    * factura se encolan y corren de a una. Es la pieza que cierra la doble
    * emisión por solicitudes concurrentes (el dedupe por contenido cubre el
    * reintento secuencial; este cubre el simultáneo).
+   *
+   * Delega en `DocumentLockService`, que además del
+   * encolado en memoria toma un lock distribuido en Redis cuando hay
+   * `REDIS_URL` — necesario en cuanto haya más de una instancia.
+   *
+   * ⚠️ El scope es `'invoice'` en los CINCO servicios a propósito: factura,
+   * nota crédito, nota débito, documento soporte y nota de ajuste comparten
+   * un único lock por factura. Antes cada uno tenía su propio `Map`, así que
+   * una nota crédito y una emisión sobre la misma factura podían correr a la
+   * vez. No hay riesgo de bloqueo mutuo: ninguno de los cinco llama a una
+   * operación bloqueada de otro (solo a `buildCustomer` / `mapDetail`, que no
+   * lo están).
    */
   private async withInvoiceLock<T>(
     invoiceId: number,
     fn: () => Promise<T>,
   ): Promise<T> {
-    const previous = this.invoiceLocks.get(invoiceId) ?? Promise.resolve();
-    let release!: () => void;
-    const current = new Promise<void>((resolve) => (release = resolve));
-    const tail = previous.then(() => current);
-    this.invoiceLocks.set(invoiceId, tail);
-
-    await previous.catch(() => undefined); // espera al anterior (sin propagar su error)
-    try {
-      return await fn();
-    } finally {
-      release();
-      // Si nadie se encadenó después, limpia la entrada para no acumular memoria.
-      if (this.invoiceLocks.get(invoiceId) === tail) {
-        this.invoiceLocks.delete(invoiceId);
-      }
-    }
+    return this.documentLock.withLock('invoice', invoiceId, fn);
   }
 
   /**
@@ -450,7 +443,7 @@ export class FactusCreditNoteService {
       });
     }
 
-    await this.persist(invoice, {
+    const note = await this.persist(invoice, {
       referenceCode,
       correctionConceptCode,
       isTotal,
@@ -461,7 +454,9 @@ export class FactusCreditNoteService {
 
     // Devolución de inventario por lo acreditado (igual que al eliminar una
     // factura): productos → stock; accommodations → estado Disponible.
-    await this.reverseInventory(selected);
+    // Se le pasa la nota ya guardada para que deje rastro de si se aplicó: si
+    // falla, el cron la reintenta en vez de quedar solo una línea de log.
+    await this.reverseInventory(note, selected);
 
     // Recalcula el balance cacheado: la venta de esta factura acaba de bajar.
     // Sin esto el widget de Balance —y Ganancias, que lee la misma tabla— se
@@ -568,7 +563,7 @@ export class FactusCreditNoteService {
       quantity: s.quantity,
     }));
 
-    await this.persist(invoice, {
+    const note = await this.persist(invoice, {
       referenceCode,
       correctionConceptCode,
       isTotal,
@@ -580,7 +575,7 @@ export class FactusCreditNoteService {
     // El inventario tampoco se devolvió cuando falló la emisión, así que la
     // recuperación tiene que hacerlo ahora. Va después de persistir: si el
     // guardado falla, no se toca el stock.
-    await this.reverseInventory(selected);
+    await this.reverseInventory(note, selected);
 
     this._eventEmitter.emit('invoice.note.emitted', {
       invoiceId: invoice.invoiceId,
@@ -819,78 +814,196 @@ export class FactusCreditNoteService {
    *    anidadas).
    *  - Accommodation → vuelve a estado "Disponible".
    *  - Excursión (servicio) → no aplica.
-   * Best-effort: la nota crédito ya es válida ante la DIAN; un fallo aquí solo
-   * se loguea (no se revierte la emisión).
+   *
+   * **No puede tumbar la emisión**: cuando se llega aquí la nota ya es válida
+   * ante la DIAN y eso no se deshace. Lo que sí hace es dejar rastro en la
+   * propia nota de si la reversión se aplicó, para que el cron
+   * (`retryPendingInventoryReversals`) la reintente. Antes un fallo dejaba solo
+   * una línea de log: el cliente tenía su acreditación y la mercancía no volvía
+   * al inventario, sin que nadie se enterara.
+   *
+   * ### Reanudable por fases — y por qué importa
+   *
+   * El stock y los estados van en una transacción, pero los ingredientes de las
+   * recetas los restaura `RecipeService` con su propio repositorio y quedan
+   * fuera de ella. Si la transacción confirma y la restauración falla, repetir
+   * la reversión entera **sumaría el stock dos veces**. Por eso cada fase deja
+   * su marca y el reintento continúa donde se quedó, incluso a mitad de la
+   * lista de recetas (`inventoryRecipesRestored` es un contador, no un flag).
    */
   private async reverseInventory(
+    note: CreditNote,
     selected: { detail: InvoiceDetaill; quantity: number }[],
   ): Promise<void> {
     // Productos de receta a restaurar: se procesan FUERA de la transacción
     // porque RecipeService usa su propio repositorio (igual que invoice.delete).
+    // El ORDEN tiene que ser determinista, porque `inventoryRecipesRestored`
+    // indexa esta misma lista al reanudar; `selected` viene del snapshot, que
+    // se recorre siempre igual.
     const recipeItemsToRestore: { productId: number; quantity: number }[] = [];
+    for (const { detail, quantity } of selected) {
+      const categoryCode = detail.product?.categoryType?.code?.toUpperCase();
+      if (categoryCode && RECIPE_CATEGORY_CODES.includes(categoryCode)) {
+        recipeItemsToRestore.push({
+          productId: detail.product.productId,
+          quantity,
+        });
+      }
+    }
+
     try {
-      // Atómico: o se aplican todas las reversiones (stock + estados) o ninguna.
-      // No es idempotente por sí mismo, pero el dedupe/lock garantizan que esta
-      // reversión corre una sola vez por nota crédito.
-      await this.creditNoteRepository.manager.transaction(async (manager) => {
-        const accommodationsToUpdate: object[] = [];
+      // ── Fase 1: stock y estados ─────────────────────────────────────────
+      // Atómica: o se aplican todas o ninguna. Se salta si ya corrió en un
+      // intento anterior.
+      if (!note.inventoryStockReversed) {
+        await this.creditNoteRepository.manager.transaction(async (manager) => {
+          const accommodationsToUpdate: object[] = [];
 
-        let disponibleState: StateType | null = null;
-        if (selected.some((s) => s.detail.accommodation)) {
-          disponibleState = await manager
-            .getRepository(StateType)
-            .createQueryBuilder('s')
-            .where(`s.name->>'es' IN (:...names)`, {
-              names: ['Disponible', 'DISPONIBLE'],
-            })
-            .getOne();
-        }
-
-        for (const { detail, quantity } of selected) {
-          if (detail.product) {
-            const categoryCode =
-              detail.product.categoryType?.code?.toUpperCase() ?? '';
-            if (RECIPE_CATEGORY_CODES.includes(categoryCode)) {
-              recipeItemsToRestore.push({
-                productId: detail.product.productId,
-                quantity,
-              });
-              continue;
-            }
-            await manager.increment(
-              Product,
-              { productId: detail.product.productId },
-              'amount',
-              quantity,
-            );
-          } else if (detail.accommodation && disponibleState) {
-            detail.accommodation.stateType = disponibleState;
-            accommodationsToUpdate.push(detail.accommodation);
+          let disponibleState: StateType | null = null;
+          if (selected.some((s) => s.detail.accommodation)) {
+            disponibleState = await manager
+              .getRepository(StateType)
+              .createQueryBuilder('s')
+              .where(`s.name->>'es' IN (:...names)`, {
+                names: ['Disponible', 'DISPONIBLE'],
+              })
+              .getOne();
           }
-        }
 
-        if (accommodationsToUpdate.length) {
-          await manager.save(accommodationsToUpdate);
-        }
-      });
+          for (const { detail, quantity } of selected) {
+            if (detail.product) {
+              const categoryCode =
+                detail.product.categoryType?.code?.toUpperCase() ?? '';
+              // Las recetas van en la fase 2, fuera de la transacción.
+              if (RECIPE_CATEGORY_CODES.includes(categoryCode)) continue;
 
-      // Tras confirmar el stock/estados, restaura ingredientes de los platos
-      // (RES). Solo corre si la transacción no falló.
-      for (const { productId, quantity } of recipeItemsToRestore) {
-        await this.recipeService.restoreIngredients(productId, quantity);
+              await manager.increment(
+                Product,
+                { productId: detail.product.productId },
+                'amount',
+                quantity,
+              );
+            } else if (detail.accommodation && disponibleState) {
+              detail.accommodation.stateType = disponibleState;
+              accommodationsToUpdate.push(detail.accommodation);
+            }
+          }
+
+          if (accommodationsToUpdate.length) {
+            await manager.save(accommodationsToUpdate);
+          }
+        });
+
+        note.inventoryStockReversed = true;
+        // Se persiste ANTES de tocar las recetas: si la fase 2 revienta, el
+        // reintento no puede volver a sumar el stock.
+        await this.creditNoteRepository.save(note);
       }
 
+      // ── Fase 2: ingredientes de los platos (RES) ────────────────────────
+      // Uno a uno, guardando el avance: si falla el tercero de cinco, el
+      // reintento empieza por el tercero y no por el primero.
+      for (
+        let i = note.inventoryRecipesRestored;
+        i < recipeItemsToRestore.length;
+        i++
+      ) {
+        const { productId, quantity } = recipeItemsToRestore[i];
+        await this.recipeService.restoreIngredients(productId, quantity);
+        note.inventoryRecipesRestored = i + 1;
+        await this.creditNoteRepository.save(note);
+      }
+
+      note.inventoryReversed = true;
+      note.inventoryReversedAt = new Date();
+      note.inventoryReverseError = null;
+      await this.creditNoteRepository.save(note);
+
       this.logger.log(
-        `Inventario revertido por la nota crédito (${selected.length} ítem(s)` +
+        `Inventario revertido por la nota crédito ${note.factusNumber ?? note.referenceCode} ` +
+          `(${selected.length} ítem(s)` +
           `${recipeItemsToRestore.length ? `, ${recipeItemsToRestore.length} de receta` : ''}).`,
       );
     } catch (error) {
+      const message = (error as Error).message;
       this.logger.error(
-        `No se pudo revertir el inventario de la nota crédito: ${
-          (error as Error).message
-        }`,
+        `No se pudo revertir el inventario de la nota crédito ` +
+          `${note.factusNumber ?? note.referenceCode}: ${message}. ` +
+          'Queda pendiente y el cron lo reintentará.',
       );
+      note.inventoryReverseError = message;
+      // `save` dentro del catch, y a su vez protegido: si lo que falló fue la
+      // base de datos, guardar el error también fallaría y la excepción se
+      // llevaría por delante la respuesta de una emisión que SÍ salió bien.
+      await this.creditNoteRepository.save(note).catch(() => undefined);
     }
+  }
+
+  /**
+   * Reintenta las reversiones de inventario que quedaron a medias. Lo llama el
+   * cron y también se puede disparar a mano desde el controlador.
+   *
+   * Reconstruye la selección desde `itemsSnapshot` —que guarda exactamente
+   * `{invoiceDetailId, quantity}`— y vuelve a entrar por `reverseInventory`,
+   * que sabe qué fases se saltó.
+   */
+  async retryPendingInventoryReversals(): Promise<{
+    pending: number;
+    recovered: number;
+  }> {
+    const pendientes = await this.creditNoteRepository.find({
+      where: { inventoryReversed: false },
+      order: { creditNoteId: 'ASC' },
+    });
+
+    if (!pendientes.length) return { pending: 0, recovered: 0 };
+
+    this.logger.warn(
+      `${pendientes.length} nota(s) crédito con el inventario sin revertir. Reintentando…`,
+    );
+
+    let recovered = 0;
+    for (const note of pendientes) {
+      try {
+        const invoice = await this.loadInvoice(note.invoiceId);
+        const snapshot = (note.itemsSnapshot ?? []) as {
+          invoiceDetailId: number;
+          quantity: number;
+        }[];
+
+        const selected = snapshot
+          .map(({ invoiceDetailId, quantity }) => {
+            const detail = invoice.invoiceDetails?.find(
+              (d) => d.invoiceDetailId === invoiceDetailId,
+            );
+            return detail ? { detail, quantity } : null;
+          })
+          .filter((s): s is { detail: InvoiceDetaill; quantity: number } => !!s);
+
+        if (selected.length !== snapshot.length) {
+          // Un detalle borrado deja la reversión incompleta para siempre: si se
+          // reintentara con los que quedan, el resto no se recuperaría nunca y
+          // la nota se marcaría como hecha igual. Mejor dejarla pendiente y a
+          // la vista.
+          this.logger.error(
+            `La nota crédito ${note.factusNumber ?? note.referenceCode} referencia ` +
+              'detalles de factura que ya no existen. Hay que cuadrar el stock a mano.',
+          );
+          continue;
+        }
+
+        await this.reverseInventory(note, selected);
+        if (note.inventoryReversed) recovered++;
+      } catch (error) {
+        this.logger.error(
+          `Fallo al reintentar la nota crédito ${note.creditNoteId}: ${
+            (error as Error).message
+          }`,
+        );
+      }
+    }
+
+    return { pending: pendientes.length, recovered };
   }
 
   // ── Internos ──────────────────────────────────────────────────────────────
@@ -970,7 +1083,7 @@ export class FactusCreditNoteService {
       result: FactusCreditNoteResult;
       selection: { invoiceDetailId: number; quantity: number }[];
     },
-  ): Promise<void> {
+  ): Promise<CreditNote> {
     const note = this.creditNoteRepository.create({
       invoiceId: invoice.invoiceId,
       referenceCode: data.referenceCode,
@@ -985,10 +1098,11 @@ export class FactusCreditNoteService {
       // Guarda la SELECCIÓN ({invoiceDetailId, quantity}) — base del "restante".
       itemsSnapshot: data.selection,
     });
-    await this.creditNoteRepository.save(note);
+    const saved = await this.creditNoteRepository.save(note);
     this.logger.log(
       `Nota crédito ${data.result.number ?? data.referenceCode} guardada para la factura ${invoice.invoiceId}.`,
     );
+    return saved;
   }
 
   private async loadInvoice(invoiceId: number): Promise<Invoice> {

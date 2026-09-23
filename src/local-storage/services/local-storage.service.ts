@@ -120,6 +120,69 @@ export class LocalStorageService {
   }
 
   /**
+   * Guarda un VÍDEO. Va aparte de `saveImage` porque no hay nada que
+   * reescalar: se escribe tal cual.
+   *
+   * ⚠️ Aquí no hay un sharp que valide el contenido, que es quien de verdad
+   * rechaza un ejecutable renombrado en el camino de las imágenes. Como el
+   * `mimetype` lo declara el cliente y es trivial falsearlo, se comprueban los
+   * **magic bytes** del propio buffer:
+   *   - MP4 y derivados: la caja `ftyp` en los bytes 4-8.
+   *   - WEBM: la firma de Matroska `1A 45 DF A3` al principio.
+   * Un archivo que no empiece por una de las dos se rechaza sin escribirse.
+   */
+  async saveVideo(
+    file: Express.Multer.File,
+    folder: string,
+  ): Promise<{ imageUrl: string; publicId: string }> {
+    if (!file || !file.buffer) {
+      throw new InternalServerErrorException('Archivo no válido o vacío');
+    }
+
+    const allowedMimeTypes = ['video/mp4', 'video/webm'];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new InternalServerErrorException(
+        'Tipo de archivo no permitido. Solo se aceptan: mp4, webm',
+      );
+    }
+
+    const buf = file.buffer;
+    const esMp4 =
+      buf.length > 12 && buf.subarray(4, 8).toString('latin1') === 'ftyp';
+    const esWebm =
+      buf.length > 4 &&
+      buf[0] === 0x1a &&
+      buf[1] === 0x45 &&
+      buf[2] === 0xdf &&
+      buf[3] === 0xa3;
+
+    if (!esMp4 && !esWebm) {
+      throw new InternalServerErrorException(
+        'El archivo no es un vídeo MP4 o WEBM válido.',
+      );
+    }
+
+    const targetDir = path.join(this.uploadsDir, folder);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    const filename = `${uuidv4()}.${esMp4 ? 'mp4' : 'webm'}`;
+    const publicId = `${folder}/${filename}`;
+
+    try {
+      await fs.promises.writeFile(path.join(targetDir, filename), buf);
+    } catch (error) {
+      console.error('Error guardando vídeo:', error);
+      throw new InternalServerErrorException('No se pudo guardar el vídeo.');
+    }
+
+    // Se devuelve con la misma forma que `saveImage` para que quien llama no
+    // tenga que distinguir: la propiedad sigue llamándose `imageUrl`.
+    return { imageUrl: `${this.baseUrl}/uploads/${publicId}`, publicId };
+  }
+
+  /**
    * Resuelve un `publicId` a una ruta real DENTRO de `uploadsDir`, o `null` si
    * se sale.
    *

@@ -37,6 +37,11 @@ export class CrudAccommodationService {
       .leftJoinAndSelect('accommodation.bedType', 'bedType')
       .leftJoinAndSelect('accommodation.stateType', 'stateType')
       .leftJoinAndSelect('accommodation.taxeType', 'taxeType')
+      // El mapeo de abajo lee `accommodation.images`: sin este join las
+      // miniaturas del listado salen siempre vacías. Mismo patrón que
+      // `crudProduct.service.ts` (skip/take con una relación 1-N: TypeORM
+      // pagina por ids distintos, así que la cuenta sigue siendo correcta).
+      .leftJoinAndSelect('accommodation.images', 'images')
       .addSelect(`"accommodation"."name"->>'es'`, 'acc_name_sort')
       .skip(skip)
       .take(params.perPage)

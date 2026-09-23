@@ -37,6 +37,15 @@ import { MailsService } from '../../shared/services/mails.service';
 import { MailTemplateService } from '../../shared/services/mail-template.service';
 import { ConfigService } from '@nestjs/config';
 import { LocalStorageService } from '../../local-storage/services/local-storage.service';
+import {
+  FACTUS_TRIBUTE_NO_APLICA,
+  JURIDICA_REQUIRES_NIT_MESSAGE,
+  defaultLegalOrganizationCode,
+  isValidPersonTypeForDocument,
+  normalizeLegalOrganizationCode,
+  normalizeTributeCode,
+  personTypeCodeFor,
+} from '../../shared/constants/factusCustomer.constants';
 
 @Injectable()
 export class UserService {
@@ -111,18 +120,26 @@ export class UserService {
       );
     }
 
-    const existingPhoneUser = await this._userRepository.findOne({
-      where: {
-        phoneCode: { phoneCodeId: user.phoneCode },
-        phone: user.phone,
-      },
-    });
+    // Solo tiene sentido buscar duplicados si HAY número: el teléfono es
+    // opcional (el `phoneCode` no, define la nacionalidad). Con
+    // `phone: undefined` TypeORM descarta esa clave del WHERE y la consulta
+    // quedaría "cualquier usuario con este prefijo de país", de modo que el
+    // segundo cliente sin teléfono chocaría con el primero.
+    const phoneNumber = user.phone?.trim();
+    if (phoneNumber) {
+      const existingPhoneUser = await this._userRepository.findOne({
+        where: {
+          phoneCode: { phoneCodeId: user.phoneCode },
+          phone: phoneNumber,
+        },
+      });
 
-    if (existingPhoneUser) {
-      throw new HttpException(
-        'Este número de teléfono ya está en uso',
-        HttpStatus.CONFLICT,
-      );
+      if (existingPhoneUser) {
+        throw new HttpException(
+          'Este número de teléfono ya está en uso',
+          HttpStatus.CONFLICT,
+        );
+      }
     }
 
     this.validatePasswordMatch(user.password, user.confirmPassword);
@@ -142,7 +159,17 @@ export class UserService {
       );
     }
 
-    const personType = await this.resolvePersonType(user.identificationType);
+    // Los dos ejes Factus del cliente. Independientes entre sí: una persona
+    // natural puede ser responsable de IVA y una jurídica puede no serlo.
+    const factusLegalOrganizationCode = await this.resolveLegalOrganizationCode(
+      user.identificationType,
+      user.factusLegalOrganizationCode,
+    );
+    const factusTributeCode =
+      normalizeTributeCode(user.factusTributeCode) ?? FACTUS_TRIBUTE_NO_APLICA;
+    const personType = await this.resolvePersonType(
+      factusLegalOrganizationCode,
+    );
 
     const hashedPassword = await bcrypt.hash(user.password, 10);
 
@@ -167,6 +194,8 @@ export class UserService {
       ...user,
       identificationNumber,
       factusDv,
+      factusLegalOrganizationCode,
+      factusTributeCode,
       departmentId: location.departmentId,
       municipalityId: location.municipalityId,
       factusMunicipalityCode: location.factusMunicipalityCode,
@@ -264,18 +293,26 @@ export class UserService {
       );
     }
 
-    const existingPhoneUser = await this._userRepository.findOne({
-      where: {
-        phoneCode: { phoneCodeId: user.phoneCode },
-        phone: user.phone,
-      },
-    });
+    // Solo tiene sentido buscar duplicados si HAY número: el teléfono es
+    // opcional (el `phoneCode` no, define la nacionalidad). Con
+    // `phone: undefined` TypeORM descarta esa clave del WHERE y la consulta
+    // quedaría "cualquier usuario con este prefijo de país", de modo que el
+    // segundo cliente sin teléfono chocaría con el primero.
+    const phoneNumber = user.phone?.trim();
+    if (phoneNumber) {
+      const existingPhoneUser = await this._userRepository.findOne({
+        where: {
+          phoneCode: { phoneCodeId: user.phoneCode },
+          phone: phoneNumber,
+        },
+      });
 
-    if (existingPhoneUser) {
-      throw new HttpException(
-        'Este número de teléfono ya está en uso',
-        HttpStatus.CONFLICT,
-      );
+      if (existingPhoneUser) {
+        throw new HttpException(
+          'Este número de teléfono ya está en uso',
+          HttpStatus.CONFLICT,
+        );
+      }
     }
 
     this.validatePasswordMatch(user.password, user.confirmPassword);
@@ -302,10 +339,24 @@ export class UserService {
       );
     }
 
+    // `identificationType` ya está resuelto aquí, así que el default sale de su
+    // `factusCode` sin otra consulta. El registro público no ofrece el selector,
+    // pero se respeta lo que llegue por si se usa el endpoint desde otro sitio.
+    const factusLegalOrganizationCode =
+      normalizeLegalOrganizationCode(user.factusLegalOrganizationCode) ??
+      defaultLegalOrganizationCode(identificationType.factusCode);
+    if (
+      !isValidPersonTypeForDocument(
+        factusLegalOrganizationCode,
+        identificationType.factusCode,
+      )
+    ) {
+      throw new BadRequestException(JURIDICA_REQUIRES_NIT_MESSAGE);
+    }
+    const factusTributeCode =
+      normalizeTributeCode(user.factusTributeCode) ?? FACTUS_TRIBUTE_NO_APLICA;
     const personType = await this.resolvePersonType(
-      typeof user.identificationType === 'string'
-        ? user.identificationType
-        : (identificationType as any)?.identificationTypeId,
+      factusLegalOrganizationCode,
     );
 
     const org = user.organizationalId
@@ -329,6 +380,8 @@ export class UserService {
       identificationType,
       phoneCode,
       personType,
+      factusLegalOrganizationCode,
+      factusTributeCode,
       isActive: true,
       isEmailVerified: false,
       organizational: org,
@@ -424,8 +477,37 @@ export class UserService {
       confirmPassword,
       departmentId,
       municipalityId,
+      factusTributeCode,
+      factusLegalOrganizationCode,
       ...restUserData
     } = userData;
+
+    // Tipo de documento efectivo: el nuevo si vino, si no el que ya tenía.
+    const effectiveIdentificationTypeId =
+      identificationType || userExist.identificationType.identificationTypeId;
+
+    // Organización legal efectiva. `factusLegalOrganizationCode` manda; si no
+    // viene en el payload se conserva lo guardado, y solo si tampoco hay nada
+    // se deduce del tipo de documento. Así, editar cualquier otro campo del
+    // usuario no le cambia el tipo de persona por debajo.
+    //
+    // `resolveLegalOrganizationCode` recibe el candidato en vez de llamarse
+    // solo como respaldo, porque es quien valida la regla "jurídica ⇒ NIT": si
+    // se saltara, cambiar el documento a cédula dejando el tipo guardado en
+    // jurídica pasaría sin que nadie lo mire.
+    const effectiveLegalOrganizationCode =
+      await this.resolveLegalOrganizationCode(
+        effectiveIdentificationTypeId,
+        normalizeLegalOrganizationCode(factusLegalOrganizationCode) ??
+          normalizeLegalOrganizationCode(
+            userExist.factusLegalOrganizationCode,
+          ),
+      );
+
+    const effectiveTributeCode =
+      normalizeTributeCode(factusTributeCode) ??
+      normalizeTributeCode(userExist.factusTributeCode) ??
+      FACTUS_TRIBUTE_NO_APLICA;
 
     // La ubicación solo se toca si vino en el payload (departamento o municipio).
     // Para extranjeros el front envía ambos en null → se limpia y el
@@ -455,10 +537,8 @@ export class UserService {
       | { identificationNumber: string; factusDv: string | null }
       | undefined;
     if (userData.identificationNumber !== undefined) {
-      const effectiveIdTypeId =
-        identificationType || userExist.identificationType.identificationTypeId;
       const idType = await this._identificationTypeRepository.findOne({
-        where: { identificationTypeId: effectiveIdTypeId },
+        where: { identificationTypeId: effectiveIdentificationTypeId },
       });
       identificationBreakdown = this.breakdownIdentification(
         idType?.factusCode,
@@ -487,13 +567,15 @@ export class UserService {
           roleTypeId: roleType || userExist.roleType.roleTypeId,
         },
         identificationType: {
-          identificationTypeId:
-            identificationType ||
-            userExist.identificationType.identificationTypeId,
+          identificationTypeId: effectiveIdentificationTypeId,
         },
+        // El tipo de persona se deriva de la organización legal, no del
+        // documento: son la misma decisión expresada dos veces y tienen que
+        // quedar coherentes en la misma escritura.
+        factusLegalOrganizationCode: effectiveLegalOrganizationCode,
+        factusTributeCode: effectiveTributeCode,
         personType: await this.resolvePersonType(
-          identificationType ||
-            userExist.identificationType.identificationTypeId,
+          effectiveLegalOrganizationCode,
         ),
         ...(organizationalId !== undefined && {
           organizational:
@@ -544,18 +626,53 @@ export class UserService {
     };
   }
 
-  private async resolvePersonType(identificationTypeId: string) {
-    const NIT_ID = '3';
-    const PERSONA_JURIDICA_ID = 2;
-    const PERSONA_NATURAL_ID = 1;
+  /**
+   * Organización legal efectiva del usuario (`legal_organization_code` de
+   * Factus: '1' jurídica, '2' natural).
+   *
+   * El orden importa: manda lo que el formulario haya elegido y, solo si no
+   * viene nada, se deduce del tipo de documento. Antes se deducía SIEMPRE, y
+   * por eso una persona natural con NIT —un independiente inscrito en el RUT,
+   * caso normal en el documento soporte— salía hacia la DIAN como empresa.
+   */
+  private async resolveLegalOrganizationCode(
+    identificationTypeId: string,
+    provided?: unknown,
+  ): Promise<string> {
+    const idType = await this._identificationTypeRepository.findOne({
+      where: { identificationTypeId },
+    });
 
-    const personTypeId =
-      identificationTypeId?.toString() === NIT_ID
-        ? PERSONA_JURIDICA_ID
-        : PERSONA_NATURAL_ID;
+    const explicit = normalizeLegalOrganizationCode(provided);
+    const code = explicit ?? defaultLegalOrganizationCode(idType?.factusCode);
 
+    // La única regla que la DIAN sí impone: una jurídica va con NIT. Se corta
+    // aquí, al guardar, y no al emitir — un 422 en mitad de una factura es el
+    // peor momento para enterarse.
+    if (!isValidPersonTypeForDocument(code, idType?.factusCode)) {
+      throw new BadRequestException(JURIDICA_REQUIRES_NIT_MESSAGE);
+    }
+
+    return code;
+  }
+
+  /**
+   * `PersonType` que corresponde a una organización legal. Se busca por `code`
+   * ('NAT'/'JUR') porque los `personTypeId` los asigna un SERIAL y difieren
+   * entre bases; el id solo queda como respaldo por si un re-seed dejó el
+   * `code` en null.
+   */
+  private async resolvePersonType(legalOrganizationCode: string) {
+    const code = personTypeCodeFor(legalOrganizationCode);
+
+    const byCode = await this._personTypeRepository.findOne({
+      where: { code },
+    });
+    if (byCode) return byCode;
+
+    const FALLBACK_ID_BY_CODE: Record<string, number> = { NAT: 1, JUR: 2 };
     return await this._personTypeRepository.findOne({
-      where: { personTypeId },
+      where: { personTypeId: FALLBACK_ID_BY_CODE[code] },
     });
   }
 
@@ -751,7 +868,40 @@ export class UserService {
     );
   }
 
+  /**
+   * Devuelve un token de recuperación válido, **reutilizando el vigente** si lo
+   * hay.
+   *
+   * El token vive en una sola columna del usuario, así que generar uno nuevo
+   * invalida el anterior. Cuando esto generaba siempre uno nuevo, dos
+   * solicitudes seguidas —doble clic, dos pestañas, o pedirlo otra vez porque
+   * el correo tardó— dejaban muertos todos los enlaces menos el último: quien
+   * abría el primer correo que le llegó leía "el enlace ha expirado o ya fue
+   * utilizado" sin haberlo usado nunca.
+   *
+   * Reutilizar es además lo correcto de cara al usuario: los dos correos
+   * llevan el mismo enlace y cualquiera de ellos funciona.
+   *
+   * El margen evita el caso tonto de entregar un enlace que caduca en segundos:
+   * si al vigente le queda menos que eso, se emite uno nuevo con los 30 minutos
+   * completos.
+   */
   async generateResetToken(userId: string): Promise<string> {
+    const MIN_REMAINING_MS = 5 * 60 * 1000;
+
+    const current = await this._userRepository.findOne({
+      where: { userId },
+      select: ['userId', 'resetToken', 'resetTokenExpiry'],
+    });
+
+    if (
+      current?.resetToken &&
+      current.resetTokenExpiry &&
+      current.resetTokenExpiry.getTime() - Date.now() > MIN_REMAINING_MS
+    ) {
+      return current.resetToken;
+    }
+
     const token = crypto.randomBytes(32).toString('hex');
     const expiryDate = new Date();
     expiryDate.setMinutes(expiryDate.getMinutes() + 30);

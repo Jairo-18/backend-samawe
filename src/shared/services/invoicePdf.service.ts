@@ -12,15 +12,8 @@ import { InvoiceNotesSummary } from './invoiceNotes.service';
 // @types/pdfmake no la tipa, así que la cargamos vía require como any.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfmake = require('pdfmake') as any;
-// Carpeta con las fuentes Roboto .ttf que trae el propio paquete pdfmake.
-// En 0.3.x las fuentes deben referenciarse por ruta de archivo (no Buffer).
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const ROBOTO_DIR = path.join(
-  path.dirname(require.resolve('pdfmake/package.json')),
-  'build',
-  'fonts',
-  'Roboto',
-);
+// Ya no se carga ninguna fuente de disco: las facturas usan Helvetica, una de
+// las 14 estándar del formato PDF, que el visor pone de su parte.
 
 const DEFAULT_COLOR = '#486e2b';
 
@@ -827,7 +820,7 @@ async function buildInvoiceDoc(
   return {
     pageSize: 'LETTER' as const,
     pageMargins: [18, 18, 18, 18],
-    defaultStyle: { font: 'Roboto', fontSize: 9 },
+    defaultStyle: { font: 'Helvetica', fontSize: 9 },
     // Marca de agua en los documentos sin valor. Gemela de la del frontend: va
     // en `watermark` y no en `background` para que pdfmake la repita en TODAS
     // las páginas.
@@ -856,18 +849,30 @@ export class InvoicePdfService {
   private readonly logger = new Logger(InvoicePdfService.name);
 
   constructor() {
+    // Helvetica, una de las 14 fuentes ESTÁNDAR del formato PDF: no se incrusta
+    // nada y todo visor la trae de serie. En Windows —donde se imprimen estas
+    // facturas— el visor la dibuja con Arial, que es la que se quería.
+    //
+    // Arial no se puede poner tal cual: es de Monotype, no se puede incrustar
+    // ni está en Google Fonts. Helvetica es su equivalente métrica.
+    //
+    // También quita el peso de Roboto y deja el PDF más pequeño. Se declaran
+    // las cuatro variantes porque pdfmake las exige aunque el documento no use
+    // cursiva.
     pdfmake.setFonts({
-      Roboto: {
-        normal: path.join(ROBOTO_DIR, 'Roboto-Regular.ttf'),
-        bold: path.join(ROBOTO_DIR, 'Roboto-Medium.ttf'),
-        italics: path.join(ROBOTO_DIR, 'Roboto-Italic.ttf'),
-        bolditalics: path.join(ROBOTO_DIR, 'Roboto-MediumItalic.ttf'),
+      Helvetica: {
+        normal: 'Helvetica',
+        bold: 'Helvetica-Bold',
+        italics: 'Helvetica-Oblique',
+        bolditalics: 'Helvetica-BoldOblique',
       },
     });
-    // No descargamos recursos externos (el logo lo embebemos como data URI) y
-    // solo permitimos lectura local de las fuentes del propio paquete.
+    // No descargamos recursos externos (el logo va embebido como data URI) ni
+    // leemos NADA del disco: con Helvetica ya no hay ningún `.ttf` que abrir,
+    // así que la política local se cierra por completo. Antes dejaba pasar la
+    // carpeta de fuentes del paquete.
     pdfmake.setUrlAccessPolicy(() => false);
-    pdfmake.setLocalAccessPolicy((p: string) => p.startsWith(ROBOTO_DIR));
+    pdfmake.setLocalAccessPolicy(() => false);
   }
 
   /**

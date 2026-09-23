@@ -14,6 +14,7 @@ import { InvoiceDetaill } from '../../shared/entities/invoiceDetaill.entity';
 import { AdjustmentNote } from '../../shared/entities/adjustmentNote.entity';
 import { Product } from '../../shared/entities/product.entity';
 import { FactusClient } from '../factus.client';
+import { DocumentLockService } from '../../shared/services/documentLock.service';
 import { FactusApiError } from '../errors/factus-api.error';
 import { FactusBillsService } from './factus-bills.service';
 import { FactusInvoiceService } from './factus-invoice.service';
@@ -63,7 +64,6 @@ const DEDUP_WINDOW_MS = 2 * 60 * 1000;
 export class FactusAdjustmentNoteService {
   private readonly logger = new Logger(FactusAdjustmentNoteService.name);
 
-  private readonly invoiceLocks = new Map<number, Promise<void>>();
 
   constructor(
     private readonly invoiceRepository: InvoiceRepository,
@@ -73,6 +73,7 @@ export class FactusAdjustmentNoteService {
     private readonly invoiceService: FactusInvoiceService,
     private readonly supportDocumentService: FactusSupportDocumentService,
     private readonly _eventEmitter: EventEmitter2,
+    private readonly documentLock: DocumentLockService,
   ) {}
 
   /** Notas de ajuste ya emitidas sobre una compra (más recientes primero). */
@@ -327,7 +328,7 @@ export class FactusAdjustmentNoteService {
       });
     }
 
-    await this.persist(invoice, {
+    const note = await this.persist(invoice, {
       referenceCode,
       correctionConceptCode,
       isTotal,
@@ -336,7 +337,7 @@ export class FactusAdjustmentNoteService {
       selection,
     });
 
-    await this.reverseInventory(selected);
+    await this.reverseInventory(note, selected);
 
     // Recalcula el balance: una nota de ajuste RESTA a la compra que soporta.
     // Es la que más se notaba, porque hay tres emitidas y ninguna descontaba.
@@ -427,7 +428,7 @@ export class FactusAdjustmentNoteService {
       quantity: s.quantity,
     }));
 
-    await this.persist(invoice, {
+    const note = await this.persist(invoice, {
       referenceCode,
       correctionConceptCode,
       isTotal,
@@ -436,7 +437,7 @@ export class FactusAdjustmentNoteService {
       selection,
     });
 
-    await this.reverseInventory(selected);
+    await this.reverseInventory(note, selected);
 
     this._eventEmitter.emit('invoice.note.emitted', {
       invoiceId: invoice.invoiceId,
@@ -502,12 +503,19 @@ export class FactusAdjustmentNoteService {
    * el documento soporte había sumado. Misma dirección que
    * `invoice.service.delete()` para compras.
    *
-   * Best-effort, como en la nota crédito: la nota ya es válida ante la DIAN, así
-   * que un fallo aquí solo se registra; revertir la emisión no es posible.
+   * No puede tumbar la emisión —la nota ya es válida ante la DIAN cuando se
+   * llega aquí—, pero **sí deja rastro** de si se aplicó, para que el cron lo
+   * reintente. Antes un fallo dejaba solo una línea de log.
+   *
+   * Aquí basta una bandera, a diferencia de la nota crédito: todo ocurre en una
+   * sola transacción y no hay recetas que restaurar fuera de ella, así que o se
+   * aplicó entero o no se aplicó nada. Repetirlo tras un fallo es seguro.
    */
   private async reverseInventory(
+    note: AdjustmentNote,
     selected: { detail: InvoiceDetaill; quantity: number }[],
   ): Promise<void> {
+    if (note.inventoryApplied) return;
     try {
       await this.adjustmentNoteRepository.manager.transaction(
         async (manager) => {
@@ -558,39 +566,107 @@ export class FactusAdjustmentNoteService {
         );
       }
 
+      note.inventoryApplied = true;
+      note.inventoryAppliedAt = new Date();
+      note.inventoryApplyError = null;
+      await this.adjustmentNoteRepository.save(note);
+
       this.logger.log(
         `Inventario descontado por la nota de ajuste (${selected.length} ítem(s)).`,
       );
     } catch (error) {
+      const message = (error as Error).message;
       this.logger.error(
-        `No se pudo descontar el inventario de la nota de ajuste: ${
-          (error as Error).message
-        }`,
+        `No se pudo descontar el inventario de la nota de ajuste ` +
+          `${note.factusNumber ?? note.referenceCode}: ${message}. ` +
+          'Queda pendiente y el cron lo reintentará.',
       );
+      note.inventoryApplyError = message;
+      // Protegido: si lo que falló fue la base, guardar el error también
+      // fallaría y se llevaría por delante una emisión que SÍ salió bien.
+      await this.adjustmentNoteRepository.save(note).catch(() => undefined);
     }
+  }
+
+  /**
+   * Reintenta los descuentos de inventario que quedaron a medias. Espejo de
+   * `FactusCreditNoteService.retryPendingInventoryReversals`.
+   */
+  async retryPendingInventoryReversals(): Promise<{
+    pending: number;
+    recovered: number;
+  }> {
+    const pendientes = await this.adjustmentNoteRepository.find({
+      where: { inventoryApplied: false },
+      order: { adjustmentNoteId: 'ASC' },
+    });
+
+    if (!pendientes.length) return { pending: 0, recovered: 0 };
+
+    this.logger.warn(
+      `${pendientes.length} nota(s) de ajuste con el inventario sin descontar. Reintentando…`,
+    );
+
+    let recovered = 0;
+    for (const note of pendientes) {
+      try {
+        const invoice = await this.loadInvoice(note.invoiceId);
+        const snapshot = (note.itemsSnapshot ?? []) as {
+          invoiceDetailId: number;
+          quantity: number;
+        }[];
+
+        const selected = snapshot
+          .map(({ invoiceDetailId, quantity }) => {
+            const detail = invoice.invoiceDetails?.find(
+              (d) => d.invoiceDetailId === invoiceDetailId,
+            );
+            return detail ? { detail, quantity } : null;
+          })
+          .filter((s): s is { detail: InvoiceDetaill; quantity: number } => !!s);
+
+        if (selected.length !== snapshot.length) {
+          this.logger.error(
+            `La nota de ajuste ${note.factusNumber ?? note.referenceCode} referencia ` +
+              'detalles de compra que ya no existen. Hay que cuadrar el stock a mano.',
+          );
+          continue;
+        }
+
+        await this.reverseInventory(note, selected);
+        if (note.inventoryApplied) recovered++;
+      } catch (error) {
+        this.logger.error(
+          `Fallo al reintentar la nota de ajuste ${note.adjustmentNoteId}: ${
+            (error as Error).message
+          }`,
+        );
+      }
+    }
+
+    return { pending: pendientes.length, recovered };
   }
 
   // ── Concurrencia e idempotencia ───────────────────────────────────────────
 
+  /**
+   * Serializa por factura. Delega en `DocumentLockService`, que además del
+   * encolado en memoria toma un lock distribuido en Redis cuando hay
+   * `REDIS_URL` — necesario en cuanto haya más de una instancia.
+   *
+   * ⚠️ El scope es `'invoice'` en los CINCO servicios a propósito: factura,
+   * nota crédito, nota débito, documento soporte y nota de ajuste comparten
+   * un único lock por factura. Antes cada uno tenía su propio `Map`, así que
+   * una nota crédito y una emisión sobre la misma factura podían correr a la
+   * vez. No hay riesgo de bloqueo mutuo: ninguno de los cinco llama a una
+   * operación bloqueada de otro (solo a `buildCustomer` / `mapDetail`, que no
+   * lo están).
+   */
   private async withInvoiceLock<T>(
     invoiceId: number,
     fn: () => Promise<T>,
   ): Promise<T> {
-    const previous = this.invoiceLocks.get(invoiceId) ?? Promise.resolve();
-    let release!: () => void;
-    const current = new Promise<void>((resolve) => (release = resolve));
-    const tail = previous.then(() => current);
-    this.invoiceLocks.set(invoiceId, tail);
-
-    await previous.catch(() => undefined);
-    try {
-      return await fn();
-    } finally {
-      release();
-      if (this.invoiceLocks.get(invoiceId) === tail) {
-        this.invoiceLocks.delete(invoiceId);
-      }
-    }
+    return this.documentLock.withLock('invoice', invoiceId, fn);
   }
 
   private getAdjustedQuantities(notes: AdjustmentNote[]): Map<number, number> {
@@ -723,7 +799,7 @@ export class FactusAdjustmentNoteService {
       result: FactusAdjustmentNoteResult;
       selection: { invoiceDetailId: number; quantity: number }[];
     },
-  ): Promise<void> {
+  ): Promise<AdjustmentNote> {
     const note = this.adjustmentNoteRepository.create({
       invoiceId: invoice.invoiceId,
       referenceCode: data.referenceCode,
@@ -738,10 +814,11 @@ export class FactusAdjustmentNoteService {
       observation: data.observation || undefined,
       itemsSnapshot: data.selection,
     });
-    await this.adjustmentNoteRepository.save(note);
+    const saved = await this.adjustmentNoteRepository.save(note);
     this.logger.log(
       `Nota de ajuste ${data.result.number ?? data.referenceCode} guardada para la compra ${invoice.invoiceId}.`,
     );
+    return saved;
   }
 
   private async loadInvoice(invoiceId: number): Promise<Invoice> {

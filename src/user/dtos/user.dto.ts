@@ -12,8 +12,15 @@ import {
   ValidateIf,
   IsBoolean,
   IsInt,
+  IsIn,
   MinLength,
 } from 'class-validator';
+import {
+  FACTUS_LEGAL_ORGANIZATION_CODES,
+  FACTUS_LEGAL_ORGANIZATION_NATURAL,
+  FACTUS_TRIBUTE_CODES,
+  FACTUS_TRIBUTE_NO_APLICA,
+} from '../../shared/constants/factusCustomer.constants';
 import { IsNotDisposableEmail } from '../../shared/validators/isNotDisposableEmail';
 import { HttpStatus } from '@nestjs/common';
 import { GET_ALL_USER_EXAMPLE } from '../constants/examples.conts';
@@ -75,12 +82,14 @@ export class CreateUserDto {
   @IsNotEmpty({ message: 'El prefijo es requerido' })
   phoneCode: string;
 
-  @ApiProperty({
-    example: '3102103660',
-    required: true,
-  })
-  @IsNotEmpty({ message: 'El celular es requerido' })
-  phone: string;
+  // El NÚMERO es opcional; el `phoneCode` (prefijo de país) sigue siendo
+  // obligatorio porque define la nacionalidad del cliente y hay que poder
+  // elegirlo aunque no se registre teléfono. Factus también lo trata como
+  // opcional: `buildCustomer` omite `phone` cuando viene vacío.
+  @ApiPropertyOptional({ example: '3102103660' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
 
   @ApiProperty({
     example: 'Test@123',
@@ -154,6 +163,30 @@ export class CreateUserDto {
   @IsOptional()
   @IsInt()
   municipalityId?: number;
+
+  @ApiPropertyOptional({
+    example: FACTUS_TRIBUTE_NO_APLICA,
+    description:
+      'Clasificación tributaria DIAN (tribute_code): 01 IVA, 04 INC, ZA IVA e INC, ZZ No aplica. Por defecto ZZ.',
+    enum: FACTUS_TRIBUTE_CODES,
+  })
+  @IsOptional()
+  @IsIn(FACTUS_TRIBUTE_CODES as unknown as string[], {
+    message: 'Clasificación tributaria no válida',
+  })
+  factusTributeCode?: string;
+
+  @ApiPropertyOptional({
+    example: FACTUS_LEGAL_ORGANIZATION_NATURAL,
+    description:
+      'Tipo de persona ante la DIAN (legal_organization_code): 1 Jurídica, 2 Natural. Si no se envía se deduce del tipo de documento.',
+    enum: FACTUS_LEGAL_ORGANIZATION_CODES,
+  })
+  @IsOptional()
+  @IsIn(FACTUS_LEGAL_ORGANIZATION_CODES as unknown as string[], {
+    message: 'Tipo de persona no válido',
+  })
+  factusLegalOrganizationCode?: string;
 }
 
 export interface GetAllUsersRespose {
@@ -223,10 +256,10 @@ export class UpdateUserDto {
   @IsString()
   phoneCode: string;
 
-  @ApiProperty({ example: '3102103660' })
+  @ApiPropertyOptional({ example: '3102103660' })
   @IsString()
   @IsOptional()
-  phone: string;
+  phone?: string;
 
   @ApiProperty({
     example: true,
@@ -299,6 +332,30 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   confirmPassword?: string;
+
+  @ApiPropertyOptional({
+    example: FACTUS_TRIBUTE_NO_APLICA,
+    description:
+      'Clasificación tributaria DIAN (tribute_code): 01 IVA, 04 INC, ZA IVA e INC, ZZ No aplica.',
+    enum: FACTUS_TRIBUTE_CODES,
+  })
+  @IsOptional()
+  @IsIn(FACTUS_TRIBUTE_CODES as unknown as string[], {
+    message: 'Clasificación tributaria no válida',
+  })
+  factusTributeCode?: string;
+
+  @ApiPropertyOptional({
+    example: FACTUS_LEGAL_ORGANIZATION_NATURAL,
+    description:
+      'Tipo de persona ante la DIAN (legal_organization_code): 1 Jurídica, 2 Natural.',
+    enum: FACTUS_LEGAL_ORGANIZATION_CODES,
+  })
+  @IsOptional()
+  @IsIn(FACTUS_LEGAL_ORGANIZATION_CODES as unknown as string[], {
+    message: 'Tipo de persona no válido',
+  })
+  factusLegalOrganizationCode?: string;
 }
 
 export class ChangePasswordBaseDto {

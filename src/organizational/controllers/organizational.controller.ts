@@ -160,10 +160,15 @@ export class OrganizationalController {
     @Body('mediaTypeId') mediaTypeId: string,
     @UploadedFile() file: Express.Multer.File,
   ): Promise<CreatedRecordResponseDto> {
-    const uploadResult = await this._localStorageService.saveImage(
-      file,
-      'organizational',
+    // El vídeo principal se guarda tal cual; el resto pasa por sharp. Sin esta
+    // bifurcación, subir un MP4 moría en `saveImage` con "Tipo de archivo no
+    // permitido", porque allí solo se aceptan imágenes.
+    const isVideo = await this._organizationalUC.isVideoMediaType(
+      parseInt(mediaTypeId),
     );
+    const uploadResult = isVideo
+      ? await this._localStorageService.saveVideo(file, 'organizational')
+      : await this._localStorageService.saveImage(file, 'organizational');
     const data = await this._organizationalUC.addMedia(id, {
       url: uploadResult.imageUrl,
       publicId: uploadResult.publicId,

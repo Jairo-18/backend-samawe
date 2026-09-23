@@ -111,6 +111,23 @@ export class FactusAdjustmentNotesController {
    * (típicamente tras una Regla 90). No emite nada ante la DIAN, pero SÍ
    * descuenta el inventario, que es lo que quedó sin hacer.
    */
+  /**
+   * Espejo del de notas crédito: reintenta a mano los descuentos de inventario
+   * pendientes, sin esperar al cron. Idempotente — una nota ya aplicada se
+   * salta sola.
+   */
+  @Post('adjustment-notes/retry-inventory')
+  @Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN)
+  @ApiOperation({
+    summary:
+      'Reintentar los descuentos de inventario de notas de ajuste pendientes',
+  })
+  async retryInventory() {
+    const data =
+      await this.adjustmentNoteService.retryPendingInventoryReversals();
+    return { success: true, data };
+  }
+
   @Post('invoices/:id/adjustment-notes/recover')
   @Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN)
   @ApiOperation({

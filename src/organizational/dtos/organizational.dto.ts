@@ -80,10 +80,51 @@ export class CreateOrganizationalDto {
   @IsObject()
   description?: TranslatedInput;
 
+  // El front resuelve estos dos nombres contra su catálogo cerrado antes de
+  // aplicarlos; lo que no esté en él se ignora. Aquí basta con validar que es
+  // texto corto.
+  @ApiPropertyOptional({ example: 'Alegreya SC' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  fontTitle?: string;
+
+  @ApiPropertyOptional({ example: 'Poppins' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  fontBody?: string;
+
   @ApiPropertyOptional({ example: '#2E7D32' })
   @IsOptional()
   @IsString()
   primaryColor?: string;
+
+  // Modo oscuro: solo superficie y texto (ver la entidad).
+  @ApiPropertyOptional({ example: '#E6E8EB' })
+  @IsOptional()
+  @IsString()
+  darkTitleColor?: string;
+
+  @ApiPropertyOptional({ example: '#9AA3AD' })
+  @IsOptional()
+  @IsString()
+  darkSubtitleColor?: string;
+
+  @ApiPropertyOptional({ example: '#E6E8EB' })
+  @IsOptional()
+  @IsString()
+  darkTextColor?: string;
+
+  @ApiPropertyOptional({ example: '#1C2128' })
+  @IsOptional()
+  @IsString()
+  darkBgPrimaryColor?: string;
+
+  @ApiPropertyOptional({ example: '#14181D' })
+  @IsOptional()
+  @IsString()
+  darkBgSecondaryColor?: string;
 
   @ApiPropertyOptional({ example: '#81C784' })
   @IsOptional()

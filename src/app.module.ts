@@ -9,7 +9,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PassportModule } from '@nestjs/passport';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { config } from './config';
 import { SharedModule } from './shared/shared.module';
 import { AuthModule } from './auth/auth.module';
@@ -29,6 +29,8 @@ import { LegalModule } from './legal/legal.module';
 import { ReviewModule } from './reviews/review.module';
 import { TranslationsModule } from './translations/translations.module';
 import { FactusModule } from './factus/factus.module';
+import { RedisModule } from './redis/redis.module';
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 
 @Module({
   imports: [
@@ -40,13 +42,24 @@ import { FactusModule } from './factus/factus.module';
           ? '.env.production'
           : '.env.development',
     }),
-    ThrottlerModule.forRoot([
-      {
-        name: 'default',
-        ttl: 60000,
-        limit: 100,
+    RedisModule,
+    // El contador del throttler vive en memoria por defecto: con N instancias
+    // el límite real se multiplica por N, porque cada una lleva su propia
+    // cuenta. Con Redis el contador es uno solo y el límite vuelve a ser el
+    // que dice la configuración. Sin `REDIS_URL` se queda en memoria, igual
+    // que antes.
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const url = configService.get<string>('REDIS_URL');
+        return {
+          throttlers: [{ name: 'default', ttl: 60000, limit: 100 }],
+          ...(url
+            ? { storage: new ThrottlerStorageRedisService(url) }
+            : {}),
+        };
       },
-    ]),
+    }),
     SocketModule,
     ServeStaticModule.forRoot({
       rootPath:

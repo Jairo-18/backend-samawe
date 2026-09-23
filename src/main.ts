@@ -30,6 +30,7 @@ import * as bodyParser from 'body-parser';
 import { MulterExceptionFilter } from './shared/filters/multer-exception.filter';
 import { LoggingInterceptor } from './shared/interceptors/logging.interceptor';
 import { AppDataSource } from 'typeorm.config';
+import { RedisIoAdapter } from './socket/redis-io.adapter';
 
 async function bootstrap() {
   if (process.argv.includes('--migrations')) {
@@ -45,6 +46,14 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
+  // Socket.IO sobre Redis. Va ANTES de `listen()` porque el adaptador tiene que
+  // estar puesto cuando se crea el servidor de websockets. Sin `REDIS_URL` el
+  // `connect()` no hace nada y todo sigue como antes.
+  const redisIoAdapter = new RedisIoAdapter(app);
+  await redisIoAdapter.connect();
+  app.useWebSocketAdapter(redisIoAdapter);
+
   app.use(bodyParser.urlencoded({ extended: true }));
   const configService = app.get(ConfigService);
   const swaggerUser = configService.get<string>('swagger.user');
@@ -150,11 +159,23 @@ async function bootstrap() {
   );
 
   // Cache-Control por tipo de ruta
+  //
+  // ⚠️ `webp` y `avif` NO estaban en la lista, y TODAS las imágenes que sube la
+  // aplicación son `.webp`: `LocalStorageService.saveImage` decodifica el
+  // archivo del usuario con sharp y lo reescribe como `${uuid}.webp`. O sea que
+  // cada foto de producto, hospedaje, pasadía y avatar se servía **sin ninguna
+  // cabecera de caché**, y se volvía a descargar entera en cada visita.
+  //
+  // Son el caso ideal de `immutable`: el nombre es un UUID, así que el
+  // contenido de una URL dada no puede cambiar nunca — al reemplazar una foto
+  // se crea otro fichero con otro uuid y se borra el anterior.
   app.use((req: any, res: any, next: any) => {
     const path: string = req.path || '';
     if (path.startsWith('/auth') || path.startsWith('/api') || path.startsWith('/app')) {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-    } else if (/\.(js|css|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/.test(path)) {
+    } else if (
+      /\.(js|css|png|jpg|jpeg|gif|svg|webp|avif|woff|woff2|ttf|eot)$/.test(path)
+    ) {
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     }
     next();

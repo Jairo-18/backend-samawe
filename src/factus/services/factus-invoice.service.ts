@@ -17,6 +17,7 @@ import {
   InvoiceNotesSummary,
 } from '../../shared/services/invoiceNotes.service';
 import { InvoiceTypeRepository } from '../../shared/repositories/invoiceType.repository';
+import { DocumentLockService } from '../../shared/services/documentLock.service';
 import { MailAttachment } from '../../shared/interfaces/mail.interface';
 import { sumFactusItemsTotal } from '../utils/factus-math.utils';
 import { resolveFactusPayment } from '../utils/factus-payment.utils';
@@ -25,6 +26,13 @@ import {
   extractDocumentErrors,
 } from '../utils/factus-errors.utils';
 import * as QRCode from 'qrcode';
+import {
+  FACTUS_LEGAL_ORGANIZATION_JURIDICA,
+  FACTUS_TRIBUTE_NO_APLICA,
+  defaultLegalOrganizationCode,
+  normalizeLegalOrganizationCode,
+  normalizeTributeCode,
+} from '../../shared/constants/factusCustomer.constants';
 
 // Respaldo del código de documento Factus por el `code` del IdentificationType,
 // por si la columna factusCode no está poblada (la migración la setea, pero un
@@ -47,19 +55,6 @@ export class FactusInvoiceService {
   // cambia en caliente, así que basta con resolverlo una vez por proceso.
   private readonly invoiceTypeIdByCode = new Map<string, number>();
 
-  // Serializa por factura todo lo que escribe sus campos Factus: emitir,
-  // recuperar y resetear. Las cuatro notas y el documento soporte ya tenían este
-  // lock; la EMISIÓN era el único camino sin proteger, justo el más caro de
-  // duplicar — una factura repetida ante la DIAN no se puede borrar y es lo que
-  // originó el incidente A773.
-  //
-  // El guard de `invoice.factusNumber` NO basta: dos peticiones simultáneas
-  // pasan las dos por el `if` antes de que ninguna haya guardado, y acaban
-  // emitiendo dos veces.
-  //
-  // En memoria → válido con UNA instancia, igual que el token de Factus y el
-  // resto de locks. Si se escala horizontalmente hay que moverlo a Redis.
-  private readonly invoiceLocks = new Map<number, Promise<void>>();
 
   constructor(
     private readonly invoiceRepository: InvoiceRepository,
@@ -68,6 +63,7 @@ export class FactusInvoiceService {
     private readonly invoicePdfService: InvoicePdfService,
     private readonly invoiceTypeRepository: InvoiceTypeRepository,
     private readonly invoiceNotesService: InvoiceNotesService,
+    private readonly documentLock: DocumentLockService,
   ) {}
 
   /**
@@ -96,29 +92,25 @@ export class FactusInvoiceService {
 
   /**
    * Encola por `invoiceId`: la segunda llamada espera a que termine la primera,
-   * en vez de correr en paralelo con ella. Mismo patrón que en notas crédito,
-   * débito, ajuste y documento soporte.
+   * en vez de correr en paralelo con ella.
+   *
+   * Serializa por factura. Delega en `DocumentLockService`, que además del
+   * encolado en memoria toma un lock distribuido en Redis cuando hay
+   * `REDIS_URL` — necesario en cuanto haya más de una instancia.
+   *
+   * ⚠️ El scope es `'invoice'` en los CINCO servicios a propósito: factura,
+   * nota crédito, nota débito, documento soporte y nota de ajuste comparten
+   * un único lock por factura. Antes cada uno tenía su propio `Map`, así que
+   * una nota crédito y una emisión sobre la misma factura podían correr a la
+   * vez. No hay riesgo de bloqueo mutuo: ninguno de los cinco llama a una
+   * operación bloqueada de otro (solo a `buildCustomer` / `mapDetail`, que no
+   * lo están).
    */
   private async withInvoiceLock<T>(
     invoiceId: number,
     fn: () => Promise<T>,
   ): Promise<T> {
-    const previous = this.invoiceLocks.get(invoiceId) ?? Promise.resolve();
-    let release!: () => void;
-    const current = new Promise<void>((resolve) => (release = resolve));
-    const tail = previous.then(() => current);
-    this.invoiceLocks.set(invoiceId, tail);
-
-    await previous.catch(() => undefined); // espera al anterior (sin propagar su error)
-    try {
-      return await fn();
-    } finally {
-      release();
-      // Si nadie se encadenó después, limpia la entrada para no acumular memoria.
-      if (this.invoiceLocks.get(invoiceId) === tail) {
-        this.invoiceLocks.delete(invoiceId);
-      }
-    }
+    return this.documentLock.withLock('invoice', invoiceId, fn);
   }
 
   async sendInvoiceToFactus(invoiceId: number): Promise<FactusBillResult> {
@@ -778,10 +770,17 @@ export class FactusInvoiceService {
 
   /**
    * Construye el objeto `customer` de Factus desde el cliente de la factura.
-   * Público para reutilizarlo en otros documentos (p. ej. notas crédito).
-   * La organización legal se deriva del tipo de identificación: el NIT
-   * (factusCode '31') es siempre persona jurídica; en este sistema un usuario es
-   * o empresa (NIT) o persona (CC/CE/...), nunca ambos.
+   * Público para reutilizarlo en otros documentos (p. ej. notas crédito) y en
+   * el `provider` del documento soporte (`buildProviderFor`).
+   *
+   * La organización legal sale de `user.factusLegalOrganizationCode`, que es lo
+   * que se eligió en el formulario. El tipo de documento solo se usa como
+   * respaldo si esa columna viniera vacía.
+   *
+   * ⚠️ Antes se derivaba SIEMPRE del documento, asumiendo "NIT = empresa". Es
+   * falso: una persona natural no obligada a facturar también tiene NIT
+   * (su cédula inscrita en el RUT), y esos proveedores salían hacia la DIAN
+   * como personas jurídicas en el documento soporte. No volver a derivarlo aquí.
    */
   buildCustomer(invoice: Invoice): Record<string, string> {
     const org = invoice.organizational;
@@ -792,7 +791,11 @@ export class FactusInvoiceService {
       user.identificationType?.factusCode ??
       FACTUS_ID_CODE_BY_TYPE[docType] ??
       '13';
-    const isJuridica = idCode === '31';
+    const legalOrganizationCode =
+      normalizeLegalOrganizationCode(user.factusLegalOrganizationCode) ??
+      defaultLegalOrganizationCode(idCode);
+    const isJuridica =
+      legalOrganizationCode === FACTUS_LEGAL_ORGANIZATION_JURIDICA;
 
     // Saneamiento de la identificación. Los datos reales traen de todo: NITs con
     // guion y dígito de verificación ("18128214-6"), documentos extranjeros con
@@ -816,8 +819,10 @@ export class FactusInvoiceService {
       identification_document_code: idCode,
       identification,
       address: user.address?.trim() || 'Colombia',
-      legal_organization_code: isJuridica ? '1' : '2',
-      tribute_code: user.factusTributeCode ?? 'ZZ',
+      legal_organization_code: legalOrganizationCode,
+      tribute_code:
+        normalizeTributeCode(user.factusTributeCode) ??
+        FACTUS_TRIBUTE_NO_APLICA,
       // Fallback al municipio del negocio (Mocoa 86001) para clientes de paso.
       municipality_code:
         user.factusMunicipalityCode ?? org?.factusMunicipalityCode ?? '86001',

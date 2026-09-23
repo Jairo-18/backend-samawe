@@ -198,7 +198,9 @@ export class ProductService {
 
     const { taxeTypeId: _t, name: rawName, description: rawDesc, ...updateData } = updateProductDto;
     if (rawName) updateData['name'] = await this._translationService.toTranslatedField(rawName);
-    if (rawDesc) updateData['description'] = await this._translationService.toTranslatedField(rawDesc);
+    // `!== undefined` y no un truthy: la descripción SÍ se puede dejar vacía
+    // (ver el mismo comentario en `accommodation.service.ts`).
+    if (rawDesc !== undefined) updateData['description'] = await this._translationService.toTranslatedField(rawDesc);
     Object.assign(product, updateData);
 
     return await this._productRepository.save(product);

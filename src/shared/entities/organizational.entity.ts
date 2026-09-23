@@ -61,8 +61,47 @@ export class Organizational {
   @Column({ type: 'jsonb', nullable: true })
   description?: Record<string, string>;
 
+  // ── Tipografía ────────────────────────────────────────────────────────────
+  //
+  // Se guarda solo el NOMBRE de la familia ('Cinzel'), no el valor CSS: el
+  // front lo resuelve contra su catálogo cerrado
+  // (`shared/constants/fonts.constants.ts`) antes de aplicarlo. Si aquí hubiera
+  // un nombre que no está en ese catálogo, se ignora y queda el valor por
+  // defecto — así un dato manipulado no puede inyectar CSS.
+
+  /** Familia para títulos y rótulos (`--font-title`). */
+  @Column('varchar', { length: 60, nullable: true })
+  fontTitle?: string;
+
+  /** Familia para el texto (`--font-body`). */
+  @Column('varchar', { length: 60, nullable: true })
+  fontBody?: string;
+
   @Column('varchar', { length: 20, nullable: true })
   primaryColor?: string;
+
+  // ── Modo oscuro ───────────────────────────────────────────────────────────
+  //
+  // Solo superficie y texto. Los de marca NO se duplican: son identidad y se
+  // mantienen en los dos modos; el modo oscuro únicamente los aclara para que
+  // contrasten, y eso se calcula en CSS.
+  //
+  // NULL = "usa el valor por defecto de `variables.scss`".
+
+  @Column('varchar', { length: 20, nullable: true })
+  darkTitleColor?: string;
+
+  @Column('varchar', { length: 20, nullable: true })
+  darkSubtitleColor?: string;
+
+  @Column('varchar', { length: 20, nullable: true })
+  darkTextColor?: string;
+
+  @Column('varchar', { length: 20, nullable: true })
+  darkBgPrimaryColor?: string;
+
+  @Column('varchar', { length: 20, nullable: true })
+  darkBgSecondaryColor?: string;
 
   @Column('varchar', { length: 20, nullable: true })
   secondaryColor?: string;

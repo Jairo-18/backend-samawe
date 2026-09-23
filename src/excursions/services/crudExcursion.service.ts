@@ -24,6 +24,8 @@ export class CrudExcursionService {
       .leftJoinAndSelect('excursion.categoryType', 'categoryType')
       .leftJoinAndSelect('excursion.stateType', 'stateType')
       .leftJoinAndSelect('excursion.taxeType', 'taxeType')
+      // Igual que en `paginatedList`: el mapeo lee `e.images`.
+      .leftJoinAndSelect('excursion.images', 'images')
       .addSelect(`"categoryType"."name"->>'es'`, 'cat_name_sort')
       .addSelect(`"excursion"."name"->>'es'`, 'exc_name_sort')
       .orderBy('cat_name_sort', 'ASC')
@@ -61,6 +63,11 @@ export class CrudExcursionService {
       .leftJoinAndSelect('excursion.categoryType', 'categoryType')
       .leftJoinAndSelect('excursion.stateType', 'stateType')
       .leftJoinAndSelect('excursion.taxeType', 'taxeType')
+      // El mapeo de abajo lee `excursion.images`: sin este join las miniaturas
+      // del listado salen siempre vacías. Mismo patrón que
+      // `crudProduct.service.ts` (skip/take con una relación 1-N: TypeORM
+      // pagina por ids distintos, así que la cuenta sigue siendo correcta).
+      .leftJoinAndSelect('excursion.images', 'images')
       .addSelect(`"excursion"."name"->>'es'`, 'exc_name_sort')
       .skip(skip)
       .take(params.perPage)

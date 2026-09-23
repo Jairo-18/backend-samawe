@@ -280,6 +280,10 @@ export interface UserDetailDto {
   department: { departmentId: number; code: string; name: string } | null;
   municipality: { municipalityId: number; code: string; name: string } | null;
   organizationalId: string | null;
+  /** `tribute_code` DIAN: '01' responsable de IVA … 'ZZ' no aplica. */
+  factusTributeCode: string | null;
+  /** `legal_organization_code` DIAN: '1' jurídica, '2' natural. */
+  factusLegalOrganizationCode: string | null;
 }
 
 export function mapUserDetail(user: User): UserDetailDto {
@@ -336,5 +340,7 @@ export function mapUserDetail(user: User): UserDetailDto {
         }
       : null,
     organizationalId: user.organizational?.organizationalId ?? null,
+    factusTributeCode: user.factusTributeCode ?? null,
+    factusLegalOrganizationCode: user.factusLegalOrganizationCode ?? null,
   };
 }
