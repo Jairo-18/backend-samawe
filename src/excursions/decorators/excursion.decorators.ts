@@ -90,3 +90,10 @@ export function DeleteImageDocs() {
     ApiOperation({ summary: 'Elimina una imagen de un pasadía' }),
   );
 }
+
+export function ReorderImagesDocs() {
+  return applyDecorators(
+    ApiBearerAuth(),
+    ApiOperation({ summary: 'Reordena la galería de imágenes de una pasadía' }),
+  );
+}

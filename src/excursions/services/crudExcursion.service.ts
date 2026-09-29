@@ -29,7 +29,8 @@ export class CrudExcursionService {
       .addSelect(`"categoryType"."name"->>'es'`, 'cat_name_sort')
       .addSelect(`"excursion"."name"->>'es'`, 'exc_name_sort')
       .orderBy('cat_name_sort', 'ASC')
-      .addOrderBy('exc_name_sort', 'ASC');
+      .addOrderBy('exc_name_sort', 'ASC')
+      .addOrderBy('images.position', 'ASC');
     if (organizationalId) {
       query.andWhere('excursion.organizationalId = :organizationalId', { organizationalId });
     }
@@ -71,7 +72,8 @@ export class CrudExcursionService {
       .addSelect(`"excursion"."name"->>'es'`, 'exc_name_sort')
       .skip(skip)
       .take(params.perPage)
-      .orderBy('exc_name_sort', 'ASC');
+      .orderBy('exc_name_sort', 'ASC')
+      .addOrderBy('images.position', 'ASC');
 
     if (params.code) {
       query.andWhere('excursion.code ILIKE :code', { code: `%${params.code}%` });

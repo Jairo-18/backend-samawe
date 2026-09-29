@@ -46,6 +46,7 @@ export class RecipeService {
       .leftJoinAndSelect('product.images', 'images')
       .leftJoinAndSelect('recipe.ingredient', 'ingredient')
       .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
+      .addOrderBy('images.position', 'ASC')
       .where('product.deletedAt IS NULL');
 
     if (params.search) {
@@ -309,6 +310,7 @@ export class RecipeService {
     const product = await this._productRepository.findOne({
       where: { productId },
       relations: ['images'],
+      order: { images: { position: 'ASC' } },
     });
 
     if (!product) {
@@ -321,6 +323,7 @@ export class RecipeService {
       .leftJoinAndSelect('product.images', 'product_images')
       .leftJoinAndSelect('recipe.ingredient', 'ingredient')
       .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
+      .addOrderBy('product_images.position', 'ASC')
       .where('product.productId = :productId', { productId })
       .getMany();
 

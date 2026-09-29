@@ -102,7 +102,7 @@ export class LocalStorageService {
         // sitio de sobra para cualquier cámara real.
         limitInputPixels: 100_000_000,
       })
-        .webp({ quality: 80, effort: 6 })
+        .webp({ quality: 90, effort: 6 })
         .resize({ width: maxWidth, withoutEnlargement: true })
         .toFile(filePath);
     } catch (error) {

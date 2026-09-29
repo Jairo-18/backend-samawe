@@ -223,6 +223,7 @@ export class ExcursionService {
       // el mapper hace `excursion.images?.map(...)`, así que sin la relación
       // cargada la galería abre vacía aunque las fotos existan.
       relations: ['categoryType', 'stateType', 'taxeType', 'images'],
+      order: { images: { position: 'ASC' } },
     });
 
     if (!excursion) {

@@ -226,6 +226,7 @@ export class ProductService {
         'productRecipes.ingredient',
         'images',
       ],
+      order: { images: { position: 'ASC' } },
     });
 
     if (!product) {

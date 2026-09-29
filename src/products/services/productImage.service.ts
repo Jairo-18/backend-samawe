@@ -11,7 +11,11 @@ export class ProductImageService {
   ) {}
 
   /**
-   * Añadir una imagen a un producto
+   * Añadir una imagen a un producto.
+   *
+   * Va al FINAL de la galería (`position` = máxima actual + 1), no primero:
+   * el orden ahora lo decide el usuario arrastrando, no "lo último subido
+   * pasa a portada".
    */
   async addProductImage(
     productId: number,
@@ -25,13 +29,57 @@ export class ProductImageService {
       throw new NotFoundException(`Producto con id ${productId} no encontrado`);
     }
 
+    const nextPosition = await this.nextPosition(productId);
+
     const newImage = this._productImageRepository.create({
       imageUrl,
       publicId,
+      position: nextPosition,
       product,
     });
 
     return this._productImageRepository.save(newImage);
+  }
+
+  private async nextPosition(productId: number): Promise<number> {
+    const { max } = await this._productImageRepository
+      .createQueryBuilder('image')
+      .select('MAX(image.position)', 'max')
+      .where('image.productId = :productId', { productId })
+      .getRawOne<{ max: number | null }>();
+    return (max ?? -1) + 1;
+  }
+
+  /**
+   * Reordena la galería: `orderedPublicIds` es el orden final que eligió el
+   * usuario. Se valida que cada publicId pertenezca al producto antes de
+   * tocar nada, para no dejar posiciones a medio actualizar si llega un id
+   * que no es de esta galería.
+   */
+  async reorderProductImages(
+    productId: number,
+    orderedPublicIds: string[],
+  ): Promise<void> {
+    const images = await this._productImageRepository.find({
+      where: { product: { productId } },
+    });
+
+    const byPublicId = new Map(images.map((img) => [img.publicId, img]));
+    const missing = orderedPublicIds.find((id) => !byPublicId.has(id));
+    if (missing) {
+      throw new NotFoundException(
+        `Imagen con publicId ${missing} no pertenece al producto ${productId}`,
+      );
+    }
+
+    await Promise.all(
+      orderedPublicIds.map((publicId, index) =>
+        this._productImageRepository.update(
+          { productImageId: byPublicId.get(publicId)!.productImageId },
+          { position: index },
+        ),
+      ),
+    );
   }
 
   /**
@@ -96,6 +144,7 @@ export class ProductImageService {
     const product = await this._productRepository.findOne({
       where: { productId },
       relations: ['images'],
+      order: { images: { position: 'ASC' } },
     });
 
     if (!product) {

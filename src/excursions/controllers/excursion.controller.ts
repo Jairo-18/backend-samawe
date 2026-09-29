@@ -47,7 +47,9 @@ import {
   UploadImageDocs,
   GetImagesDocs,
   DeleteImageDocs,
+  ReorderImagesDocs,
 } from './../decorators/excursion.decorators';
+import { ReorderExcursionImagesDto } from '../dtos/excursionImage.dto';
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
@@ -192,6 +194,22 @@ export class ExcursionController {
     return {
       statusCode: HttpStatus.OK,
       message: 'api.excursion.image_deleted',
+    };
+  }
+
+  @Patch(':id/images/reorder')
+  @ReorderImagesDocs()
+  async reorderImages(
+    @Param('id') excursionId: number,
+    @Body() body: ReorderExcursionImagesDto,
+  ) {
+    await this._excursionImageService.reorderExcursionImages(
+      excursionId,
+      body.publicIds,
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'api.excursion.images_reordered',
     };
   }
 }

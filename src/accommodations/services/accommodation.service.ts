@@ -250,6 +250,7 @@ export class AccommodationService {
       // el mapper hace `accommodation.images?.map(...)`, así que sin la
       // relación cargada la galería abre vacía aunque las fotos existan.
       relations: ['categoryType', 'bedType', 'stateType', 'taxeType', 'images'],
+      order: { images: { position: 'ASC' } },
     });
 
     if (!accommodation) {
@@ -282,6 +283,7 @@ export class AccommodationService {
         this._accommodationRepository.findOne({
           where: { accommodationId: Number(accommodationId) },
           relations: ['categoryType', 'bedType', 'stateType', 'images', 'organizational'],
+          order: { images: { position: 'ASC' } },
         }),
       ),
     );

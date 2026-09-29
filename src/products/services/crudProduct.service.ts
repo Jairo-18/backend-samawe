@@ -29,7 +29,8 @@ export class CrudProductService {
       .addSelect(`"Product"."name"->>'es'`, 'prod_name_sort')
       .skip(skip)
       .take(params.perPage)
-      .orderBy('prod_name_sort', 'ASC');
+      .orderBy('prod_name_sort', 'ASC')
+      .addOrderBy('images.position', 'ASC');
 
     if (params.name) {
       query.andWhere(

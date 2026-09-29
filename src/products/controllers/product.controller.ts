@@ -47,7 +47,9 @@ import {
   UploadImageDocs,
   GetImagesDocs,
   DeleteImageDocs,
+  ReorderImagesDocs,
 } from '../decorators/product.decorators';
+import { ReorderProductImagesDto } from '../dtos/productImage.dto';
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
@@ -187,6 +189,22 @@ export class ProductController {
     return {
       statusCode: HttpStatus.OK,
       message: 'api.product.image_deleted',
+    };
+  }
+
+  @Patch(':id/images/reorder')
+  @ReorderImagesDocs()
+  async reorderImages(
+    @Param('id') productId: number,
+    @Body() body: ReorderProductImagesDto,
+  ) {
+    await this._productImageService.reorderProductImages(
+      productId,
+      body.publicIds,
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'api.product.images_reordered',
     };
   }
 }

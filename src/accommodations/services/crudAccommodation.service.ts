@@ -45,7 +45,8 @@ export class CrudAccommodationService {
       .addSelect(`"accommodation"."name"->>'es'`, 'acc_name_sort')
       .skip(skip)
       .take(params.perPage)
-      .orderBy('acc_name_sort', 'ASC');
+      .orderBy('acc_name_sort', 'ASC')
+      .addOrderBy('images.position', 'ASC');
 
     // Disponibilidad: excluye los hospedajes con una reserva solapada en el
     // rango pedido. Mismo criterio de solape que la validación al guardar el
@@ -226,7 +227,8 @@ export class CrudAccommodationService {
       .addSelect(`"accommodation"."name"->>'es'`, 'acc_name_sort')
       .skip(skip)
       .take(params.perPage)
-      .orderBy('acc_name_sort', params.order ?? 'ASC');
+      .orderBy('acc_name_sort', params.order ?? 'ASC')
+      .addOrderBy('images.position', 'ASC');
 
     const [entities, itemCount] = await query.getManyAndCount();
 
@@ -288,6 +290,7 @@ export class CrudAccommodationService {
       .where('accommodation.accommodationId = :accommodationId', {
         accommodationId,
       })
+      .orderBy('images.position', 'ASC')
       .getOne();
 
     if (!a) {

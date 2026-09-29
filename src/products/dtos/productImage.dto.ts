@@ -1,6 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class ProductImageResponseDto {
   @ApiProperty({
@@ -67,6 +74,19 @@ export class GetProductImagesResponseDto {
     description: 'Lista de imágenes del producto',
   })
   data: ProductImageResponseDto[];
+}
+
+export class ReorderProductImagesDto {
+  @ApiProperty({
+    type: [String],
+    example: ['products/uuid-1.webp', 'products/uuid-2.webp'],
+    description:
+      'publicId de cada foto, en el orden final que eligió el usuario (la primera queda de portada).',
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  publicIds: string[];
 }
 
 export class ProductImageParamsDto {

@@ -11,7 +11,11 @@ export class ExcursionImageService {
   ) {}
 
   /**
-   * Añadir una imagen a un excursion
+   * Añadir una imagen a un excursion.
+   *
+   * Va al FINAL de la galería (`position` = máxima actual + 1), no primero:
+   * el orden ahora lo decide el usuario arrastrando, no "lo último subido
+   * pasa a portada".
    */
   async addExcursionImage(
     excursionId: number,
@@ -27,13 +31,57 @@ export class ExcursionImageService {
       );
     }
 
+    const nextPosition = await this.nextPosition(excursionId);
+
     const newImage = this._excursionImageRepository.create({
       imageUrl,
       publicId,
+      position: nextPosition,
       excursion,
     });
 
     return this._excursionImageRepository.save(newImage);
+  }
+
+  private async nextPosition(excursionId: number): Promise<number> {
+    const { max } = await this._excursionImageRepository
+      .createQueryBuilder('image')
+      .select('MAX(image.position)', 'max')
+      .where('image.excursionId = :excursionId', { excursionId })
+      .getRawOne<{ max: number | null }>();
+    return (max ?? -1) + 1;
+  }
+
+  /**
+   * Reordena la galería: `orderedPublicIds` es el orden final que eligió el
+   * usuario. Se valida que cada publicId pertenezca a la pasadía antes de
+   * tocar nada, para no dejar posiciones a medio actualizar si llega un id
+   * que no es de esta galería.
+   */
+  async reorderExcursionImages(
+    excursionId: number,
+    orderedPublicIds: string[],
+  ): Promise<void> {
+    const images = await this._excursionImageRepository.find({
+      where: { excursion: { excursionId } },
+    });
+
+    const byPublicId = new Map(images.map((img) => [img.publicId, img]));
+    const missing = orderedPublicIds.find((id) => !byPublicId.has(id));
+    if (missing) {
+      throw new NotFoundException(
+        `Imagen con publicId ${missing} no pertenece a la pasadía ${excursionId}`,
+      );
+    }
+
+    await Promise.all(
+      orderedPublicIds.map((publicId, index) =>
+        this._excursionImageRepository.update(
+          { excursionImageId: byPublicId.get(publicId)!.excursionImageId },
+          { position: index },
+        ),
+      ),
+    );
   }
 
   /**
@@ -105,6 +153,7 @@ export class ExcursionImageService {
     const excursion = await this._excursionRepository.findOne({
       where: { excursionId },
       relations: ['images'],
+      order: { images: { position: 'ASC' } },
     });
 
     if (!excursion) {

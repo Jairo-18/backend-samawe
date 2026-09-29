@@ -128,6 +128,7 @@ export class MenuService {
       .leftJoinAndSelect('menu.organizational', 'organizational')
       .where('menu.menuId = :menuId', { menuId })
       .andWhere('menu.deletedAt IS NULL')
+      .orderBy('productImages.position', 'ASC')
       .getOne();
 
     if (!menu) {
@@ -194,6 +195,7 @@ export class MenuService {
         .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
         .where('menu.menuId IN (:...menuIds)', { menuIds })
         .orderBy(`menu.name->>'es'`, order)
+        .addOrderBy('productImages.position', 'ASC')
         .getMany();
     }
 
@@ -253,6 +255,7 @@ export class MenuService {
         .leftJoinAndSelect('product.images', 'productImages')
         .where('menu.menuId IN (:...menuIds)', { menuIds })
         .orderBy(`menu.name->>'es'`, order)
+        .addOrderBy('productImages.position', 'ASC')
         .getMany();
     }
 

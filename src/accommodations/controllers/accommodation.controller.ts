@@ -47,7 +47,9 @@ import {
   UploadImageDocs,
   GetImagesDocs,
   DeleteImageDocs,
+  ReorderImagesDocs,
 } from '../decorators/accommodation.decorators';
+import { ReorderAccommodationImagesDto } from '../dtos/accommodationImage.dto';
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import { RolesGuard } from '../../shared/guards/roles.guard';
@@ -193,6 +195,22 @@ export class AccommodationController {
     return {
       statusCode: HttpStatus.OK,
       message: 'api.accommodation.image_deleted',
+    };
+  }
+
+  @Patch(':id/images/reorder')
+  @ReorderImagesDocs()
+  async reorderImages(
+    @Param('id') accommodationId: number,
+    @Body() body: ReorderAccommodationImagesDto,
+  ) {
+    await this._accommodationImageService.reorderAccommodationImages(
+      accommodationId,
+      body.publicIds,
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'api.accommodation.images_reordered',
     };
   }
 }

@@ -95,6 +95,13 @@ export function DeleteImageDocs() {
   );
 }
 
+export function ReorderImagesDocs() {
+  return applyDecorators(
+    ApiBearerAuth(),
+    ApiOperation({ summary: 'Reordena la galería de imágenes de un hospedaje' }),
+  );
+}
+
 export function GetMostRequestedDocs() {
   return applyDecorators(
     ApiBearerAuth(),

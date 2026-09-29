@@ -19,6 +19,10 @@ export class AccommodationImage {
   @Column({ type: 'varchar', length: 255 })
   publicId: string;
 
+  /** Orden manual en la galería (0 = primera / portada). Lo decide el usuario arrastrando. */
+  @Column({ type: 'int', default: 0 })
+  position: number;
+
   @ManyToOne(() => Accommodation, (accommodation) => accommodation.images, {
     onDelete: 'CASCADE',
   })
