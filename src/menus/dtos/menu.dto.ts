@@ -21,9 +21,14 @@ export class CreateMenuDto {
   @IsOptional()
   description?: TranslatedInput;
 
-  @ApiProperty({ example: [1, 2, 3], type: [Number] })
+  @ApiProperty({
+    example: [1, 2, 3],
+    type: [Number],
+    description:
+      'IDs de producto. Si el producto tiene receta asociada se agrega como platillo (con ingredientes); si no, se agrega como producto normal, de cualquier categoría.',
+  })
   @IsArray()
-  @ArrayMinSize(1, { message: 'Debe agregar al menos un platillo al menú' })
+  @ArrayMinSize(1, { message: 'Debe agregar al menos un platillo o producto al menú' })
   @IsNumber({}, { each: true })
   productIds: number[];
 

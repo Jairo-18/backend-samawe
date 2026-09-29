@@ -45,6 +45,11 @@ export class Accommodation {
   })
   amountRoom?: number;
 
+  // ⚠️ El nombre de la columna es histórico: pese a "bathroom", NO es
+  // cantidad de baños. El hotel lo usa como el aforo MÁXIMO del hospedaje
+  // (contraparte de `amountPerson`, que es el mínimo). Renombrar la columna
+  // es un cambio más grande (migración + todos los mappers/DTOs que la
+  // tocan); por ahora se dejó documentado acá y en los DTOs.
   @Column({
     type: 'int',
     nullable: false,

@@ -704,6 +704,14 @@ export class InvoiceService {
       throw new NotFoundException('Factura no encontrada');
     }
 
+    if (invoice.factusNumber || invoice.factusCufe) {
+      throw new BadRequestException(
+        `La factura ${invoice.factusNumber ?? invoiceId} ya fue validada por la ` +
+          'DIAN (tiene número/CUFE de Factus) y no se puede eliminar. Para ' +
+          'anularla hay que emitir una nota crédito.',
+      );
+    }
+
     // Los grupos incluyen la variante electrónica de cada tipo: una venta
     // emitida es FVE y una compra con documento soporte es DSE. Preguntar solo
     // por 'FV'/'FC' hacía que borrar una factura ya emitida NO devolviera el

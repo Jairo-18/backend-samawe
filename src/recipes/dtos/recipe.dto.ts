@@ -147,6 +147,7 @@ export class PaginatedRecipesParamsDto extends ParamsPaginationDto {
 export interface RecipeWithDetailsResponse {
   productId: number;
   productName: string;
+  description?: Record<string, string>;
   /** Precio de venta del platillo, no del costo de sus ingredientes (`totalRecipeCost`). */
   priceSale: number;
   images?: Array<{

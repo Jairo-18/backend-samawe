@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { FactusAuthService } from './services/factus-auth.service';
 import { FactusApiError } from './errors/factus-api.error';
+import { parseFactusValidationErrors } from './utils/factus-errors.utils';
 
 @Injectable()
 export class FactusClient implements OnModuleInit {
@@ -115,7 +116,11 @@ export class FactusClient implements OnModuleInit {
         const status = error.response?.status;
         const data = error.response?.data;
         const message = (data as any)?.message ?? error.message;
-        this.logger.error(`Factus API error: ${status} — ${JSON.stringify(data)}`);
+        // No logueamos el body completo: puede traer de vuelta datos del
+        // cliente (nombre, documento) ecoados en los mensajes de validación.
+        this.logger.error(
+          `Factus API error: ${status} — ${parseFactusValidationErrors(data).join(' | ') || message}`,
+        );
         throw new FactusApiError(status, data, `Factus API error ${status}: ${message}`);
       },
     );

@@ -56,9 +56,14 @@ export class CreateAccommodationDto {
   @IsNotEmpty({ message: 'La cantidad de habitaciones es requerida' })
   amountRoom: number;
 
-  @ApiProperty({ example: 1, description: 'Cantidad de baños' })
+  // ⚠️ El nombre de columna es histórico y no coincide con el uso real: el
+  // hotel lo usa como aforo MÁXIMO del hospedaje, no como cantidad de baños
+  // (ver `amountPerson`, que es el mínimo). Renombrar la columna es un
+  // cambio más grande (migración + todos los mappers); por ahora se
+  // corrigió la descripción para que no confunda a quien lea el Swagger.
+  @ApiProperty({ example: 4, description: 'Aforo máximo del hospedaje' })
   @IsInt()
-  @IsNotEmpty({ message: 'La cantidad de baños es requerida' })
+  @IsNotEmpty({ message: 'El aforo máximo es requerido' })
   amountBathroom: number;
 
   @ApiProperty({
@@ -157,7 +162,9 @@ export class UpdateAccommodationDto {
   @IsOptional()
   amountRoom?: number;
 
-  @ApiProperty({ example: 1, description: 'Cantidad de baños' })
+  // Ver nota arriba en `CreateAccommodationDto`: no es cantidad de baños,
+  // es el aforo máximo del hospedaje.
+  @ApiProperty({ example: 4, description: 'Aforo máximo del hospedaje' })
   @IsInt()
   @IsOptional()
   amountBathroom?: number;

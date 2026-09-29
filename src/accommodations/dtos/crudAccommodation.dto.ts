@@ -104,9 +104,11 @@ export class PaginatedListAccommodationsParamsDto extends ParamsPaginationDto {
   @IsString()
   amountRoom?: number;
 
+  // No es cantidad de baños pese al nombre: es el aforo máximo del
+  // hospedaje (ver `amountPerson`, que es el mínimo).
   @ApiProperty({
-    example: 1,
-    description: 'Cantidad de baños',
+    example: 4,
+    description: 'Aforo máximo del hospedaje',
     required: false,
   })
   @IsOptional()
@@ -234,7 +236,8 @@ export class AccommodationWithImagesDto {
   @ApiProperty({ example: 2 })
   amountRoom?: number;
 
-  @ApiProperty({ example: 1 })
+  // No es cantidad de baños pese al nombre: es el aforo máximo del hospedaje.
+  @ApiProperty({ example: 4 })
   amountBathroom?: number;
 
   @ApiProperty({ example: true })

@@ -1,8 +1,11 @@
+import { In } from 'typeorm';
 import { MenuRepository } from './../../shared/repositories/menu.repository';
 import { RecipeRepository } from './../../shared/repositories/recipe.repository';
+import { ProductRepository } from './../../shared/repositories/product.repository';
 import { OrganizationalRepository } from './../../shared/repositories/organizational.repository';
 import { Menu } from './../../shared/entities/menu.entity';
 import { Recipe } from './../../shared/entities/recipe.entity';
+import { Product } from './../../shared/entities/product.entity';
 import {
   CreateMenuDto,
   UpdateMenuDto,
@@ -23,32 +26,49 @@ export class MenuService {
   constructor(
     private readonly _menuRepository: MenuRepository,
     private readonly _recipeRepository: RecipeRepository,
+    private readonly _productRepository: ProductRepository,
     private readonly _organizationalRepository: OrganizationalRepository,
     private readonly _translationService: TranslationService,
   ) {}
 
-  private async _findRecipesByProductIds(productIds: number[]) {
+  /**
+   * Reparte los `productIds` recibidos entre los dos caminos que puede tomar
+   * un ítem de menú: si el producto tiene `Recipe` asociada entra por ahí
+   * (así se muestran sus ingredientes); si no, es un producto normal —
+   * de cualquier categoría— y entra por `MenuProduct` sin más requisitos.
+   */
+  private async _splitProductIds(
+    productIds: number[],
+  ): Promise<{ recipes: Recipe[]; products: Product[] }> {
     const recipes = await this._recipeRepository
       .createQueryBuilder('recipe')
       .leftJoinAndSelect('recipe.product', 'product')
       .where('product.productId IN (:...productIds)', { productIds })
       .getMany();
 
-    if (recipes.length === 0) {
-      throw new BadRequestException(
-        'No se encontraron recetas para los productos proporcionados',
+    const recipeProductIds = new Set(recipes.map((r) => r.product.productId));
+    const plainProductIds = productIds.filter(
+      (id) => !recipeProductIds.has(id),
+    );
+
+    let products: Product[] = [];
+    if (plainProductIds.length > 0) {
+      products = await this._productRepository.findBy({
+        productId: In(plainProductIds),
+      });
+
+      const foundProductIds = new Set(products.map((p) => p.productId));
+      const missingProducts = plainProductIds.filter(
+        (id) => !foundProductIds.has(id),
       );
+      if (missingProducts.length > 0) {
+        throw new BadRequestException(
+          `Los siguientes productos no existen: ${missingProducts.join(', ')}`,
+        );
+      }
     }
 
-    const foundProductIds = new Set(recipes.map((r) => r.product.productId));
-    const missingProducts = productIds.filter((id) => !foundProductIds.has(id));
-    if (missingProducts.length > 0) {
-      throw new BadRequestException(
-        `Los siguientes productos no tienen receta: ${missingProducts.join(', ')}`,
-      );
-    }
-
-    return recipes;
+    return { recipes, products };
   }
 
   async create(createMenuDto: CreateMenuDto): Promise<Menu> {
@@ -59,7 +79,7 @@ export class MenuService {
       rawDesc ? this._translationService.toTranslatedField(rawDesc) : Promise.resolve(undefined),
     ]);
 
-    const recipes = await this._findRecipesByProductIds(productIds);
+    const { recipes, products } = await this._splitProductIds(productIds);
 
     let organizational = null;
     if (organizationalId) {
@@ -75,6 +95,7 @@ export class MenuService {
       name,
       description,
       recipes,
+      products,
       ...(organizational && { organizational, organizationalId }),
     });
 
@@ -84,7 +105,7 @@ export class MenuService {
   async update(menuId: number, updateMenuDto: UpdateMenuDto): Promise<Menu> {
     const menu = await this._menuRepository.findOne({
       where: { menuId },
-      relations: ['recipes'],
+      relations: ['recipes', 'products'],
     });
 
     if (!menu) {
@@ -100,7 +121,11 @@ export class MenuService {
     }
 
     if (updateMenuDto.productIds !== undefined) {
-      menu.recipes = await this._findRecipesByProductIds(updateMenuDto.productIds);
+      const { recipes, products } = await this._splitProductIds(
+        updateMenuDto.productIds,
+      );
+      menu.recipes = recipes;
+      menu.products = products;
     }
 
     if (updateMenuDto.organizationalId !== undefined) {
@@ -125,10 +150,13 @@ export class MenuService {
       .leftJoinAndSelect('product.images', 'productImages')
       .leftJoinAndSelect('recipe.ingredient', 'ingredient')
       .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
+      .leftJoinAndSelect('menu.products', 'directProduct')
+      .leftJoinAndSelect('directProduct.images', 'directProductImages')
       .leftJoinAndSelect('menu.organizational', 'organizational')
       .where('menu.menuId = :menuId', { menuId })
       .andWhere('menu.deletedAt IS NULL')
       .orderBy('productImages.position', 'ASC')
+      .addOrderBy('directProductImages.position', 'ASC')
       .getOne();
 
     if (!menu) {
@@ -148,6 +176,8 @@ export class MenuService {
       .leftJoinAndSelect('product.images', 'productImages')
       .leftJoinAndSelect('recipe.ingredient', 'ingredient')
       .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
+      .leftJoinAndSelect('menu.products', 'directProduct')
+      .leftJoinAndSelect('directProduct.images', 'directProductImages')
       .where('menu.deletedAt IS NULL');
 
     if (params.search) {
@@ -193,9 +223,12 @@ export class MenuService {
         .leftJoinAndSelect('product.images', 'productImages')
         .leftJoinAndSelect('recipe.ingredient', 'ingredient')
         .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
+        .leftJoinAndSelect('menu.products', 'directProduct')
+        .leftJoinAndSelect('directProduct.images', 'directProductImages')
         .where('menu.menuId IN (:...menuIds)', { menuIds })
         .orderBy(`menu.name->>'es'`, order)
         .addOrderBy('productImages.position', 'ASC')
+        .addOrderBy('directProductImages.position', 'ASC')
         .getMany();
     }
 
@@ -216,6 +249,8 @@ export class MenuService {
       .leftJoinAndSelect('menu.recipes', 'recipe')
       .leftJoinAndSelect('recipe.product', 'product')
       .leftJoinAndSelect('product.images', 'productImages')
+      .leftJoinAndSelect('menu.products', 'directProduct')
+      .leftJoinAndSelect('directProduct.images', 'directProductImages')
       .where('menu.deletedAt IS NULL');
 
     if (params.search) {
@@ -253,9 +288,12 @@ export class MenuService {
         .leftJoinAndSelect('menu.recipes', 'recipe')
         .leftJoinAndSelect('recipe.product', 'product')
         .leftJoinAndSelect('product.images', 'productImages')
+        .leftJoinAndSelect('menu.products', 'directProduct')
+        .leftJoinAndSelect('directProduct.images', 'directProductImages')
         .where('menu.menuId IN (:...menuIds)', { menuIds })
         .orderBy(`menu.name->>'es'`, order)
         .addOrderBy('productImages.position', 'ASC')
+        .addOrderBy('directProductImages.position', 'ASC')
         .getMany();
     }
 
@@ -263,7 +301,7 @@ export class MenuService {
       menuId: menu.menuId,
       name: menu.name,
       description: menu.description,
-      dishes: this._groupRecipesByDish(menu.recipes),
+      dishes: this._groupRecipesByDish(menu.recipes, menu.products),
     }));
 
     const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto: params });
@@ -275,8 +313,13 @@ export class MenuService {
    * son 9 `Recipe` con el mismo `product`), igual que agrupa
    * `see-menus.component.ts` en el panel de staff. Sin este paso el listado
    * público repetiría cada platillo tantas veces como ingredientes tenga.
+   * `products` son los productos normales (sin receta) del menú: se agregan
+   * sin ingredientes, con el mismo shape.
    */
-  private _groupRecipesByDish(recipes: Recipe[] | undefined): MenuPublicListItem['dishes'] {
+  private _groupRecipesByDish(
+    recipes: Recipe[] | undefined,
+    products: Product[] | undefined,
+  ): MenuPublicListItem['dishes'] {
     const byProduct = new Map<number, MenuPublicListItem['dishes'][number]>();
 
     for (const recipe of recipes ?? []) {
@@ -295,25 +338,48 @@ export class MenuService {
       });
     }
 
+    for (const product of products ?? []) {
+      if (byProduct.has(product.productId)) continue;
+
+      byProduct.set(product.productId, {
+        productId: product.productId,
+        name: product.name,
+        priceSale: product.priceSale,
+        images: (product.images ?? []).map((img) => ({
+          productImageId: img.productImageId,
+          imageUrl: img.imageUrl,
+          publicId: img.publicId,
+        })),
+      });
+    }
+
     return Array.from(byProduct.values());
   }
 
   async removeProductFromMenu(menuId: number, productId: number): Promise<Menu> {
     const menu = await this._menuRepository.findOne({
       where: { menuId },
-      relations: ['recipes', 'recipes.product'],
+      relations: ['recipes', 'recipes.product', 'products'],
     });
 
     if (!menu) {
       throw new NotFoundException(`Menú con ID ${menuId} no encontrado`);
     }
 
-    const beforeCount = menu.recipes.length;
+    const beforeRecipeCount = menu.recipes.length;
+    const beforeProductCount = menu.products.length;
+
     menu.recipes = menu.recipes.filter(
       (recipe) => recipe.product.productId !== productId,
     );
+    menu.products = menu.products.filter(
+      (product) => product.productId !== productId,
+    );
 
-    if (menu.recipes.length === beforeCount) {
+    if (
+      menu.recipes.length === beforeRecipeCount &&
+      menu.products.length === beforeProductCount
+    ) {
       throw new BadRequestException(
         `El producto con ID ${productId} no está asociado a este menú`,
       );

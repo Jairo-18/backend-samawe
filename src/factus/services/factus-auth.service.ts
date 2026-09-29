@@ -128,9 +128,11 @@ export class FactusAuthService {
     } catch (error) {
       const status = error.response?.status;
       const body = error.response?.data;
-      this.logger.error(`Failed to obtain Factus token. Status: ${status}`);
-      this.logger.error(`Response body: ${JSON.stringify(body)}`);
-      throw new Error(`Factus authentication failed: ${status} - ${JSON.stringify(body)}`);
+      // No logueamos el body completo: la respuesta de OAuth puede ecoar
+      // credenciales o datos de cuenta.
+      const detail = body?.error_description ?? body?.error ?? body?.message ?? 'sin detalle';
+      this.logger.error(`Failed to obtain Factus token. Status: ${status} — ${detail}`);
+      throw new Error(`Factus authentication failed: ${status} - ${detail}`);
     }
   }
 
@@ -163,9 +165,9 @@ export class FactusAuthService {
     } catch (error) {
       const status = error.response?.status;
       const body = error.response?.data;
-      this.logger.error(`Failed to refresh Factus token. Status: ${status}`);
-      this.logger.error(`Response body: ${JSON.stringify(body)}`);
-      throw new Error(`Factus token refresh failed: ${status} - ${JSON.stringify(body)}`);
+      const detail = body?.error_description ?? body?.error ?? body?.message ?? 'sin detalle';
+      this.logger.error(`Failed to refresh Factus token. Status: ${status} — ${detail}`);
+      throw new Error(`Factus token refresh failed: ${status} - ${detail}`);
     }
   }
 
