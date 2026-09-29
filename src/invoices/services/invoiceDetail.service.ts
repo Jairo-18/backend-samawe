@@ -242,9 +242,15 @@ export class InvoiceDetailService {
               `El hospedaje ya está reservado entre ${createInvoiceDetailDto.startDate} y ${createInvoiceDetailDto.endDate}`,
             );
           }
-        }
-
-        if (stateName !== 'Disponible' && stateName !== 'DISPONIBLE') {
+          // Con fechas, el solape de arriba YA es la comprobación real de
+          // disponibilidad para ESE rango. `stateType` solo describe HOY
+          // (lo pone al día un cron según reservas activas) — un hospedaje
+          // OCUPADO o en MANTENIMIENTO ahora mismo debe poder reservarse
+          // para fechas futuras libres; bloquear por el estado de hoy
+          // impedía precisamente eso.
+        } else if (stateName !== 'Disponible' && stateName !== 'DISPONIBLE') {
+          // Sin fechas no hay rango que comprobar por solape: el estado
+          // actual es la única señal de disponibilidad que queda.
           throw new BadRequestException(
             `El hospedaje no está disponible (estado actual: ${stateName})`,
           );
@@ -412,6 +418,95 @@ export class InvoiceDetailService {
     }
   }
 
+  /**
+   * Guarda los detalles de la factura. Los que reservan un hospedaje por
+   * fechas van por una transacción propia que bloquea la fila del
+   * `Accommodation` (`FOR UPDATE`) y repite la comprobación de solape ya
+   * hecha antes en `createMany`.
+   *
+   * Por qué hace falta un segundo chequeo aquí, dentro del lock: el de más
+   * arriba corre ANTES de que exista fila alguna — dos peticiones para el
+   * mismo hospedaje y las mismas fechas pueden pasar las dos esa primera
+   * comprobación (ninguna ve todavía el detalle de la otra) y llegar juntas
+   * hasta aquí. El `FOR UPDATE` serializa: la segunda petición espera a que
+   * la primera confirme su `INSERT`, y al repetir el conteo de solape ya lo
+   * ve y se rechaza. Sin este segundo chequeo bajo lock, el de arriba era
+   * decorativo — cerraba la ventana de docs, no la de concurrencia real.
+   *
+   * Los demás detalles (productos, pasadías, hospedajes sin fecha) se
+   * guardan tal cual, sin este rodeo — no tienen nada que solapar.
+   */
+  private async _saveDetailEntitiesWithAccommodationLock(
+    detailEntities: any[],
+  ): Promise<any[]> {
+    const accommodationDetails = detailEntities.filter(
+      (d) => d.accommodation && d.startDate && d.endDate,
+    );
+
+    if (accommodationDetails.length === 0) {
+      return this._invoiceDetaillRepository.save(detailEntities);
+    }
+
+    const otherDetails = detailEntities.filter(
+      (d) => !accommodationDetails.includes(d),
+    );
+
+    const [savedOthers, savedAccommodations] = await Promise.all([
+      otherDetails.length
+        ? this._invoiceDetaillRepository.save(otherDetails)
+        : Promise.resolve([]),
+      this._invoiceDetaillRepository.manager.transaction(async (manager) => {
+        const saved: any[] = [];
+        // Secuencial, no `Promise.all`: dos hospedajes distintos en el mismo
+        // `createMany` no compiten entre sí, pero si el front llegara a
+        // mandar el mismo `accommodationId` dos veces en la misma llamada,
+        // `Promise.all` intentaría lockear la misma fila dos veces DESDE LA
+        // MISMA transacción — Postgres no se bloquea a sí mismo, así que no
+        // habría deadlock, pero sí se perdería el propósito del lock (las
+        // dos verían "sin solape" antes de que la otra insertara). Uno por
+        // uno, la segunda ya ve el `INSERT` de la primera.
+        for (const detail of accommodationDetails) {
+          const accommodationId = detail.accommodation.accommodationId;
+
+          await manager
+            .createQueryBuilder(this._accommodationRepository.target, 'a')
+            .setLock('pessimistic_write')
+            .where('a.accommodationId = :id', { id: accommodationId })
+            .getOne();
+
+          const overlappingCount = await manager
+            .createQueryBuilder(this._invoiceDetaillRepository.target, 'detail')
+            .innerJoin('detail.invoice', 'invoice')
+            .innerJoin('invoice.paidType', 'paidType')
+            .where('detail.accommodation = :id', { id: accommodationId })
+            .andWhere('detail.startDate < :end AND detail.endDate > :start', {
+              start: detail.startDate,
+              end: detail.endDate,
+            })
+            .andWhere('invoice.deletedAt IS NULL')
+            .andWhere(RESERVED_PAID_TYPE_CONDITION, RESERVED_PAID_TYPE_PARAMS)
+            .getCount();
+
+          if (overlappingCount > 0) {
+            throw new BadRequestException(
+              `El hospedaje ya está reservado entre ${detail.startDate} y ${detail.endDate}`,
+            );
+          }
+
+          saved.push(await manager.save(detail));
+        }
+        return saved;
+      }),
+    ]);
+
+    const savedByRef = new Map<any, any>();
+    otherDetails.forEach((d, i) => savedByRef.set(d, savedOthers[i]));
+    accommodationDetails.forEach((d, i) =>
+      savedByRef.set(d, savedAccommodations[i]),
+    );
+    return detailEntities.map((d) => savedByRef.get(d));
+  }
+
   async createMany(
     invoiceId: number,
     dtos: CreateInvoiceDetailDto[],
@@ -514,26 +609,28 @@ export class InvoiceDetailService {
 
       Promise.all(
         accommodationsWithDate.map((dto) =>
+          // El filtro por estado va en el WHERE (por `code`, vía la
+          // constante compartida), no aplicado después sobre una sola fila
+          // con `getOne()`: con eso bastaba que el PRIMER detalle solapado
+          // fuera una cotización (o cualquier estado que no bloquea) para
+          // que la comprobación no saltara, aunque hubiera una reserva real
+          // solapando las mismas fechas. Ver `create()` más arriba, que
+          // tenía el mismo fix — esta es la ruta que de verdad usa el
+          // formulario de "Agregar Hospedaje".
           this._invoiceDetaillRepository
             .createQueryBuilder('detail')
-            .leftJoinAndSelect('detail.invoice', 'inv')
-            .leftJoinAndSelect('inv.paidType', 'paidType')
+            .innerJoin('detail.invoice', 'invoice')
+            .innerJoin('invoice.paidType', 'paidType')
             .where('detail.accommodation = :id', { id: dto.accommodationId })
             .andWhere('detail.startDate < :end AND detail.endDate > :start', {
               start: dto.startDate,
               end: dto.endDate,
             })
-            .getOne()
-            .then((ov) => {
-              if (
-                ov?.invoice?.paidType?.name &&
-                [
-                  'Reservado - Pagado',
-                  'Reservado - Pendiente',
-                  'RESERVADO - PAGADO',
-                  'RESERVADO - PENDIENTE',
-                ].includes(ov.invoice.paidType.name?.['es']?.trim() ?? '')
-              ) {
+            .andWhere('invoice.deletedAt IS NULL')
+            .andWhere(RESERVED_PAID_TYPE_CONDITION, RESERVED_PAID_TYPE_PARAMS)
+            .getCount()
+            .then((overlappingCount) => {
+              if (overlappingCount > 0) {
                 throw new BadRequestException(
                   `El hospedaje ya está reservado entre ${dto.startDate} y ${dto.endDate}`,
                 );
@@ -665,7 +762,18 @@ export class InvoiceDetailService {
           throw new BadRequestException(
             'El nombre del estado no está definido',
           );
-        if (stateName !== 'Disponible' && stateName !== 'DISPONIBLE')
+        // Con fechas, el solape ya se comprobó arriba (`accommodationsWithDate`)
+        // — esa es la disponibilidad real para ESE rango. `stateType` solo
+        // describe HOY (lo actualiza el cron según reservas activas), así que
+        // bloquear aquí por el estado de hoy impedía reservar un hospedaje
+        // ocupado/en mantenimiento ahora mismo para fechas futuras libres.
+        // Sin fechas no hay rango que comprobar por solape, así que el estado
+        // actual queda como única señal de disponibilidad.
+        if (
+          !(dto.startDate && dto.endDate) &&
+          stateName !== 'Disponible' &&
+          stateName !== 'DISPONIBLE'
+        )
           throw new BadRequestException(
             `El hospedaje no está disponible (estado actual: ${stateName})`,
           );
@@ -745,7 +853,7 @@ export class InvoiceDetailService {
     }
 
     const batchOps: Promise<any>[] = [
-      this._invoiceDetaillRepository.save(detailEntities),
+      this._saveDetailEntitiesWithAccommodationLock(detailEntities),
       ...stockOps,
       ...accommodationOps,
       ...excursionOps,

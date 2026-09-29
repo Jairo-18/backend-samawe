@@ -218,21 +218,56 @@ export class CrudAccommodationService {
     params: ParamsPaginationDto,
   ): Promise<ResponsePaginationDto<AccommodationPublicListItem>> {
     const skip = (params.page - 1) * params.perPage;
-    const query = this._accommodationRepository
+    const order = params.order ?? 'ASC';
+
+    // Página de IDs primero, SIN el join a `images`. `skip/take` en el
+    // QueryBuilder es un LIMIT/OFFSET de SQL puro: aplicado sobre una
+    // consulta con `leftJoinAndSelect('accommodation.images', …)` corta las
+    // filas del JOIN (hospedaje × foto), no hospedajes — un hospedaje con
+    // varias fotos consume varias posiciones del LIMIT él solo. Con eso
+    // bastaban 3 hospedajes con hartas fotos para que el resto de la página
+    // nunca llegara a pedirse, aunque hubiera de sobra. Por eso en
+    // `/es/accommodation` salían 7 de 10 y siempre los mismos, nunca los
+    // últimos por nombre. `paginatedList` (staff) tiene el mismo patrón —
+    // pendiente de revisar aparte.
+    const idQuery = this._accommodationRepository
+      .createQueryBuilder('accommodation')
+      .select('accommodation.accommodationId', 'accommodationId')
+      .addSelect(`"accommodation"."name"->>'es'`, 'acc_name_sort')
+      .orderBy('acc_name_sort', order);
+
+    const itemCount = await idQuery.clone().getCount();
+
+    const pageIds = (
+      await idQuery
+        .clone()
+        .offset(skip)
+        .limit(params.perPage)
+        .getRawMany<{ accommodationId: number }>()
+    ).map((r) => r.accommodationId);
+
+    if (pageIds.length === 0) {
+      const emptyMeta = new PageMetaDto({ itemCount, pageOptionsDto: params });
+      return new ResponsePaginationDto([], emptyMeta);
+    }
+
+    const entities = await this._accommodationRepository
       .createQueryBuilder('accommodation')
       .leftJoinAndSelect('accommodation.categoryType', 'categoryType')
       .leftJoinAndSelect('accommodation.bedType', 'bedType')
       .leftJoinAndSelect('accommodation.stateType', 'stateType')
       .leftJoinAndSelect('accommodation.images', 'images')
-      .addSelect(`"accommodation"."name"->>'es'`, 'acc_name_sort')
-      .skip(skip)
-      .take(params.perPage)
-      .orderBy('acc_name_sort', params.order ?? 'ASC')
-      .addOrderBy('images.position', 'ASC');
+      .where('accommodation.accommodationId IN (:...ids)', { ids: pageIds })
+      .addOrderBy('images.position', 'ASC')
+      .getMany();
 
-    const [entities, itemCount] = await query.getManyAndCount();
+    // El `IN (...)` no respeta el orden pedido: se reordena según `pageIds`.
+    const byId = new Map(entities.map((a) => [a.accommodationId, a]));
+    const orderedEntities = pageIds
+      .map((id) => byId.get(id))
+      .filter((a): a is NonNullable<typeof a> => !!a);
 
-    const items: AccommodationPublicListItem[] = entities.map((a) => ({
+    const items: AccommodationPublicListItem[] = orderedEntities.map((a) => ({
       accommodationId: a.accommodationId,
       name: a.name,
       description: a.description,
