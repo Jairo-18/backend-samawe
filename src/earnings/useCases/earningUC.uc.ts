@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { EarningService } from '../services/earning.service';
 import { StatisticsService } from '../services/statistics.service';
 import { InventoryService } from '../services/inventory.service';
+import { DashboardService } from '../services/dashboard.service';
+import { DashboardResponse } from '../dtos/dashboard.dto';
+import { CustomRange, DashboardPeriod } from '../utils/period-range.utils';
 import {
   AllInvoiceSummariesDto,
   BalanceProductSummaryDto,
@@ -21,6 +24,7 @@ export class EarningUC {
     private readonly _earningService: EarningService,
     private readonly _statisticsService: StatisticsService,
     private readonly _inventoryService: InventoryService,
+    private readonly _dashboardService: DashboardService,
   ) {}
 
   async getGeneralStatistics(
@@ -51,6 +55,19 @@ export class EarningUC {
     organizationalId?: string,
   ): Promise<InvoiceChartListDto> {
     return await this._earningService.getInvoiceChartList(organizationalId);
+  }
+
+  async getDashboard(
+    period: DashboardPeriod,
+    organizationalId?: string,
+    custom?: CustomRange,
+  ): Promise<DashboardResponse> {
+    return await this._dashboardService.getDashboard(
+      period,
+      organizationalId,
+      new Date(),
+      custom,
+    );
   }
 
   async getInventoryAmount(

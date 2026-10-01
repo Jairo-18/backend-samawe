@@ -9,6 +9,7 @@ import { PassportModule } from '@nestjs/passport';
 import { SharedModule } from './../shared/shared.module';
 import { EarningController } from './controllers/earning.controller';
 import { EarningService } from './services/earning.service';
+import { DashboardService } from './services/dashboard.service';
 
 @Module({
   imports: [SharedModule, PassportModule.register({ defaultStrategy: 'jwt' })],
@@ -16,6 +17,7 @@ import { EarningService } from './services/earning.service';
   providers: [
     StatisticsService,
     EarningService,
+    DashboardService,
     InventoryService,
     ReportService,
     EarningUC,

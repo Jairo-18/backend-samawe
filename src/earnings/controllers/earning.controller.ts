@@ -3,7 +3,15 @@ import {
   InventoryLowParamsDto,
   LowAmountProductDto,
 } from './../dtos/inventoryAmount.dto';
-import { Controller, Get, Post, UseGuards, Query, Req } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Post,
+  UseGuards,
+  Query,
+  Req,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   AllInvoiceSummariesDto,
@@ -26,6 +34,8 @@ import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import { BalanceService } from '../../shared/services/balance.service';
+import { DashboardQueryDto, DashboardResponse } from '../dtos/dashboard.dto';
+import { CustomRange, validateCustomRange } from '../utils/period-range.utils';
 
 @Controller('balance')
 @ApiTags('Ganancias / Reportes')
@@ -106,6 +116,26 @@ export class EarningController {
   async getInvoiceChartList(@Req() req: any): Promise<InvoiceChartListDto> {
     const organizationalId = req.user?.organizationalId;
     return await this._earningUC.getInvoiceChartList(organizationalId);
+  }
+
+  @Get('dashboard')
+  @ApiOperation({
+    summary:
+      'Tablero de ganancias: cifras del período, comparación con el anterior y serie en el tiempo (netas de notas)',
+  })
+  async getDashboard(
+    @Query() query: DashboardQueryDto,
+    @Req() req: any,
+  ): Promise<DashboardResponse> {
+    const organizationalId = req.user?.organizationalId;
+    const period = query.period ?? 'monthly';
+    let custom: CustomRange | undefined;
+    if (period === 'custom') {
+      custom = { from: query.from ?? '', to: query.to ?? '' };
+      const error = validateCustomRange(custom);
+      if (error) throw new BadRequestException(error);
+    }
+    return await this._earningUC.getDashboard(period, organizationalId, custom);
   }
 
   @Get('paginated-list-inventory-low')
