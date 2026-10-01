@@ -231,9 +231,16 @@ export class InvoiceCreditService {
         WHERE p."code" = $1 AND t."code" IN ('FV', 'FVE') AND i."deletedAt" IS NULL`,
       [CREDIT_PAY_TYPE_CODE],
     );
+    // Solo las facturas a crédito de arriba: leer TODOS los abonos y notas de la
+    // base crece con el histórico en cada visita a la pantalla.
+    const creditIds = rows.map((r) => r.invoiceId);
+    if (creditIds.length === 0) return [];
+
     const paymentRows: Array<{ invoiceId: number; amount: string }> =
       await this._dataSource.query(
-        `SELECT "invoiceId", "amount" FROM "InvoicePayment" ORDER BY "paidAt", "invoicePaymentId"`,
+        `SELECT "invoiceId", "amount" FROM "InvoicePayment"
+          WHERE "invoiceId" = ANY($1) ORDER BY "paidAt", "invoicePaymentId"`,
+        [creditIds],
       );
     const paymentsByInvoice = new Map<number, number[]>();
     for (const r of paymentRows) {
@@ -247,9 +254,12 @@ export class InvoiceCreditService {
       await this._dataSource.query(
         `SELECT n."invoiceId", SUM(n."delta") AS "net" FROM (
            SELECT "invoiceId", "total" AS "delta" FROM "DebitNote"
+            WHERE "invoiceId" = ANY($1)
            UNION ALL
            SELECT "invoiceId", -"total" AS "delta" FROM "CreditNote"
+            WHERE "invoiceId" = ANY($1)
          ) n GROUP BY n."invoiceId"`,
+        [creditIds],
       );
     const notesByInvoice = new Map(
       noteRows.map((n) => [n.invoiceId, Number(n.net)]),
