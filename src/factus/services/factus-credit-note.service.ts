@@ -9,6 +9,8 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InvoiceRepository } from '../../shared/repositories/invoice.repository';
 import { CreditNoteRepository } from '../../shared/repositories/creditNote.repository';
+import { DebitNoteRepository } from '../../shared/repositories/debitNote.repository';
+import { DebitNote } from '../../shared/entities/debitNote.entity';
 import { Invoice } from '../../shared/entities/invoice.entity';
 import { InvoiceDetaill } from '../../shared/entities/invoiceDetaill.entity';
 import { CreditNote } from '../../shared/entities/creditNote.entity';
@@ -28,7 +30,7 @@ import {
 } from '../interfaces/credit-note.interfaces';
 import { sumFactusItemsTotal } from '../utils/factus-math.utils';
 import { isSaleTypeCode } from '../../shared/constants/invoiceType.constants';
-import { resolveFactusPayment } from '../utils/factus-payment.utils';
+import { buildFactusPaymentDetail } from '../utils/factus-payment.utils';
 import {
   classifyDianErrors,
   extractDocumentErrors,
@@ -55,6 +57,7 @@ export class FactusCreditNoteService {
   constructor(
     private readonly invoiceRepository: InvoiceRepository,
     private readonly creditNoteRepository: CreditNoteRepository,
+    private readonly debitNoteRepository: DebitNoteRepository,
     private readonly factusClient: FactusClient,
     private readonly billsService: FactusBillsService,
     private readonly invoiceService: FactusInvoiceService,
@@ -106,6 +109,7 @@ export class FactusCreditNoteService {
     isTotal: boolean,
     concept: string,
     selection: { invoiceDetailId: number; quantity: number }[],
+    debitNoteIds: number[] = [],
   ): string {
     const norm = [...selection]
       .map((s) => ({ id: Number(s.invoiceDetailId), q: Number(s.quantity) }))
@@ -113,7 +117,12 @@ export class FactusCreditNoteService {
       .map((s) => `${s.id}:${s.q}`)
       .join(',');
     return createHash('sha1')
-      .update(`${isTotal ? 'T' : 'P'}|${concept}|${norm}`)
+      .update(
+        `${isTotal ? 'T' : 'P'}|${concept}|${norm}|D:${[...debitNoteIds]
+          .map(Number)
+          .sort((a, b) => a - b)
+          .join(',')}`,
+      )
       .digest('hex');
   }
 
@@ -126,6 +135,7 @@ export class FactusCreditNoteService {
       note.isTotal,
       note.correctionConceptCode,
       sel,
+      note.neutralizedDebitNoteIds ?? [],
     );
   }
 
@@ -206,6 +216,7 @@ export class FactusCreditNoteService {
     correctionConceptCode: string;
     existingNotes: CreditNote[];
     selected: { detail: InvoiceDetaill; quantity: number }[];
+    debitToNeutralize: DebitNote[];
   }> {
     const invoice = await this.loadInvoice(invoiceId);
 
@@ -229,7 +240,7 @@ export class FactusCreditNoteService {
     }
 
     const isTotal = !!options.isTotal;
-    const correctionConceptCode =
+    let correctionConceptCode =
       options.correctionConceptCode ?? (isTotal ? '2' : '1');
 
     const activeDetails = (invoice.invoiceDetails ?? []).filter(
@@ -248,6 +259,25 @@ export class FactusCreditNoteService {
     // Lo ya acreditado por ítem en notas crédito previas, para que la suma de
     // todas las NC nunca exceda lo realmente vendido (evita sobre-acreditar).
     const alreadyCredited = this.getCreditedQuantities(existingNotes);
+
+    // Notas débito que esta nota va a neutralizar: las de la factura que NINGUNA
+    // nota crédito anterior haya cubierto ya.
+    let debitToNeutralize: DebitNote[] = [];
+    if (options.includeDebitNotes) {
+      const covered = new Set(
+        existingNotes.flatMap((n) => n.neutralizedDebitNoteIds ?? []),
+      );
+      const debitNotes = await this.debitNoteRepository.find({
+        where: { invoiceId },
+        order: { createdAt: 'ASC' },
+      });
+      debitToNeutralize = debitNotes.filter((d) => !covered.has(d.debitNoteId));
+      if (debitToNeutralize.length === 0) {
+        throw new BadRequestException(
+          'La factura no tiene notas débito pendientes de anular.',
+        );
+      }
+    }
     const remainingOf = (d: InvoiceDetaill): number =>
       Number(d.amount ?? 1) - (alreadyCredited.get(d.invoiceDetailId) ?? 0);
 
@@ -257,14 +287,16 @@ export class FactusCreditNoteService {
       selected = activeDetails
         .map((detail) => ({ detail, quantity: remainingOf(detail) }))
         .filter((s) => s.quantity > 0);
-      if (selected.length === 0) {
+      // Con notas débito por neutralizar puede no quedar nada de la factura por
+      // acreditar (ya estaba anulada) y aun así haber algo que hacer.
+      if (selected.length === 0 && debitToNeutralize.length === 0) {
         throw new BadRequestException(
           'La factura ya fue acreditada en su totalidad.',
         );
       }
     } else {
       const selections = options.items ?? [];
-      if (selections.length === 0) {
+      if (selections.length === 0 && debitToNeutralize.length === 0) {
         throw new BadRequestException(
           'Una nota crédito parcial requiere al menos un ítem.',
         );
@@ -290,25 +322,78 @@ export class FactusCreditNoteService {
       });
     }
 
-    return { invoice, isTotal, correctionConceptCode, existingNotes, selected };
+    // Sin ítems de factura, la nota solo neutraliza notas débito: no es una
+    // anulación de la factura sino una rebaja (concepto 3), salvo que el usuario
+    // haya elegido otro.
+    if (selected.length === 0 && !options.correctionConceptCode) {
+      correctionConceptCode = '3';
+    }
+
+    return {
+      invoice,
+      isTotal,
+      correctionConceptCode,
+      existingNotes,
+      selected,
+      debitToNeutralize,
+    };
+  }
+
+  /**
+   * Ítems de la nota crédito que cubren las notas débito a neutralizar: los
+   * MISMOS conceptos que se cobraron (mismo precio, cantidad e impuesto, tomados
+   * del snapshot que se envió a Factus), con su descripción prefijada. Así el
+   * total de la nota cubre exactamente lo cobrado, y el redondeo por línea es el
+   * mismo de la nota débito original.
+   */
+  private buildDebitNeutralizationItems(
+    debitNotes: DebitNote[],
+  ): Record<string, unknown>[] {
+    const items: Record<string, unknown>[] = [];
+    for (const debit of debitNotes) {
+      const snapshot = debit.itemsSnapshot as Record<string, unknown>[] | null;
+      if (!Array.isArray(snapshot) || snapshot.length === 0) {
+        throw new BadRequestException(
+          `La nota débito ${debit.factusNumber ?? debit.referenceCode} no tiene ` +
+            'sus conceptos guardados: no se puede neutralizar desde aquí.',
+        );
+      }
+      const label = debit.factusNumber ?? debit.referenceCode;
+      snapshot.forEach((item, index) => {
+        items.push({
+          ...item,
+          code_reference: `NDA-${debit.debitNoteId}-${index + 1}`,
+          name: `Anulación ${label}: ${String(item.name ?? '')}`.slice(0, 200),
+        });
+      });
+    }
+    return items;
   }
 
   private async doCreateForInvoice(
     invoiceId: number,
     options: CreateCreditNoteOptions,
   ): Promise<FactusCreditNoteResult> {
-    const { invoice, isTotal, correctionConceptCode, existingNotes, selected } =
-      await this.prepareNote(invoiceId, options);
+    const {
+      invoice,
+      isTotal,
+      correctionConceptCode,
+      existingNotes,
+      selected,
+      debitToNeutralize,
+    } = await this.prepareNote(invoiceId, options);
 
     // Selección normalizada (lo que se persiste como snapshot) y su hash.
     const selection = selected.map((s) => ({
       invoiceDetailId: s.detail.invoiceDetailId,
       quantity: s.quantity,
     }));
+    const neutralizedDebitNoteIds = debitToNeutralize.map((d) => d.debitNoteId);
     const requestHash = this.computeRequestHash(
       isTotal,
       correctionConceptCode,
       selection,
+      neutralizedDebitNoteIds,
     );
 
     // Dedupe idempotente: si ya existe una NC con contenido idéntico emitida
@@ -331,15 +416,17 @@ export class FactusCreditNoteService {
 
     // Reutiliza el mapeo de ítems/impuestos y del cliente del servicio de
     // facturas (misma lógica, una sola fuente de verdad).
-    const items = selected.map(({ detail, quantity }) =>
-      this.invoiceService.mapDetail(detail, quantity),
-    );
+    const items = [
+      ...selected.map(({ detail, quantity }) =>
+        this.invoiceService.mapDetail(detail, quantity),
+      ),
+      ...this.buildDebitNeutralizationItems(debitToNeutralize),
+    ];
     const customer = this.invoiceService.buildCustomer(invoice);
 
     // Total exacto (neto + IVA por línea, redondeado a 2 decimales como Factus).
     const total = sumFactusItemsTotal(items as any);
 
-    const payment = resolveFactusPayment(invoice.payType?.code);
 
     // Determinista: secuencial sobre las notas YA persistidas (ver
     // factus-reference.utils). Antes llevaba `Date.now()`, así que cada
@@ -350,7 +437,14 @@ export class FactusCreditNoteService {
       invoice.code,
       existingNotes.length,
     );
-    const observation = (options.observation ?? '').slice(0, 250);
+    const observation = (
+      options.observation ??
+      (debitToNeutralize.length
+        ? `Anula también ${debitToNeutralize
+            .map((d) => d.factusNumber ?? d.referenceCode)
+            .join(', ')}`
+        : '')
+    ).slice(0, 250);
 
     // Rango de numeración explícito, igual que en facturas y documento soporte.
     //
@@ -374,11 +468,7 @@ export class FactusCreditNoteService {
       bill_number: invoice.factusNumber,
       observation,
       payment_details: [
-        {
-          payment_form: payment.form,
-          payment_method_code: payment.method,
-          amount: total.toFixed(2),
-        },
+        buildFactusPaymentDetail(invoice, total.toFixed(2)),
       ],
       // Factus EXIGE customer aunque se referencie la factura por bill_number
       // (la omisión solo aplica con bill_id entero). Se reusa el del cliente.
@@ -450,6 +540,7 @@ export class FactusCreditNoteService {
       observation,
       result,
       selection,
+      neutralizedDebitNoteIds,
     });
 
     // Devolución de inventario por lo acreditado (igual que al eliminar una
@@ -505,8 +596,14 @@ export class FactusCreditNoteService {
     invoiceId: number,
     options: CreateCreditNoteOptions,
   ): Promise<FactusCreditNoteResult> {
-    const { invoice, isTotal, correctionConceptCode, existingNotes, selected } =
-      await this.prepareNote(invoiceId, options);
+    const {
+      invoice,
+      isTotal,
+      correctionConceptCode,
+      existingNotes,
+      selected,
+      debitToNeutralize,
+    } = await this.prepareNote(invoiceId, options);
 
     // La referencia se calcula igual que en la emisión, PERO se puede pasar a
     // mano. Hace falta para las notas emitidas antes del 13 sep 2026: llevaban
@@ -529,9 +626,12 @@ export class FactusCreditNoteService {
       );
     }
 
-    const items = selected.map(({ detail, quantity }) =>
-      this.invoiceService.mapDetail(detail, quantity),
-    );
+    const items = [
+      ...selected.map(({ detail, quantity }) =>
+        this.invoiceService.mapDetail(detail, quantity),
+      ),
+      ...this.buildDebitNeutralizationItems(debitToNeutralize),
+    ];
     const total = sumFactusItemsTotal(items as any);
     const result = this.extractResult(raw, referenceCode, total);
 
@@ -570,6 +670,7 @@ export class FactusCreditNoteService {
       observation: (options.observation ?? '').slice(0, 250),
       result,
       selection,
+      neutralizedDebitNoteIds: debitToNeutralize.map((d) => d.debitNoteId),
     });
 
     // El inventario tampoco se devolvió cuando falló la emisión, así que la
@@ -1082,6 +1183,7 @@ export class FactusCreditNoteService {
       observation: string;
       result: FactusCreditNoteResult;
       selection: { invoiceDetailId: number; quantity: number }[];
+      neutralizedDebitNoteIds?: number[];
     },
   ): Promise<CreditNote> {
     const note = this.creditNoteRepository.create({
@@ -1097,6 +1199,9 @@ export class FactusCreditNoteService {
       observation: data.observation || undefined,
       // Guarda la SELECCIÓN ({invoiceDetailId, quantity}) — base del "restante".
       itemsSnapshot: data.selection,
+      neutralizedDebitNoteIds: data.neutralizedDebitNoteIds?.length
+        ? data.neutralizedDebitNoteIds
+        : undefined,
     });
     const saved = await this.creditNoteRepository.save(note);
     this.logger.log(

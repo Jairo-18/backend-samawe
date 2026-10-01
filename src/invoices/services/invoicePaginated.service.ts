@@ -222,10 +222,21 @@ export class InvoicedPaginatedService {
       });
     }
 
-    query
-      .skip(skip)
-      .take(take)
-      .orderBy('invoice.createdAt', params.order ?? 'DESC');
+    query.skip(skip).take(take);
+    if (params.sortBy === 'factusNumber') {
+      // El consecutivo de Factus es el orden legal de emisión ante la DIAN y NO
+      // sigue a la fecha de la venta (se puede emitir días después). Se ordena
+      // por su parte numérica ("A852" → 852); los aún sin número van primero.
+      query
+        .addSelect(
+          `CAST(NULLIF(REGEXP_REPLACE(invoice.factusNumber, '[^0-9]', '', 'g'), '') AS BIGINT)`,
+          'factus_seq',
+        )
+        .orderBy('factus_seq', params.order ?? 'DESC', 'NULLS FIRST')
+        .addOrderBy('invoice.createdAt', 'DESC');
+    } else {
+      query.orderBy('invoice.createdAt', params.order ?? 'DESC');
+    }
 
     const [items, itemCount] = await query.getManyAndCount();
 
@@ -241,6 +252,49 @@ export class InvoicedPaginatedService {
       this.aggregateNotes(this._adjustmentNoteRepository, 'an', invoiceIds),
       this.aggregateNotes(this._debitNoteRepository, 'dn', invoiceIds),
     ]);
+
+    // Abonos por factura, solo de las ventas a crédito de esta página: la lista
+    // muestra "Abonado / Saldo" sin pedir una consulta por fila.
+    const creditIds = items
+      .filter(
+        (i) =>
+          i.payType?.code === 'CRE' &&
+          ['FV', 'FVE'].includes(i.invoiceType?.code ?? ''),
+      )
+      .map((i) => i.invoiceId);
+    const paidByInvoice = new Map<number, number>();
+    if (creditIds.length) {
+      const paidRows = await this._invoiceRepository.manager.query(
+        `SELECT "invoiceId", COALESCE(SUM("amount"), 0) AS "paid"
+           FROM "InvoicePayment" WHERE "invoiceId" = ANY($1) GROUP BY "invoiceId"`,
+        [creditIds],
+      );
+      for (const r of paidRows) paidByInvoice.set(Number(r.invoiceId), Number(r.paid));
+    }
+
+    // Notas débito AÚN SIN neutralizar por factura: sin esto la lista no puede
+    // saber si una factura anulada todavía tiene algo que anular.
+    const pendingDebitByInvoice = new Map<number, { count: number; total: number }>();
+    if (invoiceIds.length) {
+      const pendingRows: Array<{ invoiceId: number; count: string; total: string }> =
+        await this._invoiceRepository.manager.query(
+          `SELECT d."invoiceId", COUNT(*) AS "count", COALESCE(SUM(d."total"), 0) AS "total"
+             FROM "DebitNote" d
+            WHERE d."invoiceId" = ANY($1)
+              AND NOT EXISTS (
+                SELECT 1 FROM "CreditNote" c
+                 WHERE c."invoiceId" = d."invoiceId"
+                   AND d."debitNoteId" = ANY(c."neutralizedDebitNoteIds"))
+            GROUP BY d."invoiceId"`,
+          [invoiceIds],
+        );
+      for (const r of pendingRows) {
+        pendingDebitByInvoice.set(Number(r.invoiceId), {
+          count: Number(r.count),
+          total: Number(r.total),
+        });
+      }
+    }
 
     const transformedItems = items.map((invoice) => {
       let totalTaxes = 0;
@@ -358,13 +412,30 @@ export class InvoicedPaginatedService {
             }
           : undefined,
         factusNumber: invoice.factusNumber ?? undefined,
+        factusPublicUrl: invoice.factusPublicUrl ?? undefined,
         creditNotesCount: creditAgg.get(invoice.invoiceId)?.count ?? 0,
         creditNotesTotal: creditAgg.get(invoice.invoiceId)?.total ?? 0,
         adjustmentNotesCount: adjustmentAgg.get(invoice.invoiceId)?.count ?? 0,
         adjustmentNotesTotal: adjustmentAgg.get(invoice.invoiceId)?.total ?? 0,
         debitNotesCount: debitAgg.get(invoice.invoiceId)?.count ?? 0,
         debitNotesTotal: debitAgg.get(invoice.invoiceId)?.total ?? 0,
+        pendingDebitNotesCount:
+          pendingDebitByInvoice.get(invoice.invoiceId)?.count ?? 0,
+        pendingDebitNotesTotal:
+          pendingDebitByInvoice.get(invoice.invoiceId)?.total ?? 0,
       };
+
+      if (creditIds.includes(invoice.invoiceId)) {
+        const owed = Math.max(
+          Number(invoice.total) +
+            (simplified.debitNotesTotal ?? 0) -
+            (simplified.creditNotesTotal ?? 0),
+          0,
+        );
+        const paid = paidByInvoice.get(invoice.invoiceId) ?? 0;
+        simplified.creditPaid = Math.round(Math.min(paid, owed) * 100) / 100;
+        simplified.creditBalance = Math.round(Math.max(owed - paid, 0) * 100) / 100;
+      }
 
       return plainToInstance(Invoice, simplified);
     });

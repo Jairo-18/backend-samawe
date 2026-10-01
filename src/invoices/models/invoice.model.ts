@@ -66,6 +66,17 @@
     name: Record<string, string>;
   };
   factusNumber?: string;
+  /** Enlace público de la factura en Factus (representación gráfica oficial). */
+  factusPublicUrl?: string;
+  /**
+   * Solo ventas a crédito (FV/FVE): lo abonado y lo que falta por cobrar, ya
+   * neto de notas crédito/débito. Ausentes en el resto de facturas.
+   */
+  /** Notas débito que ninguna nota crédito ha neutralizado todavía. */
+  pendingDebitNotesCount?: number;
+  pendingDebitNotesTotal?: number;
+  creditPaid?: number;
+  creditBalance?: number;
   /** Notas crédito de la factura: conteo y total acreditado (para badge/neto). */
   creditNotesCount?: number;
   creditNotesTotal?: number;

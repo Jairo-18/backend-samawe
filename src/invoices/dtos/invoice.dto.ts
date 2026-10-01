@@ -307,6 +307,21 @@ export class UserMiniDto {
 
   @ApiProperty({ type: () => IdentificationTypeDto })
   identificationType: IdentificationTypeDto;
+
+  @ApiProperty({
+    required: false,
+    example: 'ZZ',
+    description:
+      'tribute_code DIAN: 01 IVA, 04 INC, ZA IVA e INC, ZZ no aplica (no responsable)',
+  })
+  factusTributeCode?: string;
+
+  @ApiProperty({
+    required: false,
+    example: '2',
+    description: 'legal_organization_code DIAN: 1 jurídica, 2 natural',
+  })
+  factusLegalOrganizationCode?: string;
 }
 
 export class ProductMiniDto {

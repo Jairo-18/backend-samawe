@@ -127,11 +127,18 @@ export class InvoiceExcelService {
     };
   }
 
+  private typeName(inv: any): string {
+    const n = inv.invoiceType?.name;
+    return typeof n === 'string' ? n : (n?.es ?? n?.en ?? '');
+  }
+
   private sortInvoices(invoices: any[]): any[] {
     const typeOrder = (inv: any): number => {
-      const name = (inv.invoiceType?.name ?? '').toUpperCase();
-      if (name.includes('VENTA')) return 1;
-      if (name.includes('COMPRA')) return 2;
+      // `name` puede llegar como {es,en} (traducible), no como string; el
+      // `code` es estable: FV/FVE ventas, FC compras, el resto (CO) al final.
+      const code = String(inv.invoiceType?.code ?? '').toUpperCase();
+      if (code === 'FV' || code === 'FVE') return 1;
+      if (code === 'FC') return 2;
       return 3;
     };
     return [...invoices].sort((a, b) => {
@@ -188,7 +195,7 @@ export class InvoiceExcelService {
         inv.startDate
           ? new Date(inv.startDate).toLocaleDateString('es-CO')
           : '',
-        inv.invoiceType?.name ?? '',
+        this.typeName(inv),
         clientName,
         inv.user?.identificationNumber ?? '',
         inv.user?.identificationType?.name ?? '',
@@ -235,7 +242,7 @@ export class InvoiceExcelService {
       const invHeaderRow = ws2.addRow([
         `FACTURA: ${inv.code ?? ''}`,
         `Fecha: ${fecha}`,
-        `Tipo: ${inv.invoiceType?.name ?? ''}`,
+        `Tipo: ${this.typeName(inv)}`,
         `Cliente: ${clientName}`,
         `${inv.user?.identificationType?.name ?? ''}: ${inv.user?.identificationNumber ?? ''}`,
         `Tipo persona: ${inv.user?.personType?.name ?? ''}`,

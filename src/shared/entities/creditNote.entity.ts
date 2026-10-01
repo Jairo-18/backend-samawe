@@ -67,6 +67,17 @@ export class CreditNote {
   @Column({ type: 'jsonb', nullable: true })
   itemsSnapshot?: unknown;
 
+  /**
+   * Ids de las notas débito que esta nota crédito neutraliza. Factus no ofrece
+   * anular una nota débito validada (solo eliminarla ANTES de validar); la
+   * salida estándar del mercado es una nota crédito sobre la FACTURA que cubra
+   * también el valor de la nota débito. Este campo deja constancia de cuáles
+   * quedaron cubiertas, para no neutralizarlas dos veces y para saber cuáles
+   * siguen pendientes.
+   */
+  @Column('int', { array: true, nullable: true })
+  neutralizedDebitNoteIds?: number[];
+
   // ── Reversión de inventario ───────────────────────────────────────────────
   //
   // La nota ya es válida ante la DIAN antes de tocar el inventario, así que la

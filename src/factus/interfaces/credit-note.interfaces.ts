@@ -28,6 +28,13 @@ export interface CreateCreditNoteOptions {
    */
   referenceCode?: string;
   observation?: string;
+  /**
+   * También neutraliza las notas débito aún pendientes de la factura: la nota
+   * crédito lleva, además de los ítems de la factura, un ítem por cada concepto
+   * de esas notas débito. Puede ir sola (sin ítems de factura) cuando la
+   * factura ya estaba anulada y solo queda la nota débito.
+   */
+  includeDebitNotes?: boolean;
 }
 
 /** Resultado normalizado de una nota crédito validada por Factus. */

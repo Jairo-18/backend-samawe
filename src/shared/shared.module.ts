@@ -51,6 +51,7 @@ import { Excursion } from './entities/excursion.entity';
 import { InvoiceType } from './entities/invoiceType.entity';
 import { InvoiceTypeRepository } from './repositories/invoiceType.repository';
 import { InvoiceDetaill } from './entities/invoiceDetaill.entity';
+import { InvoicePayment } from './entities/invoicePayment.entity';
 import { BalanceRepository } from './repositories/balance.repository';
 import { Balance } from './entities/balance.entity';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -173,6 +174,7 @@ export class SharedModule {
           IdentificationType,
           Invoice,
           InvoiceDetaill,
+          InvoicePayment,
           InvoiceType,
           CreditNote,
           DebitNote,

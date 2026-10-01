@@ -36,12 +36,19 @@ export interface InvoiceNoteTotals {
   debited: Map<number, number>;
   /** Notas de ajuste: **resta** al total del documento soporte (compra). */
   adjusted: Map<number, number>;
+  /**
+   * Parte de las notas débito que una nota crédito ya neutralizó. Esa nota
+   * crédito acredita factura + débito, así que el tope de lo restable sube en
+   * esa misma cantidad (ver `netSaleTotal`).
+   */
+  neutralized?: Map<number, number>;
 }
 
 const emptyTotals = (): InvoiceNoteTotals => ({
   credited: new Map(),
   debited: new Map(),
   adjusted: new Map(),
+  neutralized: new Map(),
 });
 
 const sumByInvoice = (
@@ -77,6 +84,15 @@ export const getNoteTotalsByInvoice = async (
   sumByInvoice(totals.debited, debitNotes);
   sumByInvoice(totals.adjusted, adjustmentNotes);
 
+  // Notas débito ya cubiertas por alguna nota crédito.
+  const coveredIds = new Set(
+    creditNotes.flatMap((c) => c.neutralizedDebitNoteIds ?? []),
+  );
+  sumByInvoice(
+    totals.neutralized!,
+    debitNotes.filter((d) => coveredIds.has(d.debitNoteId)),
+  );
+
   return totals;
 };
 
@@ -102,7 +118,12 @@ export const netSaleTotal = (
   totals: InvoiceNoteTotals,
 ): number =>
   gross -
-  clampToGross(gross, totals.credited.get(invoiceId) ?? 0) +
+  // El tope es el bruto MÁS lo neutralizado: una nota crédito que cubre factura
+  // y nota débito resta más que el bruto y aun así es correcta.
+  clampToGross(
+    gross + (totals.neutralized?.get(invoiceId) ?? 0),
+    totals.credited.get(invoiceId) ?? 0,
+  ) +
   (totals.debited.get(invoiceId) ?? 0);
 
 /** Compra neta de un documento soporte: bruto − notas de ajuste. */

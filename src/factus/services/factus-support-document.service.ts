@@ -16,8 +16,12 @@ import { FactusApiError } from '../errors/factus-api.error';
 import { FactusBillsService } from './factus-bills.service';
 import { FactusInvoiceService } from './factus-invoice.service';
 import { isPurchaseTypeCode } from '../../shared/constants/invoiceType.constants';
+import {
+  FACTUS_LEGAL_ORGANIZATION_NATURAL,
+  FACTUS_TRIBUTE_NO_APLICA,
+} from '../../shared/constants/factusCustomer.constants';
 import { sumFactusItemsTotal } from '../utils/factus-math.utils';
-import { resolveFactusPayment } from '../utils/factus-payment.utils';
+import { buildFactusPaymentDetail } from '../utils/factus-payment.utils';
 import {
   classifyDianErrors,
   extractDocumentErrors,
@@ -85,6 +89,11 @@ export class FactusSupportDocumentService {
     }
 
     this.validateInvoice(invoice);
+    // Reglas DIAN de a quién se le puede emitir y con qué precios. Se evalúan
+    // ANTES de llamar a Factus: un rechazo de la DIAN llega en mitad de la
+    // emisión y deja documentos pendientes que hay que borrar a mano.
+    this.assertEligibleProvider(this.invoiceService.buildCustomer(invoice));
+    this.assertNoTaxes(invoice);
 
     const provider = this.buildProviderFor(invoice);
     const items = this.buildItems(invoice);
@@ -93,7 +102,6 @@ export class FactusSupportDocumentService {
     // uno a 2 decimales), para que payment_details cuadre y no rechace con 422.
     const total = sumFactusItemsTotal(items as any);
 
-    const payment = resolveFactusPayment(invoice.payType?.code);
 
     const numberingRangeId = await this.billsService.resolveNumberingRangeId(
       'supportDocument',
@@ -111,11 +119,7 @@ export class FactusSupportDocumentService {
       numbering_range_id: numberingRangeId,
       observation: (invoice.observations ?? '').slice(0, 250),
       payment_details: [
-        {
-          payment_form: payment.form,
-          payment_method_code: payment.method,
-          amount: total.toFixed(2),
-        },
+        buildFactusPaymentDetail(invoice, total.toFixed(2)),
       ],
       cash_rounding_amount: '0.00',
       provider,
@@ -230,6 +234,75 @@ export class FactusSupportDocumentService {
     if (!invoice.invoiceDetails?.some((d) => !d.deletedAt)) {
       throw new BadRequestException('La compra no tiene ítems.');
     }
+    if (!(Number(invoice.total) > 0)) {
+      throw new BadRequestException(
+        'La compra está en $0: no se puede emitir un documento soporte sin valor.',
+      );
+    }
+  }
+
+  /**
+   * A quién se le puede emitir un documento soporte: a un sujeto NO OBLIGADO a
+   * facturar. Para esta aplicación eso es una **persona natural no responsable
+   * de IVA** (la regla del contador y de la DIAN): una persona jurídica o un
+   * responsable de IVA/INC está obligado a expedir factura, y lo que
+   * corresponde es recibir la suya, no emitirle un documento soporte.
+   *
+   * Se lee de la clasificación que ya viaja al proveedor (`buildCustomer`), no
+   * de una derivación aparte, para que lo validado sea exactamente lo enviado.
+   * Es público para poder probarlo sin base de datos.
+   */
+  assertEligibleProvider(customer: Record<string, string | undefined>): void {
+    const name = customer.names ?? customer.company ?? 'El proveedor';
+
+    if (customer.legal_organization_code !== FACTUS_LEGAL_ORGANIZATION_NATURAL) {
+      throw new BadRequestException(
+        `"${name}" está registrado como persona jurídica. El documento soporte ` +
+          'solo se emite a personas naturales no obligadas a facturar: una ' +
+          'empresa debe expedir su propia factura electrónica. Pídele la factura; ' +
+          'si en realidad es una persona natural, corrige "Tipo de persona" en su ficha.',
+      );
+    }
+
+    if ((customer.tribute_code || FACTUS_TRIBUTE_NO_APLICA) !== FACTUS_TRIBUTE_NO_APLICA) {
+      throw new BadRequestException(
+        `"${name}" está registrado como responsable de impuestos (IVA o consumo). ` +
+          'Un responsable está obligado a facturar, así que no se le emite ' +
+          'documento soporte: pídele su factura electrónica. Si no es responsable, ' +
+          'corrige "Responsable de IVA" en su ficha.',
+      );
+    }
+  }
+
+  /**
+   * El proveedor no obligado a facturar no es responsable de IVA, así que la
+   * compra NO lleva impuestos (regla del contador). Si algún ítem trae un
+   * impuesto, se rechaza en vez de mandarlo o de quitarlo en silencio: quitarlo
+   * bajaría el total del documento por debajo de lo que de verdad se pagó.
+   */
+  assertNoTaxes(invoice: Invoice): void {
+    const items = invoice.invoiceDetails
+      .filter((d) => !d.deletedAt)
+      .map((d) => this.invoiceService.mapDetail(d));
+    const taxed = FactusSupportDocumentService.findTaxedItems(items);
+    if (taxed.length) {
+      throw new BadRequestException(
+        `La compra tiene ítems con impuesto (${taxed.join(', ')}). Un proveedor ` +
+          'no obligado a facturar no es responsable de IVA y no cobra impuestos: ' +
+          'edita esos ítems a "Sin impuesto" y vuelve a emitir.',
+      );
+    }
+  }
+
+  /** Nombres de los ítems cuyo impuesto es mayor que cero. */
+  static findTaxedItems(items: Record<string, unknown>[]): string[] {
+    return items
+      .filter((item) =>
+        ((item.taxes ?? []) as { rate?: string }[]).some(
+          (t) => parseFloat(t?.rate ?? '0') > 0,
+        ),
+      )
+      .map((item) => String(item.name ?? ''));
   }
 
   /**

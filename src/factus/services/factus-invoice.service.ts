@@ -20,7 +20,7 @@ import { InvoiceTypeRepository } from '../../shared/repositories/invoiceType.rep
 import { DocumentLockService } from '../../shared/services/documentLock.service';
 import { MailAttachment } from '../../shared/interfaces/mail.interface';
 import { sumFactusItemsTotal } from '../utils/factus-math.utils';
-import { resolveFactusPayment } from '../utils/factus-payment.utils';
+import { buildFactusPaymentDetail } from '../utils/factus-payment.utils';
 import {
   classifyDianErrors,
   extractDocumentErrors,
@@ -766,6 +766,12 @@ export class FactusInvoiceService {
     if (!invoice.invoiceDetails?.length) {
       throw new BadRequestException('La factura no tiene ítems');
     }
+    // La DIAN rechaza un documento por $0 y el intento gasta un consecutivo.
+    if (!(Number(invoice.total) > 0)) {
+      throw new BadRequestException(
+        'La factura está en $0: no se puede emitir un documento electrónico sin valor.',
+      );
+    }
   }
 
   /**
@@ -850,8 +856,6 @@ export class FactusInvoiceService {
     invoice: Invoice,
     numberingRangeId: number,
   ): Record<string, unknown> {
-    const payment = resolveFactusPayment(invoice.payType?.code);
-
     const customer = this.buildCustomer(invoice);
 
     const items = invoice.invoiceDetails
@@ -867,11 +871,11 @@ export class FactusInvoiceService {
     // payment_details.amount cuadre exactamente con el total que calcula Factus.
     const factusTotal = sumFactusItemsTotal(items as any);
 
-    const paymentDetail: Record<string, string | number> = {
-      payment_form: payment.form,
-      payment_method_code: payment.method,
-      amount: factusTotal.toFixed(2),
-    };
+    const paymentDetail = buildFactusPaymentDetail(
+      invoice,
+      factusTotal.toFixed(2),
+      true,
+    );
 
     return {
       reference_code: invoice.code,

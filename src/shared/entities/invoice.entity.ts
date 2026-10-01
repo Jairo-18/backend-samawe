@@ -17,6 +17,7 @@ import { InvoiceDetaill } from './invoiceDetaill.entity';
 import { InvoiceType } from './invoiceType.entity';
 import { StateType } from './stateType.entity';
 import { Organizational } from './organizational.entity';
+import { InvoicePayment } from './invoicePayment.entity';
 
 @Unique('UQ_invoice_code_per_type', ['code', 'invoiceType'])
 @Entity({ name: 'Invoice' })
@@ -152,6 +153,23 @@ export class Invoice {
 
   @Column({ type: 'date' })
   startDate: Date;
+
+  // Crédito (payType CRE). `creditDays` = plazo total elegido (30, 60 o 90) y
+  // `creditStartDate` el día desde el que corre. El plan de cuotas NO se guarda:
+  // se deriva (una cuota cada 30 días, ver InvoiceCreditService) para que no se
+  // desfase si cambia el total. `dueDate` es el vencimiento FINAL y es lo único
+  // que viaja a la DIAN (`payment_details[].due_date`).
+  @Column({ type: 'smallint', nullable: true })
+  creditDays?: number | null;
+
+  @Column({ type: 'date', nullable: true })
+  creditStartDate?: string | null;
+
+  @Column({ type: 'date', nullable: true })
+  dueDate?: string | null;
+
+  @OneToMany(() => InvoicePayment, (payment) => payment.invoice)
+  payments?: InvoicePayment[];
 
   @Column({ type: 'date' })
   endDate: Date;

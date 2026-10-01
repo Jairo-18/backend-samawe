@@ -868,11 +868,19 @@ export class InvoicePdfService {
       },
     });
     // No descargamos recursos externos (el logo va embebido como data URI) ni
-    // leemos NADA del disco: con Helvetica ya no hay ningún `.ttf` que abrir,
-    // así que la política local se cierra por completo. Antes dejaba pasar la
-    // carpeta de fuentes del paquete.
+    // leemos nada del disco. OJO: pdfmake pasa el NOMBRE de la fuente
+    // ('Helvetica-Bold') por la política local como si fuera una ruta, aunque
+    // sea una fuente estándar que no abre ningún archivo. Cerrarla con
+    // `() => false` hacía fallar TODO PDF ("Access to local file denied ...
+    // Helvetica-Bold"). Se deja pasar solo esos cuatro nombres exactos.
+    const standardFonts = new Set([
+      'Helvetica',
+      'Helvetica-Bold',
+      'Helvetica-Oblique',
+      'Helvetica-BoldOblique',
+    ]);
     pdfmake.setUrlAccessPolicy(() => false);
-    pdfmake.setLocalAccessPolicy(() => false);
+    pdfmake.setLocalAccessPolicy((path: string) => standardFonts.has(path));
   }
 
   /**

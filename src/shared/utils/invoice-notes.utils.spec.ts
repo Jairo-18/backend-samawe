@@ -8,10 +8,12 @@ const totals = (
   credited: [number, number][] = [],
   debited: [number, number][] = [],
   adjusted: [number, number][] = [],
+  neutralized: [number, number][] = [],
 ): InvoiceNoteTotals => ({
   credited: new Map(credited),
   debited: new Map(debited),
   adjusted: new Map(adjusted),
+  neutralized: new Map(neutralized),
 });
 
 describe('netSaleTotal', () => {
@@ -82,5 +84,45 @@ describe('tope de lo restado (redondeo de Factus)', () => {
     expect(netSaleTotal(500, 970, totals([[970, 500.05]], [[970, 120]]))).toBe(
       120,
     );
+  });
+});
+
+describe('netSaleTotal con notas débito neutralizadas', () => {
+  // Factura 1000 + nota débito 120, luego una nota crédito de 1120 que cubre
+  // las dos (práctica del mercado: Factus no anula notas débito validadas).
+  it('factura + débito cubiertos por una nota crédito dejan la venta en cero', () => {
+    expect(
+      netSaleTotal(
+        1000,
+        970,
+        totals([[970, 1120]], [[970, 120]], [], [[970, 120]]),
+      ),
+    ).toBe(0);
+  });
+
+  it('sin marcar la nota débito como neutralizada, el tope recorta y queda su valor', () => {
+    // Comportamiento previo: lo acreditado nunca pasa del bruto.
+    expect(
+      netSaleTotal(1000, 970, totals([[970, 1120]], [[970, 120]])),
+    ).toBe(120);
+  });
+
+  it('neutralizar solo la nota débito (factura intacta) deja la venta en su bruto', () => {
+    expect(
+      netSaleTotal(1000, 970, totals([[970, 120]], [[970, 120]], [], [[970, 120]])),
+    ).toBe(1000);
+  });
+
+  it('factura anulada con la nota débito pendiente: queda el valor de la débito', () => {
+    expect(
+      netSaleTotal(1000, 970, totals([[970, 1000]], [[970, 120]])),
+    ).toBe(120);
+  });
+
+  it('esa misma factura, tras una segunda nota crédito que neutraliza la débito: cero', () => {
+    // Dos notas crédito: 1000 (anula la factura) y 120 (cubre solo la débito).
+    expect(
+      netSaleTotal(1000, 970, totals([[970, 1120]], [[970, 120]], [], [[970, 120]])),
+    ).toBe(0);
   });
 });

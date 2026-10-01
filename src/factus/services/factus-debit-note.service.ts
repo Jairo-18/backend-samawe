@@ -25,7 +25,7 @@ import {
   FactusDebitNoteResult,
 } from '../interfaces/debit-note.interfaces';
 import { round2, sumFactusItemsTotal } from '../utils/factus-math.utils';
-import { resolveFactusPayment } from '../utils/factus-payment.utils';
+import { buildFactusPaymentDetail } from '../utils/factus-payment.utils';
 import { isSaleTypeCode } from '../../shared/constants/invoiceType.constants';
 import {
   classifyDianErrors,
@@ -167,7 +167,6 @@ export class FactusDebitNoteService {
     }
 
     const customer = this.invoiceService.buildCustomer(invoice);
-    const payment = resolveFactusPayment(invoice.payType?.code);
 
     // Rango explícito, igual que factura, nota crédito y documento soporte.
     const numberingRangeId = await this.billsService.resolveNumberingRangeId(
@@ -195,11 +194,7 @@ export class FactusDebitNoteService {
       bill_number: invoice.factusNumber,
       observation,
       payment_details: [
-        {
-          payment_form: payment.form,
-          payment_method_code: payment.method,
-          amount: total.toFixed(2),
-        },
+        buildFactusPaymentDetail(invoice, total.toFixed(2)),
       ],
       customer,
       items,

@@ -25,7 +25,7 @@ import {
   FactusAdjustmentNoteResult,
 } from '../interfaces/adjustment-note.interfaces';
 import { sumFactusItemsTotal } from '../utils/factus-math.utils';
-import { resolveFactusPayment } from '../utils/factus-payment.utils';
+import { buildFactusPaymentDetail } from '../utils/factus-payment.utils';
 import {
   classifyDianErrors,
   extractDocumentErrors,
@@ -239,7 +239,6 @@ export class FactusAdjustmentNoteService {
     );
 
     const total = sumFactusItemsTotal(items as any);
-    const payment = resolveFactusPayment(invoice.payType?.code);
 
     const numberingRangeId = await this.billsService.resolveNumberingRangeId(
       'adjustmentNote',
@@ -264,11 +263,7 @@ export class FactusAdjustmentNoteService {
       correction_concept_code: correctionConceptCode,
       observation,
       payment_details: [
-        {
-          payment_form: payment.form,
-          payment_method_code: payment.method,
-          amount: total.toFixed(2),
-        },
+        buildFactusPaymentDetail(invoice, total.toFixed(2)),
       ],
       cash_rounding_amount: '0.00',
       provider,

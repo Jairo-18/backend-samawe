@@ -58,6 +58,11 @@ class CreateCreditNoteDto {
   @MaxLength(250)
   observation?: string;
 
+  /** Neutraliza también las notas débito pendientes de la factura. */
+  @IsOptional()
+  @IsBoolean()
+  includeDebitNotes?: boolean;
+
   /** Solo para /recover: reference_code real del documento en Factus. */
   @IsOptional()
   @IsString()

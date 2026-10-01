@@ -429,6 +429,11 @@ export class InvoiceService {
           code: invoice.user.identificationType.code,
           name: invoice.user.identificationType.name,
         },
+        // Clasificación ante la DIAN: la pantalla de compras la usa para saber si
+        // el proveedor cobra impuestos (un no responsable de IVA no los cobra).
+        factusTributeCode: invoice.user.factusTributeCode ?? undefined,
+        factusLegalOrganizationCode:
+          invoice.user.factusLegalOrganizationCode ?? undefined,
       },
       employee: invoice.employee && {
         userId: invoice.employee.userId,

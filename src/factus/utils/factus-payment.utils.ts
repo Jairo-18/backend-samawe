@@ -25,21 +25,67 @@ const PAYMENT_METHOD_MAP: Record<string, FactusPayment> = {
 };
 
 /** Medio de pago para un `PayType.code`; cae en consignación si no se conoce. */
-export const resolveFactusPayment = (payTypeCode?: string | null): FactusPayment => {
-  const payment = PAYMENT_METHOD_MAP[payTypeCode ?? ''] ?? PAYMENT_METHOD_MAP.TRAS;
+export const resolveFactusPayment = (
+  payTypeCode?: string | null,
+): FactusPayment => {
+  return PAYMENT_METHOD_MAP[payTypeCode ?? ''] ?? PAYMENT_METHOD_MAP.TRAS;
+};
 
-  // Factus exige `payment_details[].due_date` cuando `payment_form` es '2'
-  // (crédito), y hoy ningún documento tiene de dónde sacar ese plazo — los
-  // 5 servicios de emisión arman `payment_details` sin due_date. Antes de
-  // mandarle a Factus un documento que va a rechazar (o, peor, que acepte
-  // incompleto), cortamos acá con un error claro.
-  if (payment.form === '2') {
+/** Fecha de hoy en Colombia (YYYY-MM-DD), no en UTC: a las 8 pm ya es "mañana" en UTC. */
+const todayBogota = (): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(
+    new Date(),
+  );
+
+const toIsoDate = (value: Date | string): string =>
+  typeof value === 'string'
+    ? value.slice(0, 10)
+    : new Date(value.getTime() - value.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 10);
+
+/**
+ * Un elemento de `payment_details` para el documento.
+ *
+ * Si el pago es a crédito (`payment_form '2'`) Factus exige `due_date`
+ * (`YYYY-MM-DD`): la sacamos de `Invoice.dueDate`, el vencimiento FINAL. Las
+ * cuotas y los abonos son control interno de samawe y no viajan a la DIAN.
+ *
+ * `strict` (solo la factura de venta): rechaza un plazo ya vencido, porque la
+ * DIAN no acepta un vencimiento anterior a la emisión. En las notas y el
+ * documento soporte —que se emiten después— se sube al día de hoy.
+ */
+export const buildFactusPaymentDetail = (
+  invoice: { payType?: { code?: string | null } | null; dueDate?: Date | string | null },
+  amount: string,
+  strict = false,
+): Record<string, string> => {
+  const payment = resolveFactusPayment(invoice.payType?.code);
+  const detail: Record<string, string> = {
+    payment_form: payment.form,
+    payment_method_code: payment.method,
+    amount,
+  };
+  if (payment.form !== '2') return detail;
+
+  if (!invoice.dueDate) {
     throw new BadRequestException(
-      'El medio de pago "crédito" (payment_form "2") no está soportado: ' +
-        'Factus exige due_date en payment_details y el sistema todavía no ' +
-        'define un plazo de crédito.',
+      'La factura es a crédito pero no tiene plazo: defina 30, 60 o 90 días ' +
+        'antes de emitirla (Factus exige la fecha de vencimiento).',
     );
   }
-
-  return payment;
+  const due = toIsoDate(invoice.dueDate);
+  const today = todayBogota();
+  if (due < today) {
+    if (strict) {
+      throw new BadRequestException(
+        `El vencimiento de la factura (${due}) ya pasó. Vuelva a definir el ` +
+          'plazo de crédito para que cuente desde hoy antes de emitirla.',
+      );
+    }
+    detail.due_date = today;
+  } else {
+    detail.due_date = due;
+  }
+  return detail;
 };

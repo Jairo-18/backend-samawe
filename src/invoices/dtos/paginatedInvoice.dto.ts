@@ -3,7 +3,13 @@
   ResponsePaginationDto,
 } from './../../shared/dtos/pagination.dto';
 import { OrderConst } from './../../shared/constants/order.constants';
-import { IsBoolean, IsDateString, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsIn,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { GetInvoiceWithDetailsDto } from './invoice.dto';
@@ -14,6 +20,15 @@ export class PaginatedListInvoicesParamsDto extends ParamsPaginationDto {
   @ApiPropertyOptional({ enum: OrderConst, default: OrderConst.DESC })
   @IsOptional()
   override order?: OrderConst = OrderConst.DESC;
+
+  @ApiPropertyOptional({
+    enum: ['factusNumber'],
+    description:
+      'Criterio de orden. Por defecto la fecha de creación; `factusNumber` ordena por el consecutivo de Factus (los sin número, primero).',
+  })
+  @IsOptional()
+  @IsIn(['factusNumber'])
+  sortBy?: 'factusNumber';
 
   @ApiProperty({
     example: 2,
