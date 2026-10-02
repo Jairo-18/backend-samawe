@@ -150,6 +150,7 @@ export class AuthController {
       userId: data.user.userId,
       roleTypeId: data.user.roleType?.roleTypeId || '',
       roleTypeName: data.user.roleType?.name?.['es'] || '',
+      roleTypeCode: data.user.roleType?.code || '',
       accessSessionId: data.session.accessSessionId,
       organizationalId: data.user.organizationalId || '',
       avatarUrl: data.user.avatarUrl || '',
