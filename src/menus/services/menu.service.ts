@@ -193,7 +193,7 @@ export class MenuService {
     }
 
     const order = params.order === 'DESC' ? 'DESC' : 'ASC';
-    qb.orderBy(`menu.name->>'es'`, order);
+    qb.orderBy('menu.createdAt', order).addOrderBy('menu.menuId', order);
 
     const itemCount = await qb
       .clone()
@@ -207,7 +207,7 @@ export class MenuService {
     const menuIds = await qb
       .clone()
       .select('menu.menuId', 'menuId')
-      .addSelect(`menu.name->>'es'`, 'name')
+      .addSelect('menu.createdAt', 'createdAt')
       .distinct(true)
       .offset(skip)
       .limit(params.perPage ?? 10)
@@ -226,7 +226,8 @@ export class MenuService {
         .leftJoinAndSelect('menu.products', 'directProduct')
         .leftJoinAndSelect('directProduct.images', 'directProductImages')
         .where('menu.menuId IN (:...menuIds)', { menuIds })
-        .orderBy(`menu.name->>'es'`, order)
+        .orderBy('menu.createdAt', order)
+        .addOrderBy('menu.menuId', order)
         .addOrderBy('productImages.position', 'ASC')
         .addOrderBy('directProductImages.position', 'ASC')
         .getMany();
@@ -260,7 +261,7 @@ export class MenuService {
     }
 
     const order = params.order === 'DESC' ? 'DESC' : 'ASC';
-    qb.orderBy(`menu.name->>'es'`, order);
+    qb.orderBy('menu.createdAt', order).addOrderBy('menu.menuId', order);
 
     const itemCount = await qb
       .clone()
@@ -274,7 +275,7 @@ export class MenuService {
     const menuIds = await qb
       .clone()
       .select('menu.menuId', 'menuId')
-      .addSelect(`menu.name->>'es'`, 'name')
+      .addSelect('menu.createdAt', 'createdAt')
       .distinct(true)
       .offset(skip)
       .limit(params.perPage ?? 10)
@@ -291,7 +292,8 @@ export class MenuService {
         .leftJoinAndSelect('menu.products', 'directProduct')
         .leftJoinAndSelect('directProduct.images', 'directProductImages')
         .where('menu.menuId IN (:...menuIds)', { menuIds })
-        .orderBy(`menu.name->>'es'`, order)
+        .orderBy('menu.createdAt', order)
+        .addOrderBy('menu.menuId', order)
         .addOrderBy('productImages.position', 'ASC')
         .addOrderBy('directProductImages.position', 'ASC')
         .getMany();
@@ -306,6 +308,31 @@ export class MenuService {
 
     const pageMetaDto = new PageMetaDto({ itemCount, pageOptionsDto: params });
     return new ResponsePaginationDto(data, pageMetaDto);
+  }
+
+  /** Un solo menú para su página pública; mismo shape que el listado. */
+  async findOnePublic(menuId: number): Promise<MenuPublicListItem> {
+    const menu = await this._menuRepository
+      .createQueryBuilder('menu')
+      .leftJoinAndSelect('menu.recipes', 'recipe')
+      .leftJoinAndSelect('recipe.product', 'product')
+      .leftJoinAndSelect('product.images', 'productImages')
+      .leftJoinAndSelect('menu.products', 'directProduct')
+      .leftJoinAndSelect('directProduct.images', 'directProductImages')
+      .where('menu.menuId = :menuId', { menuId })
+      .andWhere('menu.deletedAt IS NULL')
+      .orderBy('productImages.position', 'ASC')
+      .addOrderBy('directProductImages.position', 'ASC')
+      .getOne();
+
+    if (!menu) throw new NotFoundException('Menú no encontrado');
+
+    return {
+      menuId: menu.menuId,
+      name: menu.name,
+      description: menu.description,
+      dishes: this._groupRecipesByDish(menu.recipes, menu.products),
+    };
   }
 
   /**
@@ -329,6 +356,7 @@ export class MenuService {
       byProduct.set(productId, {
         productId,
         name: recipe.product.name,
+        description: recipe.product.description,
         priceSale: recipe.product.priceSale,
         images: (recipe.product.images ?? []).map((img) => ({
           productImageId: img.productImageId,
@@ -344,6 +372,7 @@ export class MenuService {
       byProduct.set(product.productId, {
         productId: product.productId,
         name: product.name,
+        description: product.description,
         priceSale: product.priceSale,
         images: (product.images ?? []).map((img) => ({
           productImageId: img.productImageId,

@@ -781,9 +781,12 @@ export class UserService {
     );
 
     if (!passwordMatch) {
+      // 400 y NO 401: el front trata cualquier 401 como sesión caducada
+      // (intenta refrescar el token y, si falla, cierra la sesión), así que
+      // equivocarse al escribir la contraseña actual echaba al usuario.
       throw new HttpException(
         'Contraseña incorrecta.',
-        HttpStatus.UNAUTHORIZED,
+        HttpStatus.BAD_REQUEST,
       );
     }
 

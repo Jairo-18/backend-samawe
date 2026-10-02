@@ -176,6 +176,8 @@ export class UserController {
   }
 
   @Post('change-password')
+  // Pide la contraseña actual: sin tope sería un oráculo para adivinarla.
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @UseGuards(AuthGuard(), RolesGuard)
   @Roles(...ALL_ROLES)
   @ChangePasswordDocs()

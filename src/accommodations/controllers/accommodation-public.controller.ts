@@ -5,6 +5,7 @@ import {
   Param,
   ParseIntPipe,
   Query,
+  Header,
 } from '@nestjs/common';
 import {
   ApiOkResponse,
@@ -110,6 +111,7 @@ export class AccommodationPublicController {
     private readonly _crudAccommodationUC: CrudAccommodationUC,
   ) {}
 
+  @Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
   @Get('most-requested')
   @ApiOperation({
     summary: 'Obtiene los 2 hospedajes más solicitados (acceso público)',
@@ -125,6 +127,7 @@ export class AccommodationPublicController {
     };
   }
 
+  @Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
   @Get('list')
   @ApiOperation({
     summary: 'Listado paginado de hospedajes para el homepage (acceso público)',
@@ -175,6 +178,7 @@ export class AccommodationPublicController {
    * Google. Va la última del controlador para que 'most-requested' y 'list' no
    * caigan en el comodín ':id'.
    */
+  @Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
   @Get(':id')
   @ApiOperation({ summary: 'Ficha de un hospedaje (acceso público)' })
   @ApiOkResponse({ description: 'Datos públicos del hospedaje' })

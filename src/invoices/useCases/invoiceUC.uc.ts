@@ -1,4 +1,5 @@
-﻿import { InvoicedPaginatedService } from './../services/invoicePaginated.service';
+﻿import { MyInvoicesQueryDto } from '../dtos/myInvoices.dto';
+import { InvoicedPaginatedService } from './../services/invoicePaginated.service';
 import { PaginatedListExcursionsParamsDto } from './../../excursions/dtos/crudExcursion.dto';
 import { Injectable } from '@nestjs/common';
 import { InvoiceService } from './../services/invoice.service';
@@ -28,8 +29,19 @@ export class InvoiceUC {
     return this._invoiceService.create(createInvoiceDto, employeeId);
   }
 
-  async findOne(invoiceId: number): Promise<GetInvoiceWithDetailsDto> {
-    return this._invoiceService.findOne(invoiceId);
+  async findOne(
+    invoiceId: number,
+    requester?: { userId: string; isStaff: boolean },
+  ): Promise<GetInvoiceWithDetailsDto> {
+    return this._invoiceService.findOne(invoiceId, requester);
+  }
+
+  async findMineOne(userId: string, invoiceId: number) {
+    return this._invoiceService.findMineOne(userId, invoiceId);
+  }
+
+  async findMine(userId: string, params?: MyInvoicesQueryDto) {
+    return this._invoiceService.findMine(userId, params);
   }
 
   async update(updateInvoiceDto: UpdateInvoiceDto) {

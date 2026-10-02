@@ -32,6 +32,7 @@ import {
   Request,
   ParseArrayPipe,
   Res,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
@@ -47,6 +48,7 @@ import {
   ExportTransferInvoicesExcelDocs,
   ExportSelectedInvoicesExcelDocs,
 } from '../decorators/invoice.decorators';
+import { MyInvoicesQueryDto } from '../dtos/myInvoices.dto';
 import { InvoiceUC } from '../useCases/invoiceUC.uc';
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
@@ -79,6 +81,7 @@ export class InvoiceController {
     return await this._invoiceUC.paginatedList(params);
   }
 
+  @Roles(...STAFF_ROLES)
   @Post()
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @CreateInvoiceDocs()
@@ -99,15 +102,40 @@ export class InvoiceController {
     };
   }
 
+  /**
+   * Historial del cliente autenticado. Va ANTES de ':id' para que 'mine' no
+   * caiga en el comodín. Cualquier rol con sesión ve SOLO lo suyo: el filtro es
+   * el userId del token.
+   */
+  @Get('mine')
+  async getMine(@Request() req: any, @Query() params: MyInvoicesQueryDto) {
+    return this._invoiceUC.findMine(req.user.userId, params);
+  }
+
+  /** Detalle propio. Antes de ':id' para que 'mine/..' no caiga en el comodín. */
+  @Get('mine/:id')
+  async getMineOne(
+    @Param('id', ParseIntPipe) invoiceId: number,
+    @Request() req: any,
+  ) {
+    const data = await this._invoiceUC.findMineOne(req.user.userId, invoiceId);
+    return { statusCode: HttpStatus.OK, data };
+  }
+
   @Get(':id')
   @FindOneInvoiceDocs()
   async findOne(
     @Param('id') invoiceId: number,
+    @Request() req: any,
   ): Promise<{ statusCode: number; data: GetInvoiceWithDetailsDto }> {
-    const invoice = await this._invoiceUC.findOne(invoiceId);
+    const invoice = await this._invoiceUC.findOne(invoiceId, {
+      userId: req.user.userId,
+      isStaff: STAFF_ROLES.includes(req.user.roleType?.code as RolesUser),
+    });
     return { statusCode: HttpStatus.OK, data: invoice };
   }
 
+  @Roles(...STAFF_ROLES)
   @Delete(':id')
   @DeleteInvoiceDocs()
   async remove(
@@ -121,6 +149,7 @@ export class InvoiceController {
     };
   }
 
+  @Roles(...STAFF_ROLES)
   @Post('invoice/:invoiceId/details')
   @CreateDetailsDocs()
   async createDetails(
@@ -137,6 +166,7 @@ export class InvoiceController {
     };
   }
 
+  @Roles(...STAFF_ROLES)
   @Patch(':id')
   @UpdateInvoiceDocs()
   async update(
@@ -151,6 +181,7 @@ export class InvoiceController {
     };
   }
 
+  @Roles(...STAFF_ROLES)
   @Delete('details/:detailId')
   @DeleteDetailDocs()
   async deleteDetail(

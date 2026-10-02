@@ -26,6 +26,10 @@ export class ReviewUC {
     return this._reviewService.findPaginated(organizationalId, page, perPage, search, filter, sort);
   }
 
+  async findMine(userId: string) {
+    return this._reviewService.findMine(userId);
+  }
+
   async findOne(reviewId: number) {
     return this._reviewService.findOne(reviewId);
   }

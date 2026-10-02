@@ -39,6 +39,15 @@ export class ReviewService {
     });
   }
 
+  /** Reseñas del propio usuario, con sus respuestas. Filtra por el userId del token. */
+  async findMine(userId: string): Promise<Review[]> {
+    return this._reviewRepository.find({
+      where: { user: { userId } },
+      relations: ['replies', 'replies.user', 'organizational'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   async findPaginated(
     organizationalId: string,
     page: number = 1,

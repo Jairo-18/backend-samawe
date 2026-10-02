@@ -136,6 +136,19 @@ export class ReviewController {
     };
   }
 
+  /** Va ANTES de ':id' para que 'mine' no caiga en el ParseIntPipe. */
+  @Get('mine')
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(...ALL_ROLES)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reseñas del usuario autenticado' })
+  async findMine(@Request() req: any) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this._reviewUC.findMine(req.user.userId),
+    };
+  }
+
   @Get(':id')
   @UseGuards(AuthGuard(), RolesGuard)
   @Roles(...ALL_ROLES)

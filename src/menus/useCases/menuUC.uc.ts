@@ -37,6 +37,10 @@ export class MenuUC {
     return await this._menuService.findAllPaginatedPublic(params);
   }
 
+  async findOnePublic(menuId: number): Promise<MenuPublicListItem> {
+    return await this._menuService.findOnePublic(menuId);
+  }
+
   async delete(menuId: number): Promise<void> {
     return await this._menuService.delete(menuId);
   }

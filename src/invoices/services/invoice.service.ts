@@ -21,6 +21,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { Invoice } from './../../shared/entities/invoice.entity';
+import { MyInvoicesQueryDto } from '../dtos/myInvoices.dto';
 import {
   isPurchaseTypeCode,
   isSaleTypeCode,
@@ -41,6 +42,11 @@ import {
 } from '../dtos/invoice.dto';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { In, EntityManager } from 'typeorm';
+import {
+  ParamsPaginationDto,
+  ResponsePaginationDto,
+} from './../../shared/dtos/pagination.dto';
+import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
 import { RecipeService } from '../../recipes/services/recipe.service';
 
 @Injectable()
@@ -325,7 +331,180 @@ export class InvoiceService {
     return invoiceEntity;
   }
 
-  async findOne(invoiceId: number): Promise<GetInvoiceWithDetailsDto> {
+  /**
+   * Historial del propio cliente: sus estadías (detalles con alojamiento) y sus
+   * pedidos de comida (detalles con producto). Se filtra SIEMPRE por el userId
+   * del token, nunca por un parámetro del cliente.
+   *
+   * Devuelve un resumen y no la factura completa: no lleva costos de compra ni
+   * datos del empleado, solo lo que el huésped necesita ver.
+   */
+  async findMine(
+    userId: string,
+    params: MyInvoicesQueryDto = {},
+  ): Promise<ResponsePaginationDto<MyInvoiceItem>> {
+    const page = params.page ?? 1;
+    const perPage = params.perPage ?? 5;
+
+    // Primero los ids de la página (con el filtro de tipo y el orden), después
+    // las relaciones de esas facturas: paginar sobre el join con los renglones
+    // contaría renglones, no facturas.
+    const qb = this._invoiceRepository
+      .createQueryBuilder('i')
+      .innerJoin('i.user', 'u')
+      .where('u.userId = :userId', { userId });
+
+    if (params.kind === 'stays') {
+      qb.andWhere(
+        'EXISTS (SELECT 1 FROM "InvoiceDetaill" d WHERE d."invoiceId" = i."invoiceId" AND d."accommodationId" IS NOT NULL)',
+      );
+    } else if (params.kind === 'orders') {
+      qb.andWhere(
+        'EXISTS (SELECT 1 FROM "InvoiceDetaill" d WHERE d."invoiceId" = i."invoiceId" AND d."productId" IS NOT NULL)',
+      );
+    }
+
+    const itemCount = await qb.clone().getCount();
+    const rows = await qb
+      .clone()
+      .select('i.invoiceId', 'invoiceId')
+      .orderBy('i.createdAt', 'DESC')
+      .addOrderBy('i.invoiceId', 'DESC')
+      .offset((page - 1) * perPage)
+      .limit(perPage)
+      .getRawMany<{ invoiceId: number }>();
+    const ids = rows.map((r) => r.invoiceId);
+
+    const invoices = ids.length
+      ? await this._invoiceRepository.find({
+          where: { invoiceId: In(ids) },
+          relations: [
+            'invoiceType',
+            'stateType',
+            'invoiceDetails',
+            'invoiceDetails.product',
+            'invoiceDetails.accommodation',
+            'invoiceDetails.excursion',
+          ],
+          order: { createdAt: 'DESC', invoiceId: 'DESC' },
+        })
+      : [];
+
+    const items = invoices.map((invoice) => {
+      const details = invoice.invoiceDetails ?? [];
+      const stays = details
+        .filter((d) => d.accommodation)
+        .map((d) => ({
+          name: d.accommodation.name,
+          startDate: localDay(d.startDate),
+          endDate: localDay(d.endDate),
+        }));
+      const orders = details
+        .filter((d) => d.product)
+        .map((d) => ({ name: d.product.name, amount: Number(d.amount ?? 1) }));
+      const excursions = details
+        .filter((d) => d.excursion)
+        .map((d) => ({ name: d.excursion.name }));
+
+      return {
+        invoiceId: invoice.invoiceId,
+        code: invoice.code,
+        createdAt: invoice.createdAt?.toISOString(),
+        total: Number(invoice.total ?? 0),
+        invoiceType: invoice.invoiceType && {
+          code: invoice.invoiceType.code,
+          name: invoice.invoiceType.name,
+        },
+        stateType: invoice.stateType && {
+          code: invoice.stateType.code,
+          name: invoice.stateType.name,
+        },
+        stays,
+        orders,
+        excursions,
+      };
+    });
+
+    return new ResponsePaginationDto(
+      items,
+      new PageMetaDto({
+        itemCount,
+        pageOptionsDto: { page, perPage } as ParamsPaginationDto,
+      }),
+    );
+  }
+
+  /**
+   * Detalle de UNA factura propia. Solo lo que el cliente necesita: renglones
+   * con nombre, cantidad y precios de venta, impuestos, pago y tiempos de la
+   * orden. Sin `priceBuy` (costo del hotel) ni datos del empleado. 404 si la
+   * factura no existe o no es suya, sin distinguir los dos casos.
+   */
+  async findMineOne(userId: string, invoiceId: number): Promise<MyInvoiceDetail> {
+    const invoice = await this._invoiceRepository.findOne({
+      where: { invoiceId, user: { userId } },
+      relations: [
+        'invoiceType',
+        'payType',
+        'paidType',
+        'stateType',
+        'invoiceDetails',
+        'invoiceDetails.product',
+        'invoiceDetails.accommodation',
+        'invoiceDetails.excursion',
+      ],
+    });
+    if (!invoice) throw new NotFoundException('Factura no encontrada');
+
+    const lines = (invoice.invoiceDetails ?? []).map((d) => {
+      const item = d.accommodation ?? d.product ?? d.excursion;
+      return {
+        kind: d.accommodation ? 'stay' : d.product ? 'product' : 'excursion',
+        name: item?.name as Record<string, string>,
+        amount: Number(d.amount ?? 1),
+        unitPrice: Number(d.priceWithTax ?? 0),
+        subtotal: Number(d.subtotal ?? 0),
+        startDate: localDay(d.startDate),
+        endDate: localDay(d.endDate),
+      };
+    });
+
+    return {
+      invoiceId: invoice.invoiceId,
+      code: invoice.code,
+      createdAt: invoice.createdAt?.toISOString(),
+      tableNumber: invoice.tableNumber ?? undefined,
+      orderTime: invoice.orderTime?.toISOString(),
+      readyTime: invoice.readyTime?.toISOString(),
+      servedTime: invoice.servedTime?.toISOString(),
+      subtotalWithoutTax: Number(invoice.subtotalWithoutTax ?? 0),
+      taxes: Number(invoice.subtotalWithTax ?? 0),
+      total: Number(invoice.total ?? 0),
+      paidTotal: Number(invoice.paidTotal ?? 0),
+      invoiceType: invoice.invoiceType && {
+        code: invoice.invoiceType.code,
+        name: invoice.invoiceType.name,
+      },
+      payType: invoice.payType && {
+        code: invoice.payType.code,
+        name: invoice.payType.name,
+      },
+      paidType: invoice.paidType && {
+        code: invoice.paidType.code,
+        name: invoice.paidType.name,
+      },
+      stateType: invoice.stateType && {
+        code: invoice.stateType.code,
+        name: invoice.stateType.name,
+      },
+      lines,
+    };
+  }
+
+  async findOne(
+    invoiceId: number,
+    requester?: { userId: string; isStaff: boolean },
+  ): Promise<GetInvoiceWithDetailsDto> {
     const invoice = await this._invoiceRepository.findOne({
       where: { invoiceId },
       relations: [
@@ -348,6 +527,12 @@ export class InvoiceService {
     });
 
     if (!invoice) {
+      throw new NotFoundException('Factura no encontrada');
+    }
+
+    // Un cliente solo puede ver sus propias facturas. 404 y no 403: así no se
+    // puede averiguar qué ids existen.
+    if (requester && !requester.isStaff && invoice.user?.userId !== requester.userId) {
       throw new NotFoundException('Factura no encontrada');
     }
 
@@ -946,4 +1131,59 @@ export class InvoiceService {
       }
     });
   }
+}
+
+export interface MyInvoiceItem {
+  invoiceId: number;
+  code: string;
+  createdAt?: string;
+  total: number;
+  invoiceType?: { code: string; name: Record<string, string> };
+  stateType?: { code: string; name: Record<string, string> };
+  stays: { name: Record<string, string>; startDate?: string; endDate?: string }[];
+  orders: { name: Record<string, string>; amount: number }[];
+  excursions: { name: Record<string, string> }[];
+}
+
+/**
+ * Día calendario (`YYYY-MM-DD`) de un `timestamp without time zone`.
+ *
+ * `toISOString()` convierte a UTC: una entrada a las 20:00 de Colombia (UTC-5)
+ * es la 01:00 del DÍA SIGUIENTE en UTC, y la estadía aparecía empezando un día
+ * tarde. `pg` ya interpreta esos timestamps en hora local del proceso, así que
+ * hay que leer los componentes locales.
+ */
+function localDay(value?: Date | string | null): string | undefined {
+  if (!value) return undefined;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return undefined;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+export interface MyInvoiceDetail {
+  invoiceId: number;
+  code: string;
+  createdAt?: string;
+  tableNumber?: string;
+  orderTime?: string;
+  readyTime?: string;
+  servedTime?: string;
+  subtotalWithoutTax: number;
+  taxes: number;
+  total: number;
+  paidTotal: number;
+  invoiceType?: { code: string; name: Record<string, string> };
+  payType?: { code: string; name: Record<string, string> };
+  paidType?: { code: string; name: Record<string, string> };
+  stateType?: { code: string; name: Record<string, string> };
+  lines: {
+    kind: string;
+    name: Record<string, string>;
+    amount: number;
+    unitPrice: number;
+    subtotal: number;
+    startDate?: string;
+    endDate?: string;
+  }[];
 }

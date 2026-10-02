@@ -1,6 +1,7 @@
 export interface MenuPublicDishItem {
   productId: number;
   name: Record<string, string>;
+  description?: Record<string, string>;
   priceSale: number;
   images: { productImageId: number; imageUrl: string; publicId: string }[];
 }
