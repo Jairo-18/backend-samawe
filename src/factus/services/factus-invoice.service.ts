@@ -172,22 +172,7 @@ export class FactusInvoiceService {
 
     const result = this.extractResult(raw);
 
-    // Factus deduplica por reference_code y, si ya existe, devuelve el
-    // documento EXISTENTE. Si ese número ya pertenece a otra factura nuestra,
-    // no se emitió nada nuevo: abortar antes de adjuntarle un número ajeno.
-    if (result.billNumber) {
-      const owner = await this.invoiceRepository.findOne({
-        where: { factusNumber: result.billNumber },
-        withDeleted: true,
-      });
-      if (owner && owner.invoiceId !== invoiceId) {
-        throw new ConflictException(
-          `Factus devolvió el documento ${result.billNumber}, que ya pertenece a la ` +
-            `factura ${owner.invoiceId} (reference_code "${invoice.code}" repetido). ` +
-            'La factura NO quedó emitida; no se le asignó ese número.',
-        );
-      }
-    }
+    await this.assertBillNotOwnedByAnother(invoice, result);
 
     // Solo damos la factura por emitida si la DIAN la validó de verdad.
     //
@@ -549,6 +534,8 @@ export class FactusInvoiceService {
       };
     }
 
+    await this.assertRecoverableCode(invoice);
+
     // Un único reference_code: el de la factura. Ya no se prueban sufijos
     // -v2…-v6 porque la emisión tampoco los genera.
     const raw = await this.billsService.getBillByReference(invoice.code);
@@ -603,6 +590,8 @@ export class FactusInvoiceService {
               : 'No elimines nada. Reintenta POST :id/send más tarde con los mismos datos.',
       });
     }
+
+    await this.assertBillNotOwnedByAnother(invoice, result);
 
     invoice.factusReferenceCode = invoice.code;
     await this.saveFactusResult(invoice, result);
@@ -1006,6 +995,52 @@ export class FactusInvoiceService {
       publicUrl: bill?.links?.public_url ?? null,
       createdAt: bill?.created_at ?? new Date().toISOString(),
     };
+  }
+
+  /**
+   * Factus deduplica por reference_code y, si ya existe, devuelve el documento
+   * EXISTENTE. Si ese número ya pertenece a otra factura nuestra, no se emitió
+   * (ni se recuperó) nada propio: abortar antes de adjuntarle un número ajeno.
+   */
+  private async assertBillNotOwnedByAnother(
+    invoice: Invoice,
+    result: FactusBillResult,
+  ): Promise<void> {
+    if (!result.billNumber) return;
+    const owner = await this.invoiceRepository.findOne({
+      where: { factusNumber: result.billNumber },
+      withDeleted: true,
+    });
+    if (owner && owner.invoiceId !== invoice.invoiceId) {
+      throw new ConflictException(
+        `Factus devolvió el documento ${result.billNumber}, que ya pertenece a la ` +
+          `factura ${owner.invoiceId} (reference_code "${invoice.code}" repetido). ` +
+          'La factura NO quedó emitida; no se le asignó ese número.',
+      );
+    }
+  }
+
+  /**
+   * Al recuperar NO se puede renumerar (el documento ya existe en Factus con el
+   * código actual como reference_code), así que si ese código ya está tomado en
+   * la serie FVE por otra factura se rechaza con un mensaje claro: el bill que
+   * Factus devolvería sería el de la otra factura.
+   */
+  private async assertRecoverableCode(invoice: Invoice): Promise<void> {
+    const fveId = await this.resolveInvoiceTypeId('FVE');
+    if (invoice.invoiceType?.invoiceTypeId === fveId) return;
+    const clash = await this.invoiceRepository.findOne({
+      where: { code: invoice.code, invoiceType: { invoiceTypeId: fveId } },
+      withDeleted: true,
+    });
+    if (clash && clash.invoiceId !== invoice.invoiceId) {
+      throw new ConflictException(
+        `No se puede recuperar la factura ${invoice.invoiceId}: su código "${invoice.code}" ` +
+          `ya lo usa la factura electrónica ${clash.invoiceId}, y Factus buscaría ` +
+          'el documento de esa otra factura. Si nunca se emitió, usa POST :id/send, ' +
+          'que la renumera antes de emitir.',
+      );
+    }
   }
 
   /**
