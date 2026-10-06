@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -147,6 +148,8 @@ export class FactusInvoiceService {
 
     this.validateInvoiceForFactus(invoice);
 
+    await this.ensureFreeFveCode(invoice);
+
     const numberingRangeId = await this.billsService.resolveNumberingRangeId(
       'sales',
       invoice.organizational?.factusNumberingRangeId,
@@ -168,6 +171,23 @@ export class FactusInvoiceService {
     const raw = await this.billsService.createAndValidateBill(payload);
 
     const result = this.extractResult(raw);
+
+    // Factus deduplica por reference_code y, si ya existe, devuelve el
+    // documento EXISTENTE. Si ese número ya pertenece a otra factura nuestra,
+    // no se emitió nada nuevo: abortar antes de adjuntarle un número ajeno.
+    if (result.billNumber) {
+      const owner = await this.invoiceRepository.findOne({
+        where: { factusNumber: result.billNumber },
+        withDeleted: true,
+      });
+      if (owner && owner.invoiceId !== invoiceId) {
+        throw new ConflictException(
+          `Factus devolvió el documento ${result.billNumber}, que ya pertenece a la ` +
+            `factura ${owner.invoiceId} (reference_code "${invoice.code}" repetido). ` +
+            'La factura NO quedó emitida; no se le asignó ese número.',
+        );
+      }
+    }
 
     // Solo damos la factura por emitida si la DIAN la validó de verdad.
     //
@@ -986,6 +1006,50 @@ export class FactusInvoiceService {
       publicUrl: bill?.links?.public_url ?? null,
       createdAt: bill?.created_at ?? new Date().toISOString(),
     };
+  }
+
+  /**
+   * Al emitir, la factura pasa a la serie FVE conservando su `code`, y
+   * `UNIQUE (code, invoiceTypeId)` puede chocar con una FVE que ya lo use
+   * (incidente de la 1019, 6 oct 2026: Factus la emitió como A862 y el guardado
+   * reventó DESPUÉS, dejándola emitida en la DIAN pero sin registrar).
+   *
+   * Se resuelve ANTES de llamar a Factus: si el código ya está tomado en la
+   * serie FVE, se asigna el siguiente libre. Es seguro porque aún no hay
+   * documento fiscal y el `code` es también el `reference_code` que se enviará.
+   */
+  private async ensureFreeFveCode(invoice: Invoice): Promise<void> {
+    const fveId = await this.resolveInvoiceTypeId('FVE');
+    if (invoice.invoiceType?.invoiceTypeId === fveId) return;
+
+    await this.invoiceRepository.manager.transaction(async (manager) => {
+      await manager.query(`SELECT pg_advisory_xact_lock($1)`, [fveId]);
+      const repo = manager.getRepository(Invoice);
+
+      const clash = await repo.findOne({
+        where: { code: invoice.code, invoiceType: { invoiceTypeId: fveId } },
+        withDeleted: true,
+      });
+      if (!clash || clash.invoiceId === invoice.invoiceId) return;
+
+      const last = await repo
+        .createQueryBuilder('invoice')
+        .withDeleted()
+        .leftJoin('invoice.invoiceType', 'invoiceType')
+        .where('invoiceType.invoiceTypeId = :fveId', { fveId })
+        .andWhere("invoice.code ~ '^[0-9]+$'")
+        .orderBy('CAST(invoice.code AS INTEGER)', 'DESC')
+        .getOne();
+      const next = (last ? parseInt(last.code, 10) : 0) + 1;
+      const newCode = next.toString().padStart(5, '0');
+
+      this.logger.warn(
+        `Factura ${invoice.invoiceId}: el código ${invoice.code} ya existe en la ` +
+          `serie FVE (id ${clash.invoiceId}); se renumera a ${newCode} antes de emitir.`,
+      );
+      await repo.update({ invoiceId: invoice.invoiceId }, { code: newCode });
+      invoice.code = newCode;
+    });
   }
 
   private async saveFactusResult(

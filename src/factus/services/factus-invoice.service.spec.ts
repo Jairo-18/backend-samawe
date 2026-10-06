@@ -50,7 +50,7 @@ describe('FactusInvoiceService — lock de emisión', () => {
     // justo el camino en memoria — el mismo comportamiento que estos tests
     // fijaban antes, ahora verificado a través del servicio compartido.
     const service = new FactusInvoiceService(
-      {} as never,
+      { findOne: jest.fn(async () => null) } as never,
       { createAndValidateBill, resolveNumberingRangeId: jest.fn(async () => 1) } as never,
       {} as never,
       {} as never,
@@ -62,6 +62,7 @@ describe('FactusInvoiceService — lock de emisión', () => {
     const s = service as unknown as Record<string, unknown>;
     s.loadInvoice = jest.fn(async () => invoice);
     s.validateInvoiceForFactus = jest.fn();
+    s.ensureFreeFveCode = jest.fn(async () => undefined);
     s.buildPayload = jest.fn(() => ({}));
     s.extractResult = jest.fn(() => ({ ...RESULT }));
     s.dispatchPostEmissionNotifications = jest.fn();
