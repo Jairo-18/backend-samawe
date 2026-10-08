@@ -173,6 +173,7 @@ export class CrudAccommodationService {
         amountBathroom: accommodation.amountBathroom,
         priceBuy: accommodation.priceBuy,
         priceSale: accommodation.priceSale,
+        extraPersonPrice: accommodation.extraPersonPrice,
         categoryType: accommodation.categoryType
           ? {
               categoryTypeId: accommodation.categoryType.categoryTypeId,
@@ -276,6 +277,7 @@ export class CrudAccommodationService {
       amountBathroom: a.amountBathroom,
       jacuzzi: a.jacuzzi,
       priceSale: a.priceSale,
+      extraPersonPrice: a.extraPersonPrice,
       categoryType: a.categoryType
         ? {
             categoryTypeId: a.categoryType.categoryTypeId,
@@ -342,6 +344,7 @@ export class CrudAccommodationService {
       amountBathroom: a.amountBathroom,
       jacuzzi: a.jacuzzi,
       priceSale: a.priceSale,
+      extraPersonPrice: a.extraPersonPrice,
       categoryType: a.categoryType
         ? {
             categoryTypeId: a.categoryType.categoryTypeId,

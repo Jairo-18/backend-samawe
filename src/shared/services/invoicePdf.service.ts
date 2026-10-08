@@ -235,8 +235,10 @@ async function buildInvoiceDoc(
   const clientDept = invoice.user?.department?.name || '';
   const clientMuni = invoice.user?.municipality?.name || '';
   const clientEmail = invoice.user?.email || '';
+  // Una reserva hecha por el huésped no tiene empleado: se rotula su origen.
   const employeeName =
-    `${invoice.employee?.firstName || ''} ${invoice.employee?.lastName || ''}`.trim();
+    `${invoice.employee?.firstName || ''} ${invoice.employee?.lastName || ''}`.trim() ||
+    (invoice.reservationSource === 'ONLINE' ? 'RESERVACIÓN WEB' : '');
   const subtotalWithoutTax = Number(invoice.subtotalWithoutTax || 0);
   const totalVat = Number(invoice.totalVat || 0);
   const totalIco =

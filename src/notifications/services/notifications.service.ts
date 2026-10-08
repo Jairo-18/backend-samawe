@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { NotificationRepository } from '../../shared/repositories/notification.repository';
-import { Notification } from '../../shared/entities/notification.entity';
+import {
+  Notification,
+  NotificationType,
+} from '../../shared/entities/notification.entity';
+import { Not } from 'typeorm';
 import { PageMetaDto } from '../../shared/dtos/pageMeta.dto';
 import { ResponsePaginationDto } from '../../shared/dtos/pagination.dto';
 import { PaginatedNotificationParamsDto } from '../dtos/notification.dto';
@@ -51,7 +55,7 @@ export class NotificationsService {
     notifications: Record<string, ResponsePaginationDto<Notification>>;
     unreadCount: number;
   }> {
-    const states = ['ENC', 'ENT'];
+    const states = ['ENC', 'ENT', 'RSV'];
     const promises = states.map((stateCode) =>
       this.getUserNotifications(userId, {
         page: 1,
@@ -138,14 +142,17 @@ export class NotificationsService {
     notificationId: string,
     userId: string,
   ): Promise<{ deleted: boolean }> {
+    // Los avisos del estado de la reserva (para el huésped) se pueden marcar
+    // como leídos pero NO eliminar: son su constancia de la aprobación.
     const result = await this.notificationRepository.delete({
       notificationId,
       user: { userId },
+      type: Not(NotificationType.RESERVATION_STATUS),
     });
 
     if (result.affected === 0) {
       throw new NotFoundException(
-        `Notificación no encontrada o no pertenece al usuario.`,
+        `Notificación no encontrada, no pertenece al usuario o no se puede eliminar.`,
       );
     }
 
@@ -158,6 +165,7 @@ export class NotificationsService {
   async deleteAllNotifications(userId: string): Promise<{ affected: number }> {
     const result = await this.notificationRepository.delete({
       user: { userId },
+      type: Not(NotificationType.RESERVATION_STATUS),
     });
     return { affected: result.affected || 0 };
   }

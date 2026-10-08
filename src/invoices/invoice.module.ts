@@ -11,6 +11,8 @@ import { InvoiceCreditService } from './services/invoiceCredit.service';
 import { InvoiceCreditController } from './controllers/invoiceCredit.controller';
 import { ReceivablesController } from './controllers/receivables.controller';
 import { RecipeModule } from '../recipes/recipe.module';
+import { ReservationController } from './controllers/reservation.controller';
+import { ReservationService } from './services/reservation.service';
 
 @Module({
   imports: [
@@ -22,6 +24,7 @@ import { RecipeModule } from '../recipes/recipe.module';
     InvoiceController,
     InvoiceCreditController,
     ReceivablesController,
+    ReservationController,
   ],
   providers: [
     InvoiceService,
@@ -30,7 +33,8 @@ import { RecipeModule } from '../recipes/recipe.module';
     InvoicedPaginatedService,
     InvoiceExcelService,
     InvoiceCreditService,
+    ReservationService,
   ],
-  exports: [InvoiceService, InvoiceDetailService],
+  exports: [InvoiceService, InvoiceDetailService, ReservationService],
 })
 export class InvoiceModule {}

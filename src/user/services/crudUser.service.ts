@@ -10,7 +10,26 @@ import {
   PaginatedListUsersParamsDto,
   PaginatedUserSelectParamsDto,
 } from '../dtos/crudUser.dto';
-import { Equal, FindOptionsWhere, ILike } from 'typeorm';
+import { And, Equal, FindOptionsWhere, ILike, Not } from 'typeorm';
+import { WEB_RESERVATION_USER_DOCUMENT } from '../../invoices/constants/reservation.constants';
+
+/**
+ * Deja fuera al usuario interno "RESERVACIÓN WEB" (el empleado de las reservas
+ * en línea) de los listados y buscadores: no es una persona ni un cliente real.
+ * Se combina con el filtro de documento que ya traiga cada condición.
+ */
+const withoutInternalUsers = (
+  clauses: FindOptionsWhere<User>[],
+): FindOptionsWhere<User>[] => {
+  const notInternal = Not(WEB_RESERVATION_USER_DOCUMENT);
+  const list = clauses.length ? clauses : [{}];
+  return list.map((clause) => ({
+    ...clause,
+    identificationNumber: clause.identificationNumber
+      ? And(clause.identificationNumber as any, notInternal)
+      : notInternal,
+  }));
+};
 
 @Injectable()
 export class CrudUserService {
@@ -101,7 +120,7 @@ export class CrudUserService {
     }
 
     const [entities, itemCount] = await this._userRepository.findAndCount({
-      where,
+      where: withoutInternalUsers(where),
       skip,
       take: params.perPage,
       order: { firstName: 'ASC', lastName: 'ASC' },
@@ -169,7 +188,7 @@ export class CrudUserService {
     }
 
     const [users, itemCount] = await this._userRepository.findAndCount({
-      where: where.length ? where : undefined,
+      where: withoutInternalUsers(where),
       skip,
       take: params.perPage,
       order: { firstName: 'ASC', lastName: 'ASC' },

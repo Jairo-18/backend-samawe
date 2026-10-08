@@ -411,6 +411,8 @@ export class InvoicedPaginatedService {
               name: invoice.stateType.name,
             }
           : undefined,
+        reservationSource: invoice.reservationSource ?? undefined,
+        reservationExpiresAt: invoice.reservationExpiresAt ?? undefined,
         factusNumber: invoice.factusNumber ?? undefined,
         factusPublicUrl: invoice.factusPublicUrl ?? undefined,
         creditNotesCount: creditAgg.get(invoice.invoiceId)?.count ?? 0,

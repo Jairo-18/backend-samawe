@@ -62,6 +62,11 @@ export class Accommodation {
   @Column('decimal', { precision: 10, scale: 2 })
   priceSale: number;
 
+  // Valor por noche de cada huésped por encima de `amountPerson` (las personas
+  // incluidas en `priceSale`), con el mismo impuesto incluido. 0 = no cobra extra.
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  extraPersonPrice: number;
+
   @ManyToOne(() => StateType, (stateType) => stateType.accommodation)
   @JoinColumn({ name: 'stateTypeId' })
   stateType: StateType;

@@ -171,6 +171,17 @@ export class Invoice {
   @OneToMany(() => InvoicePayment, (payment) => payment.invoice)
   payments?: InvoicePayment[];
 
+  // Reserva de estadía hecha por el huésped (ver ReservationService). NULL en
+  // todo lo que creó el personal. `reservationExpiresAt` solo existe mientras la
+  // reserva online sigue sin pago: al confirmarse el pago pasa a NULL, y si
+  // vence sin pagar el cron la libera. Es también la marca que serializa esas
+  // dos acciones: una reserva ONLINE con vencimiento NULL ya fue reclamada.
+  @Column('varchar', { length: 10, nullable: true })
+  reservationSource?: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  reservationExpiresAt?: Date | null;
+
   @Column({ type: 'date' })
   endDate: Date;
 

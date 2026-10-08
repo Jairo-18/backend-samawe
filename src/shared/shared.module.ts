@@ -59,6 +59,7 @@ import { MailsService } from './services/mails.service';
 import { InvoicePdfService } from './services/invoicePdf.service';
 import { InvoiceNotesService } from './services/invoiceNotes.service';
 import { MailTemplateService } from './services/mail-template.service';
+import { ReservationMailTemplateService } from './services/reservation-mail-template.service';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { GeneralInvoiceDetaillService } from './services/generalInvoiceDetaill.service';
 import { Notification } from './entities/notification.entity';
@@ -283,6 +284,7 @@ export class SharedModule {
         InvoicePdfService,
         InvoiceNotesService,
         MailTemplateService,
+        ReservationMailTemplateService,
         PasswordService,
         GeneralInvoiceDetaillService,
         OrganizationalRepository,
@@ -344,6 +346,7 @@ export class SharedModule {
         InvoicePdfService,
         InvoiceNotesService,
         MailTemplateService,
+        ReservationMailTemplateService,
         PasswordService,
         GeneralInvoiceDetaillService,
         UnitOfMeasureRepository,

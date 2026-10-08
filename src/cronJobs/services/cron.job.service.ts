@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { UserRepository } from '../../shared/repositories/user.repository';
 import { FactusCreditNoteService } from '../../factus/services/factus-credit-note.service';
 import { FactusAdjustmentNoteService } from '../../factus/services/factus-adjustment-note.service';
+import { ReservationService } from '../../invoices/services/reservation.service';
 
 @Injectable()
 export class CronJobService {
@@ -19,6 +20,7 @@ export class CronJobService {
     private readonly _userRepository: UserRepository,
     private readonly _factusCreditNoteService: FactusCreditNoteService,
     private readonly _factusAdjustmentNoteService: FactusAdjustmentNoteService,
+    private readonly _reservationService: ReservationService,
   ) {}
 
   @Cron('*/10 * * * *')
@@ -56,6 +58,28 @@ export class CronJobService {
   @Cron('0 */2 * * *')
   async handleReservationsJob() {
     await this._invoiceDetaillService.handleScheduledReservation();
+  }
+
+  /**
+   * Libera las reservas online que vencieron sin pago, para que las fechas
+   * vuelvan al calendario. Cada 10 min: la retención es de 24 h, así que un
+   * retraso de minutos no importa, y la consulta va contra un índice parcial.
+   */
+  @Cron('*/10 * * * *')
+  async handleExpiredReservations() {
+    try {
+      const released = await this._reservationService.releaseExpired();
+      if (released > 0) {
+        this.logger.log(
+          `Reservas online vencidas sin pago liberadas: ${released}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error liberando reservas vencidas: ${error.message}`,
+        error.stack,
+      );
+    }
   }
 
   /**

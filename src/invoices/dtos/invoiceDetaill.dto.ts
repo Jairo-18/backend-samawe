@@ -11,6 +11,7 @@ import { HttpStatus } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsNotEmpty,
   IsNumber,
@@ -93,6 +94,15 @@ export class CreateInvoiceDetailDto {
   @IsOptional()
   @IsDateString()
   endDate?: Date;
+
+  @ApiPropertyOptional({
+    description:
+      'Si el renglón nace pagado. Sin valor rige el default de la columna (true); una reserva en línea lo manda en false.',
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isPaid?: boolean;
 }
 
 export class CreateMultipleInvoiceDetailsDto {

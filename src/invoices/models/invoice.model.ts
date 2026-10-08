@@ -68,6 +68,9 @@
   factusNumber?: string;
   /** Enlace público de la factura en Factus (representación gráfica oficial). */
   factusPublicUrl?: string;
+  /** 'ONLINE' si la reservó el huésped (ver ReservationService). */
+  reservationSource?: string;
+  reservationExpiresAt?: Date;
   /**
    * Solo ventas a crédito (FV/FVE): lo abonado y lo que falta por cobrar, ya
    * neto de notas crédito/débito. Ausentes en el resto de facturas.

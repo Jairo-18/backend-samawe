@@ -79,6 +79,9 @@ class MostRequestedAccommodationSwaggerDto {
   @ApiProperty({ example: '280000.00' })
   priceSale: number;
 
+  @ApiProperty({ example: '30000.00', required: false })
+  extraPersonPrice?: number;
+
   @ApiProperty({ type: AccommodationTypeSwaggerDto, nullable: true })
   categoryType: AccommodationTypeSwaggerDto | null;
 

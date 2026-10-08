@@ -22,6 +22,7 @@ export interface AccommodationInterfacePaginatedList {
   amountBathroom?: number;
   priceBuy: number;
   priceSale: number;
+  extraPersonPrice: number;
   stateType: StateTypeClean;
   bedType: BedTypeClean;
   categoryType: CategoryTypeClean;
@@ -40,6 +41,7 @@ export interface AccommodationComplete {
   amountBathroom?: number;
   priceBuy?: number;
   priceSale?: number;
+  extraPersonPrice?: number;
   taxe?: number;
   categoryType?: CategoryTypeClean;
   bedType?: BedTypeClean;
@@ -59,6 +61,7 @@ export interface AccommodationPublicListItem {
   amountBathroom: number;
   jacuzzi: boolean;
   priceSale: number;
+  extraPersonPrice: number;
   categoryType: CategoryTypeClean | null;
   bedType: BedTypeClean | null;
   stateType: StateTypeClean | null;

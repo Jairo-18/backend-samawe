@@ -202,9 +202,16 @@ export class InvoiceService {
     };
   }
 
+  /**
+   * `employeeId` es `null` cuando no hay empleado de por medio (reserva que
+   * hace el propio huésped): todo lo que lee `employee` ya tolera NULL.
+   * `extra` son columnas que NO vienen del DTO (el cliente no debe poder
+   * mandarlas), p. ej. el origen y el vencimiento de una reserva online.
+   */
   async create(
     createInvoiceDto: CreateInvoiceDto,
-    employeeId: string,
+    employeeId: string | null,
+    extra: Partial<Invoice> = {},
   ): Promise<Invoice> {
     const invoiceType = await this._invoiceTypeRepository.findOne({
       where: { invoiceTypeId: createInvoiceDto.invoiceTypeId },
@@ -259,6 +266,9 @@ export class InvoiceService {
           .where('invoiceType.invoiceTypeId = :typeId', {
             typeId: createInvoiceDto.invoiceTypeId,
           })
+          // Solo códigos numéricos: un código con texto (p. ej. `PRUEBA-E1` de
+          // los datos de prueba) hacía fallar el CAST y con él toda creación.
+          .andWhere("invoice.code ~ '^[0-9]+$'")
           .orderBy('CAST(invoice.code AS INTEGER)', 'DESC')
           .getOne();
 
@@ -300,7 +310,7 @@ export class InvoiceService {
           invoiceDetails,
           invoiceType,
           user,
-          employee: { userId: employeeId } as User,
+          employee: employeeId ? ({ userId: employeeId } as User) : undefined,
           payType: payType ?? undefined,
           paidType: paidType ?? undefined,
           stateType: createInvoiceDto.stateTypeId
@@ -308,6 +318,7 @@ export class InvoiceService {
             : undefined,
           tableNumber: createInvoiceDto.tableNumber,
           ...(organizational && { organizational }),
+          ...extra,
         };
 
         const newInvoice = invoiceRepo.create(invoiceData);
@@ -381,6 +392,7 @@ export class InvoiceService {
           relations: [
             'invoiceType',
             'stateType',
+            'paidType',
             'invoiceDetails',
             'invoiceDetails.product',
             'invoiceDetails.accommodation',
@@ -419,6 +431,7 @@ export class InvoiceService {
           code: invoice.stateType.code,
           name: invoice.stateType.name,
         },
+        reservationStatus: onlineReservationStatus(invoice),
         stays,
         orders,
         excursions,
@@ -454,7 +467,15 @@ export class InvoiceService {
         'invoiceDetails.excursion',
       ],
     });
-    if (!invoice) throw new NotFoundException('Factura no encontrada');
+    if (!invoice) {
+      // Una reserva no aceptada o vencida se borra; el huésped la sigue viendo
+      // gracias al aviso que se le dejó. Siempre filtrado por SU usuario.
+      const closed = await this._closedReservation(userId, invoiceId);
+      if (closed) return closed;
+      throw new NotFoundException('Factura no encontrada');
+    }
+
+    const reservationStatus = onlineReservationStatus(invoice);
 
     const lines = (invoice.invoiceDetails ?? []).map((d) => {
       const item = d.accommodation ?? d.product ?? d.excursion;
@@ -481,6 +502,11 @@ export class InvoiceService {
       taxes: Number(invoice.subtotalWithTax ?? 0),
       total: Number(invoice.total ?? 0),
       paidTotal: Number(invoice.paidTotal ?? 0),
+      reservationStatus,
+      reservationExpiresAt:
+        reservationStatus === 'PENDING'
+          ? invoice.reservationExpiresAt?.toISOString()
+          : undefined,
       invoiceType: invoice.invoiceType && {
         code: invoice.invoiceType.code,
         name: invoice.invoiceType.name,
@@ -498,6 +524,53 @@ export class InvoiceService {
         name: invoice.stateType.name,
       },
       lines,
+    };
+  }
+
+  /** Resumen de una reserva en línea que ya no existe (vencida o no aceptada). */
+  private async _closedReservation(
+    userId: string,
+    invoiceId: number,
+  ): Promise<MyInvoiceDetail | null> {
+    const rows: Array<{ createdAt: Date; metadata: any }> =
+      await this._invoiceRepository.manager.query(
+        `SELECT "createdAt", "metadata" FROM "notifications"
+          WHERE "userUserId" = $1
+            AND "type" = 'RESERVATION_STATUS'
+            AND "metadata"->>'invoiceId' = $2
+            AND "metadata"->>'status' IN ('EXPIRED', 'CANCELLED')
+          ORDER BY "createdAt" DESC LIMIT 1`,
+        [userId, String(invoiceId)],
+      );
+    const row = rows[0];
+    if (!row) return null;
+    const m = row.metadata ?? {};
+    return {
+      invoiceId,
+      code: m.code ?? String(invoiceId),
+      createdAt: row.createdAt?.toISOString?.(),
+      subtotalWithoutTax: 0,
+      taxes: 0,
+      total: 0,
+      paidTotal: 0,
+      reservationStatus:
+        m.status === 'EXPIRED'
+          ? 'EXPIRED'
+          : m.wasApproved
+            ? 'CANCELLED'
+            : 'REJECTED',
+      closed: true,
+      lines: [
+        {
+          kind: 'stay',
+          name: { es: m.accommodationName ?? '' },
+          amount: 1,
+          unitPrice: 0,
+          subtotal: 0,
+          startDate: m.startDate,
+          endDate: m.endDate,
+        },
+      ],
     };
   }
 
@@ -882,6 +955,10 @@ export class InvoiceService {
       where: { invoiceId },
       relations: [
         'invoiceType',
+        // El evento `invoice.deleted` necesita saber de quién era (aviso al
+        // huésped cuando se cancela su reserva en línea).
+        'user',
+        'paidType',
         'invoiceDetails',
         'invoiceDetails.product',
         'invoiceDetails.accommodation',
@@ -1133,6 +1210,20 @@ export class InvoiceService {
   }
 }
 
+/**
+ * Estado de una reserva en línea que todavía existe: `RES` = en espera de
+ * aprobación, `RES2` = aprobada (pagada). Undefined si no es una reserva en línea.
+ */
+function onlineReservationStatus(
+  invoice: Invoice,
+): 'PENDING' | 'APPROVED' | undefined {
+  if (invoice.reservationSource !== 'ONLINE') return undefined;
+  const code = invoice.paidType?.code?.trim().toLowerCase();
+  if (code === 'res') return 'PENDING';
+  if (code === 'res2') return 'APPROVED';
+  return undefined;
+}
+
 export interface MyInvoiceItem {
   invoiceId: number;
   code: string;
@@ -1140,6 +1231,8 @@ export interface MyInvoiceItem {
   total: number;
   invoiceType?: { code: string; name: Record<string, string> };
   stateType?: { code: string; name: Record<string, string> };
+  /** Solo reservas en línea vivas: en espera o aprobada. */
+  reservationStatus?: 'PENDING' | 'APPROVED';
   stays: { name: Record<string, string>; startDate?: string; endDate?: string }[];
   orders: { name: Record<string, string>; amount: number }[];
   excursions: { name: Record<string, string> }[];
@@ -1173,6 +1266,15 @@ export interface MyInvoiceDetail {
   taxes: number;
   total: number;
   paidTotal: number;
+  /**
+   * Solo reservas en línea. En espera y aprobada salen de la factura viva; no
+   * aceptada y vencida, de los avisos del huésped (esa factura ya se borró).
+   */
+  reservationStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'CANCELLED';
+  /** Hasta cuándo se retienen las fechas (solo en espera). */
+  reservationExpiresAt?: string;
+  /** La factura ya no existe: solo queda el resumen de la reserva. */
+  closed?: boolean;
   invoiceType?: { code: string; name: Record<string, string> };
   payType?: { code: string; name: Record<string, string> };
   paidType?: { code: string; name: Record<string, string> };

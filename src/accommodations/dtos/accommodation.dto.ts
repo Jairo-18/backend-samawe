@@ -87,6 +87,16 @@ export class CreateAccommodationDto {
   priceSale?: number;
 
   @ApiProperty({
+    example: 30000,
+    description: 'Valor por noche de cada huésped extra (sobre las personas incluidas)',
+    required: false,
+  })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  extraPersonPrice?: number;
+
+  @ApiProperty({
     example: 1,
     description: 'ID del tipo de categoría (relación con CategoryType)',
   })
@@ -188,6 +198,16 @@ export class UpdateAccommodationDto {
   @Min(0)
   @IsOptional()
   priceSale?: number;
+
+  @ApiProperty({
+    example: 30000,
+    description: 'Valor por noche de cada huésped extra (sobre las personas incluidas)',
+    required: false,
+  })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  extraPersonPrice?: number;
 
   @ApiProperty({
     example: 1,

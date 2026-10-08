@@ -13,6 +13,9 @@ export enum NotificationType {
   LOW_PRODUCT = 'LOW_PRODUCT',
   ROOM_MAINTENANCE = 'ROOM_MAINTENANCE',
   ORDER_STATE_CHANGED = 'ORDER_STATE_CHANGED',
+  RESERVATION_REQUESTED = 'RESERVATION_REQUESTED',
+  /** Para el huésped: su reserva fue aprobada, venció o no fue aceptada. */
+  RESERVATION_STATUS = 'RESERVATION_STATUS',
 }
 
 @Entity('notifications')

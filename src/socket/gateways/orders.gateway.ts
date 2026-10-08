@@ -34,7 +34,11 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
     try {
-      this._jwtService.verify(token);
+      const payload = this._jwtService.verify(token);
+      // El room personal solo se acepta para el dueño del token (ver
+      // `handleJoinUserRoom`): sin esto cualquier sesión podía escuchar los
+      // avisos privados de otro usuario.
+      client.data.userId = payload?.sub ?? payload?.id;
       console.log('[Socket] Client connected:', client.id);
     } catch (err) {
       console.warn('[Socket] Invalid token, disconnecting', client.id, err);
@@ -57,6 +61,16 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`user_${userId}`).emit('orderUpdated', orderData);
   }
 
+  /** Solicitud de reserva hecha por un huésped; la recibe el personal. */
+  emitReservationToUser(userId: string, payload: Record<string, unknown>) {
+    this.server.to(`user_${userId}`).emit('reservationRequested', payload);
+  }
+
+  /** Aviso privado para un huésped (estado de su reserva). */
+  emitGuestNotification(userId: string, payload: Record<string, unknown>) {
+    this.server.to(`user_${userId}`).emit('guestNotification', payload);
+  }
+
   emitInvoiceItemAdded(invoiceId: number, payload: InvoiceItemAddedPayload) {
     this.server.emit('invoiceItemAdded', { invoiceId, ...payload });
   }
@@ -69,7 +83,7 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('joinUserRoom')
   handleJoinUserRoom(client: Socket, data: { userId: string }) {
-    if (data.userId) {
+    if (data.userId && data.userId === client.data?.userId) {
       client.join(`user_${data.userId}`);
       return { event: 'joinedUser', data: `Joined to user_${data.userId}` };
     }

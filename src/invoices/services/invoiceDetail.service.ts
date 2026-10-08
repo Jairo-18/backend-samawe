@@ -742,6 +742,7 @@ export class InvoiceDetailService {
         invoice,
         startDate: dto.startDate,
         endDate: dto.endDate,
+        ...(dto.isPaid !== undefined && { isPaid: dto.isPaid }),
         ...(invoice.organizational && {
           organizational: invoice.organizational,
         }),
