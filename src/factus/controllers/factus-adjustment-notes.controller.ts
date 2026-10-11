@@ -28,6 +28,7 @@ import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import { FactusAdjustmentNoteService } from '../services/factus-adjustment-note.service';
+import { FactusOrganizationGuard } from '../guards/factus-organization.guard';
 
 class AdjustmentNoteItemDto {
   @IsInt()
@@ -70,7 +71,8 @@ class CreateAdjustmentNoteDto {
 @ApiTags('Factus - Adjustment Notes')
 @ApiBearerAuth()
 @SkipApiKey()
-@UseGuards(AuthGuard(), RolesGuard)
+// FactusOrganizationGuard: solo la organización dueña de la cuenta de Factus.
+@UseGuards(AuthGuard(), RolesGuard, FactusOrganizationGuard)
 @Controller('factus')
 export class FactusAdjustmentNotesController {
   constructor(

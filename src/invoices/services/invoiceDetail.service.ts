@@ -394,12 +394,16 @@ export class InvoiceDetailService {
         invoice.tableNumber !== '0' &&
         invoice.tableNumber !== ''
       ) {
-        this._ordersGateway.emitInvoiceItemAdded(invoice.invoiceId, {
-          detail: savedDetail,
-          total: invoice.total,
-          subtotalWithTax: invoice.subtotalWithTax,
-          subtotalWithoutTax: invoice.subtotalWithoutTax,
-        });
+        this._ordersGateway.emitInvoiceItemAdded(
+          invoice.invoiceId,
+          {
+            detail: savedDetail,
+            total: invoice.total,
+            subtotalWithTax: invoice.subtotalWithTax,
+            subtotalWithoutTax: invoice.subtotalWithoutTax,
+          },
+          invoice.organizational?.organizationalId ?? null,
+        );
       }
 
       return {
@@ -885,12 +889,16 @@ export class InvoiceDetailService {
       const updatedInvoice = await this._invoiceRepository.findOne({
         where: { invoiceId },
       });
-      this._ordersGateway.emitInvoiceItemAdded(invoiceId, {
-        details: Array.isArray(savedDetails) ? savedDetails : [savedDetails],
-        total: updatedInvoice?.total,
-        subtotalWithTax: updatedInvoice?.subtotalWithTax,
-        subtotalWithoutTax: updatedInvoice?.subtotalWithoutTax,
-      });
+      this._ordersGateway.emitInvoiceItemAdded(
+        invoiceId,
+        {
+          details: Array.isArray(savedDetails) ? savedDetails : [savedDetails],
+          total: updatedInvoice?.total,
+          subtotalWithTax: updatedInvoice?.subtotalWithTax,
+          subtotalWithoutTax: updatedInvoice?.subtotalWithoutTax,
+        },
+        invoice.organizational?.organizationalId ?? null,
+      );
     }
 
     this._eventEmitter.emit('invoice.detail.created', {

@@ -31,6 +31,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
     }
 
-    return user;
+    // El usuario y el token tienen que ser del hotel del host (403 si no).
+    this.authService.assertSessionTenant(user, payload.orgId);
+
+    // Super administrador con otra organización elegida: la petición opera en
+    // ella (no cambia nada para el resto de usuarios).
+    return this.authService.applyEffectiveOrganization(user, payload.orgId);
   }
 }

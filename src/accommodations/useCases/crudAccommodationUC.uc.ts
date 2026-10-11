@@ -22,19 +22,25 @@ export class CrudAccommodationUC {
     );
   }
 
-  async paginatedPublicList(params: ParamsPaginationDto) {
-    return await this._crudAccommodationService.paginatedPublicList(params);
+  async paginatedPublicList(params: ParamsPaginationDto, organizationalId: string) {
+    return await this._crudAccommodationService.paginatedPublicList(params, organizationalId);
   }
 
-  async publicDetail(accommodationId: number) {
-    return await this._crudAccommodationService.publicDetail(accommodationId);
+  async publicDetail(accommodationId: number, organizationalId: string) {
+    return await this._crudAccommodationService.publicDetail(accommodationId, organizationalId);
   }
 
-  async publicOccupiedRanges(accommodationId: number, from: Date, to: Date) {
+  async publicOccupiedRanges(
+    accommodationId: number,
+    from: Date,
+    to: Date,
+    organizationalId: string,
+  ) {
     return await this._crudAccommodationService.publicOccupiedRanges(
       accommodationId,
       from,
       to,
+      organizationalId,
     );
   }
 }

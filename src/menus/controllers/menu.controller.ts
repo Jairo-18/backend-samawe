@@ -29,6 +29,7 @@ import {
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
+import { TenantContext } from '../../tenant/tenant-context.service';
 
 @Controller('menus')
 @ApiTags('Menús')
@@ -41,7 +42,10 @@ import { RolesUser } from '../../shared/roles/RolesUser.enum';
   RolesUser.CHE,
 )
 export class MenuController {
-  constructor(private readonly _menuUC: MenuUC) {}
+  constructor(
+    private readonly _tenant: TenantContext,
+    private readonly _menuUC: MenuUC,
+  ) {}
 
   @Post()
   @CreateMenuDocs()
@@ -68,6 +72,9 @@ export class MenuController {
   @Get('paginated')
   @GetPaginatedMenuDocs()
   async findAllPaginated(@Query() params: PaginatedMenuParamsDto) {
+    // La organización la decide el servidor (sesión), nunca el cliente: sin
+    // esto, un listado sin `organizationalId` devolvía los de todos los hoteles.
+    params.organizationalId = this._tenant.requireOrganizationalId();
     return await this._menuUC.findAllPaginated(params);
   }
 

@@ -21,12 +21,20 @@ export class OrganizationalUC {
     return await this._organizationalService.findAll();
   }
 
+  async findAllForPlatform() {
+    return await this._organizationalService.findAllForPlatform();
+  }
+
   async findOne(id: string) {
     return await this._organizationalService.findOne(id);
   }
 
   async findBySlug(slug: string) {
     return await this._organizationalService.findBySlug(slug);
+  }
+
+  async findPublicById(organizationalId: string) {
+    return await this._organizationalService.findPublicById(organizationalId);
   }
 
   async update(id: string, dto: UpdateOrganizationalDto) {

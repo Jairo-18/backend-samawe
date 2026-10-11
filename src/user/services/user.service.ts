@@ -37,6 +37,7 @@ import { MailsService } from '../../shared/services/mails.service';
 import { MailTemplateService } from '../../shared/services/mail-template.service';
 import { ConfigService } from '@nestjs/config';
 import { LocalStorageService } from '../../local-storage/services/local-storage.service';
+import { TenantContext } from '../../tenant/tenant-context.service';
 import {
   FACTUS_TRIBUTE_NO_APLICA,
   JURIDICA_REQUIRES_NIT_MESSAGE,
@@ -63,7 +64,29 @@ export class UserService {
     private readonly _mailTemplateService: MailTemplateService,
     private readonly _configService: ConfigService,
     private readonly _localStorageService: LocalStorageService,
+    private readonly _tenant: TenantContext,
   ) {}
+
+  /**
+   * La organización del hotel que atiende la petición (por host). Sustituye a
+   * `findOne({ where: {} })`, que tomaba "la primera" de la tabla: con dos
+   * hoteles, un registro en el sitio del segundo habría quedado en el primero.
+   * Sin hotel resuelto, falla.
+   */
+  private async _tenantOrganization(relations: string[] = []) {
+    const organizationalId = this._tenant.requireOrganizationalId();
+    const org = await this._organizationalRepository.findOne({
+      where: { organizationalId },
+      relations,
+    });
+    if (!org) {
+      throw new HttpException(
+        'La organización de este sitio no existe.',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    return org;
+  }
 
   async create(user: CreateUserDto, creatorRole: string): Promise<{ rowId: string }> {
     const RESTRICTED_ROLES = ['ADMIN', 'SUPERADMIN'];
@@ -253,11 +276,8 @@ export class UserService {
         );
         const frontendUrl =
           this._configService.get<string>('APP_FRONTEND_URL') ||
-          'https://ecohotesamawe.com';
-        const org = await this._organizationalRepository.findOne({
-          where: {},
-          relations: ['medias', 'medias.mediaType'],
-        });
+          'https://ecohotelsamawe.com';
+        const org = await this._tenantOrganization(['medias', 'medias.mediaType']);
         await this._mailsService.sendEmail({
           to: existingUserByEmail.email,
           subject: 'Verifica tu correo electrónico',
@@ -359,19 +379,10 @@ export class UserService {
       factusLegalOrganizationCode,
     );
 
-    const org = user.organizationalId
-      ? await this._organizationalRepository.findOne({
-          where: { organizationalId: user.organizationalId },
-          relations: ['medias', 'medias.mediaType'],
-        })
-      : await this._organizationalRepository.findOne({
-          where: {},
-          relations: ['medias', 'medias.mediaType'],
-        });
-
-    if (user.organizationalId && !org) {
-      throw new BadRequestException('La organización asignada no existe');
-    }
+    // El registro público siempre queda en el hotel del sitio donde se hace;
+    // el `organizationalId` que mande el cliente no se usa (ni para elegir otro
+    // hotel ni como respaldo). Se quita del DTO en la fase 3.
+    const org = await this._tenantOrganization(['medias', 'medias.mediaType']);
 
     const userConfirm = {
       ...user,
@@ -393,7 +404,7 @@ export class UserService {
       const token = await this.generateEmailVerificationToken(user.userId);
       const frontendUrl =
         this._configService.get<string>('APP_FRONTEND_URL') ||
-        'https://ecohotesamawe.com';
+        'https://ecohotelsamawe.com';
       await this._mailsService.sendEmail({
         to: user.email,
         subject: 'Verifica tu correo electrónico',
@@ -1014,6 +1025,17 @@ export class UserService {
         relations: ['roleType', 'organizational'],
       });
 
+      // Solo se vincula Google a una cuenta DEL MISMO hotel. Si el correo es de
+      // otro, no se toca esa cuenta: se devuelve tal cual y `googleSignIn` la
+      // rechaza por hotel. (Con usuarios aislados por hotel —fase 5— aquí se
+      // creará una cuenta nueva en este hotel.)
+      if (
+        user &&
+        user.organizational?.organizationalId !== this._tenant.organizationalId
+      ) {
+        return user;
+      }
+
       if (user) {
         await this._userRepository.update(
           { userId: user.userId },
@@ -1079,6 +1101,9 @@ export class UserService {
       personType,
       isActive: true,
       isEmailVerified: true,
+      // El hotel del sitio donde se entró con Google. Antes nacía sin
+      // organización y la recibía al completar el perfil.
+      organizational: await this._tenantOrganization(),
     });
 
     const savedUser = await this._userRepository.save(newUser);

@@ -16,6 +16,7 @@ import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import { FactusBillsService } from '../services/factus-bills.service';
 import { FactusNumberingService } from '../services/factus-numbering.service';
+import { FactusOrganizationGuard } from '../guards/factus-organization.guard';
 
 class UpdateRangeSelectionDto {
   // `null` es un valor válido y significativo: vuelve al modo automático.
@@ -66,7 +67,8 @@ class UpdateRangeSelectionDto {
 @ApiTags('Factus - Numbering Ranges')
 @ApiBearerAuth()
 @SkipApiKey()
-@UseGuards(AuthGuard(), RolesGuard)
+// FactusOrganizationGuard: solo la organización dueña de la cuenta de Factus.
+@UseGuards(AuthGuard(), RolesGuard, FactusOrganizationGuard)
 @Controller('factus/numbering-ranges')
 export class FactusNumberingRangesController {
   constructor(

@@ -53,6 +53,7 @@ import { ReorderExcursionImagesDto } from '../dtos/excursionImage.dto';
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
+import { TenantContext } from '../../tenant/tenant-context.service';
 
 @Controller('excursion')
 @ApiTags('Pasadías')
@@ -67,6 +68,7 @@ import { RolesUser } from '../../shared/roles/RolesUser.enum';
 )
 export class ExcursionController {
   constructor(
+    private readonly _tenant: TenantContext,
     private readonly _excursionUC: ExcursionUC,
     private readonly _crudExcursionUC: CrudExcursionUC,
     private readonly _excursionImageService: ExcursionImageService,
@@ -78,6 +80,9 @@ export class ExcursionController {
   async getPaginatedPartial(
     @Query() params: PaginatedExcursionSelectParamsDto,
   ): Promise<ResponsePaginationDto<PartialExcursionDto>> {
+    // La organización la decide el servidor (sesión), nunca el cliente: sin
+    // esto, un listado sin `organizationalId` devolvía los de todos los hoteles.
+    params.organizationalId = this._tenant.requireOrganizationalId();
     return this._crudExcursionUC.paginatedPartialExcursion(params);
   }
 
@@ -116,6 +121,9 @@ export class ExcursionController {
   async getPaginatedList(
     @Query() params: PaginatedListExcursionsParamsDto,
   ): Promise<ResponsePaginationDto<ExcursionInterfacePaginatedList>> {
+    // La organización la decide el servidor (sesión), nunca el cliente: sin
+    // esto, un listado sin `organizationalId` devolvía los de todos los hoteles.
+    params.organizationalId = this._tenant.requireOrganizationalId();
     return await this._crudExcursionUC.paginatedList(params);
   }
 

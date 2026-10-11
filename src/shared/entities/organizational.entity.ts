@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { IdentificationType } from './identificationType.entity';
 import { PersonType } from './personType.entity';
 import { User } from './user.entity';
@@ -226,6 +227,10 @@ export class Organizational {
   @Column({ type: 'jsonb', nullable: true })
   metaDescription?: Record<string, string>;
 
+  // Con él se opera el perfil de Google Business del hotel. Nunca sale por la
+  // API: los endpoints públicos usan una lista blanca, y esto cubre cualquier
+  // otra respuesta que serialice la entidad entera.
+  @Exclude()
   @Column('text', { nullable: true })
   googleBusinessRefreshToken?: string;
 

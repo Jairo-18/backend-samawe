@@ -54,7 +54,10 @@ const PUBLIC_CATALOG_TYPES = ['department', 'municipality'];
 @Controller('type')
 @ApiTags('Tipos')
 @UseGuards(AuthGuard(), RolesGuard)
-@Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN, RolesUser.EMP)
+// "Gestión" (crear, editar, borrar y listar catálogos) es del Panel de
+// Superadministrador: los catálogos son globales y un cambio aquí afecta a todos
+// los hoteles (impuestos, tipos de pago…). Leerlos (`:type/all`) sigue abierto.
+@Roles(RolesUser.SUPERADMIN, RolesUser.PLATFORM_ADMIN)
 export class GenericTypeController {
   constructor(
     private readonly repoService: RepositoryService,
@@ -103,6 +106,7 @@ export class GenericTypeController {
   // catálogos DANE los necesita el propio cliente (rol USER) para editar su
   // perfil, pero el resto de tipos debe seguir siendo solo del personal.
   @Roles(
+    RolesUser.PLATFORM_ADMIN,
     RolesUser.SUPERADMIN,
     RolesUser.ADMIN,
     RolesUser.EMP,

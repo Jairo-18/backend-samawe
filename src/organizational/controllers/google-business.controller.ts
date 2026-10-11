@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Patch,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -24,8 +25,16 @@ export class GoogleBusinessController {
   constructor(private readonly _gbService: GoogleBusinessService) {}
 
   @Get('oauth-url')
-  getOAuthUrl(@Query('organizationalId') organizationalId: string) {
-    const url = this._gbService.getOAuthUrl(organizationalId);
+  getOAuthUrl(
+    @Query('organizationalId') organizationalId: string,
+    @Req() req: { user: { userId: string; organizationalId?: string | null } },
+  ) {
+    // El servicio comprueba que sea la organización del usuario y firma el
+    // `state` con él: el callback de Google llega sin sesión.
+    const url = this._gbService.getOAuthUrl(organizationalId, {
+      userId: req.user?.userId,
+      organizationalId: req.user?.organizationalId,
+    });
     return { statusCode: HttpStatus.OK, data: { url } };
   }
 

@@ -4,6 +4,7 @@ import { ExcursionUC } from './useCases/excursionUC.uc';
 import { CrudExcursionService } from './services/crudExcursion.service';
 import { ExcursionService } from './services/excursion.service';
 import { ExcursionController } from './controllers/excursion.controller';
+import { ExcursionPublicController } from './controllers/excursion-public.controller';
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { SharedModule } from '../shared/shared.module';
@@ -12,7 +13,8 @@ import { SharedModule } from '../shared/shared.module';
     SharedModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
-  controllers: [ExcursionController],
+  // El público primero: sus rutas `public/...` no deben caer en `:id`.
+  controllers: [ExcursionPublicController, ExcursionController],
   providers: [
     ExcursionService,
     CrudExcursionService,

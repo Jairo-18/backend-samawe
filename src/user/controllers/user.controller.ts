@@ -61,6 +61,7 @@ import { SkipApiKey } from '../../shared/decorators/skip-api-key.decorator';
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
+import { TenantContext } from '../../tenant/tenant-context.service';
 
 const STAFF_ROLES = [
   RolesUser.SUPERADMIN,
@@ -85,6 +86,7 @@ class VerifyEmailQueryDto {
 @ApiTags('Usuarios')
 export class UserController {
   constructor(
+    private readonly _tenant: TenantContext,
     private readonly _userUC: UserUC,
     private readonly _crudUserUC: CrudUserUC,
   ) {}
@@ -96,6 +98,9 @@ export class UserController {
   async getPaginatedPartial(
     @Query() params: PaginatedUserSelectParamsDto,
   ): Promise<ResponsePaginationDto<PartialUserDto>> {
+    // La organización la decide el servidor (sesión), nunca el cliente: sin
+    // esto, un listado sin `organizationalId` devolvía los de todos los hoteles.
+    params.organizationalId = this._tenant.requireOrganizationalId();
     return this._crudUserUC.paginatedPartialUser(params);
   }
 
@@ -115,6 +120,9 @@ export class UserController {
   async getPaginatedList(
     @Query() params: PaginatedListUsersParamsDto,
   ): Promise<ResponsePaginationDto<User>> {
+    // La organización la decide el servidor (sesión), nunca el cliente: sin
+    // esto, un listado sin `organizationalId` devolvía los de todos los hoteles.
+    params.organizationalId = this._tenant.requireOrganizationalId();
     return await this._crudUserUC.paginatedList(params);
   }
 

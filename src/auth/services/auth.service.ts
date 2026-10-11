@@ -9,7 +9,9 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../../user/services/user.service';
 import {
+  ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -19,9 +21,24 @@ import { AccessSessionsService } from './accessSessions.service';
 import { v4 as uuidv4 } from 'uuid';
 import { UNAUTHORIZED_MESSAGE } from '../../shared/constants/messages.constant';
 import { INVALID_ACCESS_DATA_MESSAGE } from '../constants/messages.constants';
+import { TenantContext } from '../../tenant/tenant-context.service';
+import {
+  checkSessionTenant,
+  effectiveOrganizationalId,
+  isPlatformManager,
+  SessionUserLike,
+  tokenOrgIdFor,
+  userOrganizationalId,
+} from '../../tenant/session-tenant';
+import { OrganizationalRepository } from '../../shared/repositories/organizational.repository';
+
+/** No revela si la cuenta existe en otro hotel. */
+const SESSION_OTHER_TENANT_MESSAGE = 'La sesión no corresponde a este hotel.';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly _userService: UserService,
     private readonly _jwtService: JwtService,
@@ -29,7 +46,109 @@ export class AuthService {
     private readonly _accessSessionsService: AccessSessionsService,
     private readonly _mailService: MailsService,
     private readonly _mailTemplateService: MailTemplateService,
+    private readonly _tenant: TenantContext,
+    private readonly _organizationalRepository: OrganizationalRepository,
   ) {}
+
+  /**
+   * Para administradores de plataforma: la petición opera en la organización
+   * elegida con el selector (la del token). Se fija como hotel de la petición y
+   * se refleja en `req.user.organizationalId`, que es lo que leen los módulos
+   * que ya filtran por el usuario (ganancias, etc.). La propia queda en
+   * `homeOrganizationalId`. Para cualquier otro usuario no cambia nada.
+   */
+  applyEffectiveOrganization<T extends SessionUserLike>(
+    user: T,
+    tokenOrgId?: string | null,
+  ): T & { homeOrganizationalId?: string | null; isActingOrganization?: boolean } {
+    const out = user as T & {
+      homeOrganizationalId?: string | null;
+      isActingOrganization?: boolean;
+    };
+    if (!isPlatformManager(user)) return out;
+
+    const home = userOrganizationalId(user);
+    const effective = effectiveOrganizationalId(user, tokenOrgId, this._tenant.tenant);
+    if (!effective) return out;
+
+    this._tenant.actAs(effective);
+    out.homeOrganizationalId = home;
+    out.isActingOrganization = effective !== home;
+    out.organizationalId = effective;
+    return out;
+  }
+
+  /**
+   * Selector "Cambiar de organización" (solo administradores de plataforma):
+   * emite un token nuevo que opera en `organizationalId`. Volver a la propia es
+   * lo mismo con su id.
+   */
+  async switchOrganization(
+    user: SessionUserLike & { userId: string; email?: string },
+    currentAccessToken: string,
+    organizationalId: string,
+  ) {
+    if (!isPlatformManager(user)) {
+      throw new ForbiddenException('Solo un super administrador puede cambiar de organización.');
+    }
+    const org = await this._organizationalRepository.findOne({
+      where: { organizationalId },
+    });
+    if (!org) {
+      throw new NotFoundException('Organización no encontrada');
+    }
+
+    const homeOrganizationalId =
+      (user as { homeOrganizationalId?: string | null }).homeOrganizationalId ??
+      userOrganizationalId(user);
+    const tokens = this.generateTokens({
+      email: user.email,
+      sub: user.userId,
+      id: user.userId,
+      orgId: org.organizationalId,
+    });
+    await this._accessSessionsService.replaceAccessToken(
+      user.userId,
+      currentAccessToken,
+      tokens.accessToken,
+    );
+    // Queda en el log quién entró a qué organización.
+    this.logger.warn(
+      `Cambio de organización: usuario ${user.userId} → ${org.slug} (${org.organizationalId}).`,
+    );
+
+    return {
+      tokens,
+      organization: {
+        organizationalId: org.organizationalId,
+        name: org.name,
+        slug: org.slug,
+      },
+      homeOrganizationalId,
+      isActingOrganization: org.organizationalId !== homeOrganizationalId,
+    };
+  }
+
+  /** ¿Pertenece el usuario al hotel de esta petición? (login, Google). */
+  private _belongsToTenant(user: SessionUserLike): boolean {
+    const check = checkSessionTenant(user, undefined, this._tenant.tenant);
+    if (!check.ok) {
+      this.logger.warn(`Acceso rechazado por hotel (${check.reason}).`);
+    }
+    return check.ok;
+  }
+
+  /**
+   * La sesión (usuario + token) tiene que ser del hotel del host. Se usa en la
+   * estrategia JWT y en el refresh: un token del hotel A no abre el hotel B.
+   */
+  assertSessionTenant(user: SessionUserLike, tokenOrgId?: string | null): void {
+    const check = checkSessionTenant(user, tokenOrgId, this._tenant.tenant);
+    if (!check.ok) {
+      this.logger.warn(`Sesión rechazada por hotel (${check.reason}).`);
+      throw new ForbiddenException(SESSION_OTHER_TENANT_MESSAGE);
+    }
+  }
 
   async signIn(credentials: Partial<UserAuthModel>) {
     const user = await this._userService.findByParams({
@@ -46,6 +165,12 @@ export class AuthService {
     );
 
     if (!passwordMatch) {
+      throw new UnauthorizedException(INVALID_ACCESS_DATA_MESSAGE);
+    }
+
+    // Una cuenta de otro hotel no existe para este: mismo mensaje que una
+    // contraseña mala, para no revelar que el correo está registrado en otro.
+    if (!this._belongsToTenant(user)) {
       throw new UnauthorizedException(INVALID_ACCESS_DATA_MESSAGE);
     }
 
@@ -66,7 +191,12 @@ export class AuthService {
       );
     }
 
-    const payload = { email: user.email, sub: user.userId, id: user.userId };
+    const payload = {
+      email: user.email,
+      sub: user.userId,
+      id: user.userId,
+      orgId: tokenOrgIdFor(user),
+    };
 
     const tokens = this.generateTokens(payload);
 
@@ -157,10 +287,18 @@ export class AuthService {
       throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
     }
 
+    this.assertSessionTenant(user, payload.orgId);
+
+    // Un administrador de plataforma "dentro" de otra organización sigue en
+    // ella al refrescar; cualquier otro, en la suya.
     const tokens = this.generateTokens({
       email: user.email,
       id: user.userId,
       sub: user.userId,
+      orgId:
+        isPlatformManager(user) && payload.orgId
+          ? payload.orgId
+          : tokenOrgIdFor(user),
     });
 
     return {
@@ -210,6 +348,10 @@ export class AuthService {
     if (!user) {
       return;
     }
+    // Igual que si no existiera: no se manda correo a una cuenta de otro hotel.
+    if (!this._belongsToTenant(user)) {
+      return;
+    }
     const token: string = await this._userService.generateResetToken(
       user.userId,
     );
@@ -246,10 +388,15 @@ export class AuthService {
       );
     }
 
+    if (!this._belongsToTenant(user)) {
+      throw new UnauthorizedException(SESSION_OTHER_TENANT_MESSAGE);
+    }
+
     const payload = {
       email: user.email,
       sub: user.userId,
       id: user.userId,
+      orgId: tokenOrgIdFor(user),
     };
 
     const tokens = this.generateTokens(payload);

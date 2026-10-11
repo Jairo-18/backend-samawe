@@ -53,6 +53,7 @@ import { ReorderAccommodationImagesDto } from '../dtos/accommodationImage.dto';
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import { RolesGuard } from '../../shared/guards/roles.guard';
+import { TenantContext } from '../../tenant/tenant-context.service';
 
 @Controller('accommodation')
 @ApiTags('Hospedajes')
@@ -66,6 +67,7 @@ import { RolesGuard } from '../../shared/guards/roles.guard';
 )
 export class AccommodationController {
   constructor(
+    private readonly _tenant: TenantContext,
     private readonly _accommodationUC: AccommodationUC,
     private readonly _crudAccommodationUC: CrudAccommodationUC,
     private readonly _accommodationImageService: AccommodationImageService,
@@ -77,6 +79,9 @@ export class AccommodationController {
   async getPaginatedPartial(
     @Query() params: PaginatedAccommodationSelectParamsDto,
   ): Promise<ResponsePaginationDto<PartialAccommodationDto>> {
+    // La organización la decide el servidor (sesión), nunca el cliente: sin
+    // esto, un listado sin `organizationalId` devolvía los de todos los hoteles.
+    params.organizationalId = this._tenant.requireOrganizationalId();
     return this._crudAccommodationUC.paginatedPartialAccommodation(params);
   }
 
@@ -117,6 +122,9 @@ export class AccommodationController {
   async getPaginatedList(
     @Query() params: PaginatedListAccommodationsParamsDto,
   ): Promise<ResponsePaginationDto<AccommodationInterfacePaginatedList>> {
+    // La organización la decide el servidor (sesión), nunca el cliente: sin
+    // esto, un listado sin `organizationalId` devolvía los de todos los hoteles.
+    params.organizationalId = this._tenant.requireOrganizationalId();
     return await this._crudAccommodationUC.paginatedList(params);
   }
 

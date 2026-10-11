@@ -22,6 +22,7 @@ import {
   AccommodationPublicDetail,
   AccommodationPublicListItem,
 } from '../interface/accommodation.interface';
+import { TenantContext } from '../../tenant/tenant-context.service';
 
 class AccommodationImageSwaggerDto {
   @ApiProperty({ example: 4 })
@@ -112,6 +113,7 @@ export class AccommodationPublicController {
   constructor(
     private readonly _accommodationUC: AccommodationUC,
     private readonly _crudAccommodationUC: CrudAccommodationUC,
+    private readonly _tenant: TenantContext,
   ) {}
 
   @Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
@@ -120,10 +122,11 @@ export class AccommodationPublicController {
     summary: 'Obtiene los 2 hospedajes más solicitados (acceso público)',
   })
   @ApiOkResponse({ type: MostRequestedResponseSwaggerDto })
-  async getMostRequested(
-    @Query('organizationalId') organizationalId?: string,
-  ): Promise<MostRequestedResponseSwaggerDto> {
-    const data = await this._accommodationUC.getMostRequested(organizationalId);
+  async getMostRequested(): Promise<MostRequestedResponseSwaggerDto> {
+    // El hotel lo decide el host del sitio, no un parámetro del cliente.
+    const data = await this._accommodationUC.getMostRequested(
+      this._tenant.requireOrganizationalId(),
+    );
     return {
       statusCode: HttpStatus.OK,
       data,
@@ -139,7 +142,10 @@ export class AccommodationPublicController {
   async getPublicList(
     @Query() params: ParamsPaginationDto,
   ): Promise<ResponsePaginationDto<AccommodationPublicListItem>> {
-    return this._crudAccommodationUC.paginatedPublicList(params);
+    return this._crudAccommodationUC.paginatedPublicList(
+      params,
+      this._tenant.requireOrganizationalId(),
+    );
   }
 
   /**
@@ -172,6 +178,7 @@ export class AccommodationPublicController {
       id,
       from,
       to,
+      this._tenant.requireOrganizationalId(),
     );
     return { statusCode: HttpStatus.OK, data };
   }
@@ -188,7 +195,10 @@ export class AccommodationPublicController {
   async getPublicDetail(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<{ statusCode: number; data: AccommodationPublicDetail }> {
-    const data = await this._crudAccommodationUC.publicDetail(id);
+    const data = await this._crudAccommodationUC.publicDetail(
+      id,
+      this._tenant.requireOrganizationalId(),
+    );
     return { statusCode: HttpStatus.OK, data };
   }
 }

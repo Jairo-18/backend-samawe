@@ -55,6 +55,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
+import { TenantContext } from '../../tenant/tenant-context.service';
 
 const STAFF_ROLES = [
   RolesUser.SUPERADMIN,
@@ -70,7 +71,10 @@ const ALL_ROLES = [...STAFF_ROLES, RolesUser.USER, RolesUser.PRO];
 @UseGuards(AuthGuard(), RolesGuard)
 @Roles(...ALL_ROLES)
 export class InvoiceController {
-  constructor(private readonly _invoiceUC: InvoiceUC) {}
+  constructor(
+    private readonly _tenant: TenantContext,
+    private readonly _invoiceUC: InvoiceUC,
+  ) {}
 
   @Get('/paginated-list')
   @Roles(...STAFF_ROLES)
@@ -78,6 +82,9 @@ export class InvoiceController {
   async getPaginatedList(
     @Query() params: PaginatedListInvoicesParamsDto,
   ): Promise<ResponsePaginationDto<Invoice>> {
+    // La organización la decide el servidor (sesión), nunca el cliente: sin
+    // esto, un listado sin `organizationalId` devolvía los de todos los hoteles.
+    params.organizationalId = this._tenant.requireOrganizationalId();
     return await this._invoiceUC.paginatedList(params);
   }
 

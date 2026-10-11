@@ -15,11 +15,13 @@ import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import { FactusBillsService } from '../services/factus-bills.service';
 import { CreateBillOptions, FactusBillResult } from '../interfaces/bill.interfaces';
+import { FactusOrganizationGuard } from '../guards/factus-organization.guard';
 
 @ApiTags('Factus - Bills')
 @ApiBearerAuth()
 @SkipApiKey()
-@UseGuards(AuthGuard(), RolesGuard)
+// FactusOrganizationGuard: solo la organización dueña de la cuenta de Factus.
+@UseGuards(AuthGuard(), RolesGuard, FactusOrganizationGuard)
 @Roles(
   RolesUser.SUPERADMIN,
   RolesUser.ADMIN,

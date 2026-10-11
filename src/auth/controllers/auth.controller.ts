@@ -6,6 +6,7 @@ import {
   SignOutResponseDto,
   SignInResponseDto,
   RefreshTokenResponseDto,
+  SwitchOrganizationDto,
 } from '../dtos/auth.dto';
 import { AuthUC } from '../useCases/auth.UC';
 import { AuthService } from '../services/auth.service';
@@ -31,6 +32,9 @@ import {
 } from '../decorators/auth.decorators';
 import { GoogleBusinessService } from '../../organizational/services/google-business.service';
 import { SkipApiKey } from '../../shared/decorators/skip-api-key.decorator';
+import { Roles } from '../../shared/decorators/roles.decorator';
+import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
 
 @Controller('auth')
 @ApiTags('Autenticación')
@@ -93,6 +97,29 @@ export class AuthController {
     };
   }
 
+  /**
+   * Super administrador: pasa la sesión a otra organización (o de vuelta a la
+   * suya). Devuelve tokens nuevos; el front los guarda y recarga el panel.
+   */
+  @Post('/switch-organization')
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(RolesUser.SUPERADMIN, RolesUser.PLATFORM_ADMIN)
+  async switchOrganization(
+    @Body() body: SwitchOrganizationDto,
+    @Req() req: { user: never; headers: Record<string, string | undefined> },
+  ) {
+    const currentAccessToken = (req.headers['authorization'] ?? '').replace(
+      /^Bearer\s+/i,
+      '',
+    );
+    const data = await this._authService.switchOrganization(
+      req.user,
+      currentAccessToken,
+      body.organizationalId,
+    );
+    return { statusCode: HttpStatus.OK, data };
+  }
+
   @Post('/recovery-password')
   @SkipApiKey()
   @Throttle({ default: { limit: 3, ttl: 60000 } })
@@ -118,13 +145,15 @@ export class AuthController {
   @SkipApiKey()
   async googleBusinessCallback(
     @Query('code') code: string,
-    @Query('state') organizationalId: string,
+    @Query('state') state: string,
     @Res() res: any,
   ) {
     const frontendUrl =
       this._configService.get<string>('APP_FRONTEND_URL') || 'http://localhost:4200';
     try {
-      await this._googleBusinessService.handleCallback(code, organizationalId);
+      // `state` va firmado (organización + usuario + vencimiento): ver
+      // `GoogleBusinessService.handleCallback`.
+      await this._googleBusinessService.handleCallback(code, state);
       return res.redirect(
         `${frontendUrl}/organizational/application?googleBusiness=success`,
       );

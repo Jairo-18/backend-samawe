@@ -30,6 +30,7 @@ import { ReviewModule } from './reviews/review.module';
 import { TranslationsModule } from './translations/translations.module';
 import { FactusModule } from './factus/factus.module';
 import { RedisModule } from './redis/redis.module';
+import { TenantModule } from './tenant/tenant.module';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 
 @Module({
@@ -75,6 +76,8 @@ import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis'
       },
     }),
     SharedModule.forRoot(),
+    // Hotel por host en cada petición (CLS). Ver `tenant/tenant.module.ts`.
+    TenantModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     AccommodationModule,
     AuthModule,

@@ -27,6 +27,7 @@ import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import { FactusCreditNoteService } from '../services/factus-credit-note.service';
+import { FactusOrganizationGuard } from '../guards/factus-organization.guard';
 
 class CreditNoteItemDto {
   @IsInt()
@@ -73,7 +74,8 @@ class CreateCreditNoteDto {
 @ApiTags('Factus - Credit Notes')
 @ApiBearerAuth()
 @SkipApiKey()
-@UseGuards(AuthGuard(), RolesGuard)
+// FactusOrganizationGuard: solo la organización dueña de la cuenta de Factus.
+@UseGuards(AuthGuard(), RolesGuard, FactusOrganizationGuard)
 @Roles(
   RolesUser.SUPERADMIN,
   RolesUser.ADMIN,

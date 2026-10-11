@@ -41,6 +41,21 @@ export class AccessSessionsService {
     });
   }
 
+  /**
+   * Cambia el token guardado de una sesión (p. ej. al cambiar de organización),
+   * para que el cierre de sesión —que busca por token— la siga encontrando.
+   */
+  async replaceAccessToken(
+    userId: string,
+    oldAccessToken: string,
+    newAccessToken: string,
+  ): Promise<void> {
+    await this._accessSessionsRepository.update(
+      { user: { userId }, accessToken: oldAccessToken },
+      { accessToken: newAccessToken },
+    );
+  }
+
   async delete(id: string, userId: string): Promise<void> {
     const sessionExists = await this.findOneByParams({ id, userId });
     if (!sessionExists) {

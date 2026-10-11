@@ -1,12 +1,15 @@
 import {
   Body,
+  ConflictException,
   Controller,
   Delete,
   Get,
   HttpStatus,
+  NotFoundException,
   Param,
   Patch,
   Post,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -43,6 +46,36 @@ import { IMAGE_UPLOAD_OPTIONS } from '../../shared/constants/upload.constant';
 import { LocalStorageService } from '../../local-storage/services/local-storage.service';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CreatedRecordResponseDto } from 'src/shared/dtos/response.dto';
+import { toPublicOrganizational } from '../mappers/organizational-public.mapper';
+import { TenantContext } from '../../tenant/tenant-context.service';
+
+/**
+ * Quién puede CAMBIAR la configuración del hotel (datos, marca, medios,
+ * valores). El rol de la clase incluye EMP para las lecturas de staff —la
+ * impresión de facturas necesita `GET :id` para el representante legal—, pero
+ * recepción no tiene la vista "Aplicación" en el menú y no debe poder editar la
+ * organización por API. Crear o borrar una organización es cosa de plataforma.
+ */
+const ORG_EDITORS = [RolesUser.SUPERADMIN, RolesUser.ADMIN];
+
+/**
+ * Quién administra TODAS las organizaciones (listar, crear, borrar, editar
+ * otra). Por ahora el SUPERADMIN, como pidió el dueño; PLATFORM_ADMIN queda
+ * incluido para cuando exista una cuenta de plataforma.
+ */
+const PLATFORM_MANAGERS = [RolesUser.SUPERADMIN, RolesUser.PLATFORM_ADMIN];
+
+interface RequestUser {
+  user?: {
+    organizationalId?: string | null;
+    /** Super administrador "dentro" de otra organización: la suya. */
+    homeOrganizationalId?: string | null;
+    roleType?: { code?: string };
+  };
+}
+
+const isPlatformManager = (req: RequestUser) =>
+  PLATFORM_MANAGERS.includes(req.user?.roleType?.code as RolesUser);
 
 @Controller('organizational')
 @ApiTags('Organizacion')
@@ -51,22 +84,31 @@ export class OrganizationalController {
   constructor(
     private readonly _organizationalUC: OrganizationalUC,
     private readonly _localStorageService: LocalStorageService,
+    private readonly _tenant: TenantContext,
   ) {}
 
   @Post()
   @ApiBearerAuth()
+  @Roles(...PLATFORM_MANAGERS)
   @CreateOrganizationalDocs()
   @UseGuards(AuthGuard(), RolesGuard)
   async create(@Body() dto: CreateOrganizationalDto) {
-    return await this._organizationalUC.create(dto);
+    const data = await this._organizationalUC.create(dto);
+    return {
+      message: 'api.organizational.created',
+      statusCode: HttpStatus.CREATED,
+      data,
+    };
   }
 
+  /** Listado de plataforma: todas, con logo, dominios y uso. */
   @Get()
   @ApiBearerAuth()
+  @Roles(...PLATFORM_MANAGERS)
   @FindAllOrganizationalDocs()
   @UseGuards(AuthGuard(), RolesGuard)
   async findAll() {
-    const orgs = await this._organizationalUC.findAll();
+    const orgs = await this._organizationalUC.findAllForPlatform();
     return {
       statusCode: HttpStatus.OK,
       data: orgs,
@@ -85,9 +127,36 @@ export class OrganizationalController {
     };
   }
 
+  /**
+   * El hotel del sitio desde el que se llama, resuelto por el host (pública,
+   * misma lista blanca que `slug/:slug`). Reemplazará al slug fijo del front.
+   * Va ANTES de `:id`: Nest prueba las rutas en orden.
+   */
+  @Get('current')
+  async findCurrent() {
+    const org = await this._organizationalUC.findPublicById(
+      this._tenant.requireOrganizationalId(),
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      data: toPublicOrganizational(org),
+    };
+  }
+
+  /**
+   * Ficha completa (staff): la usan "Aplicación" y la impresión de facturas, que
+   * necesita el representante legal. Antes era pública —sin guard, el `@Roles`
+   * de la clase no hace nada solo— y cualquiera leía los datos personales del
+   * propietario. El refresh token de Google Business no sale ni aquí: lleva
+   * `@Exclude()` en la entidad.
+   */
   @Get(':id')
+  @ApiBearerAuth()
+  @Roles(RolesUser.SUPERADMIN, RolesUser.ADMIN, RolesUser.EMP, RolesUser.PLATFORM_ADMIN)
   @FindOneOrganizationalDocs()
-  async findOne(@Param('id') id: string) {
+  @UseGuards(AuthGuard(), RolesGuard)
+  async findOne(@Param('id') id: string, @Req() req: RequestUser) {
+    this._assertCanSee(req, id);
     const org = await this._organizationalUC.findOne(id);
     return {
       statusCode: HttpStatus.OK,
@@ -95,15 +164,19 @@ export class OrganizationalController {
     };
   }
 
+  /**
+   * Pública: la carga la web en cada visita para la marca. Devuelve una lista
+   * blanca (`toPublicOrganizational`), nunca la entidad — antes salía entera,
+   * con `googleBusinessRefreshToken` y la configuración de Factus.
+   */
   @Get('slug/:slug')
   async findBySlug(@Param('slug') slug: string) {
     const org = await this._organizationalUC.findBySlug(slug);
     return {
       statusCode: HttpStatus.OK,
-      data: org,
+      data: toPublicOrganizational(org),
     };
   }
-
 
   @Get(':id/media')
   @GetMediaMapDocs()
@@ -117,9 +190,22 @@ export class OrganizationalController {
 
   @Patch(':id')
   @ApiBearerAuth()
+  @Roles(...ORG_EDITORS, RolesUser.PLATFORM_ADMIN)
   @UpdateOrganizationalDocs()
   @UseGuards(AuthGuard(), RolesGuard)
-  async update(@Param('id') id: string, @Body() dto: UpdateOrganizationalDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateOrganizationalDto,
+    @Req() req: RequestUser,
+  ) {
+    this._assertCanSee(req, id);
+    // Desactivar el hotel del sitio en uso lo deja sin servicio: su host deja
+    // de resolver (`TenantResolverService`) y esta misma sesión se cae.
+    if (dto.status === false && this._isInUse(id, req)) {
+      throw new ConflictException(
+        'No puedes desactivar la organización del sitio en el que estás conectado.',
+      );
+    }
     await this._organizationalUC.update(id, dto);
     return {
       message: 'api.organizational.updated',
@@ -129,9 +215,15 @@ export class OrganizationalController {
 
   @Delete(':id')
   @ApiBearerAuth()
+  @Roles(...PLATFORM_MANAGERS)
   @DeleteOrganizationalDocs()
   @UseGuards(AuthGuard(), RolesGuard)
-  async delete(@Param('id') id: string) {
+  async delete(@Param('id') id: string, @Req() req: RequestUser) {
+    if (this._isInUse(id, req)) {
+      throw new ConflictException(
+        'No puedes eliminar la organización del sitio en el que estás conectado.',
+      );
+    }
     await this._organizationalUC.delete(id);
     return {
       message: 'api.organizational.deleted',
@@ -139,8 +231,33 @@ export class OrganizationalController {
     };
   }
 
+  /**
+   * ¿Es una organización que esta sesión está usando? La abierta ahora (la del
+   * host, o la elegida con el selector) Y la propia del usuario: estando
+   * "dentro" de otro hotel, desactivar la propia tumbaría su sitio igual.
+   */
+  private _isInUse(organizationalId: string, req: RequestUser): boolean {
+    return [
+      this._tenant.organizationalId,
+      req.user?.homeOrganizationalId,
+      req.user?.organizationalId,
+    ].includes(organizationalId);
+  }
+
+  /**
+   * Fuera de la plataforma, cada quien solo ve y edita SU organización. Se
+   * responde 404 (no 403) para no confirmar que el id existe.
+   */
+  private _assertCanSee(req: RequestUser, organizationalId: string): void {
+    if (isPlatformManager(req)) return;
+    if (req.user?.organizationalId !== organizationalId) {
+      throw new NotFoundException('Organización no encontrada');
+    }
+  }
+
   @Post(':id/media')
   @ApiBearerAuth()
+  @Roles(...ORG_EDITORS)
   @AddMediaDocs()
   @UseGuards(AuthGuard(), RolesGuard)
   async addMedia(
@@ -152,6 +269,7 @@ export class OrganizationalController {
 
   @Post(':id/upload-media')
   @ApiBearerAuth()
+  @Roles(...ORG_EDITORS)
   @UploadMediaDocs()
   @UseInterceptors(FileInterceptor('file', IMAGE_UPLOAD_OPTIONS))
   @UseGuards(AuthGuard(), RolesGuard)
@@ -184,6 +302,7 @@ export class OrganizationalController {
 
   @Patch('media/:mediaId')
   @ApiBearerAuth()
+  @Roles(...ORG_EDITORS)
   @UpdateMediaDocs()
   @UseGuards(AuthGuard(), RolesGuard)
   async updateMedia(
@@ -199,6 +318,7 @@ export class OrganizationalController {
 
   @Delete('media/:mediaId')
   @ApiBearerAuth()
+  @Roles(...ORG_EDITORS)
   @DeleteMediaDocs()
   @UseGuards(AuthGuard(), RolesGuard)
   async deleteMedia(@Param('mediaId') mediaId: string) {
@@ -217,6 +337,7 @@ export class OrganizationalController {
 
   @Post(':id/corporate-values')
   @ApiBearerAuth()
+  @Roles(...ORG_EDITORS)
   @UseGuards(AuthGuard(), RolesGuard)
   async createCorporateValue(
     @Param('id') id: string,
@@ -228,6 +349,7 @@ export class OrganizationalController {
 
   @Patch('corporate-values/:valueId')
   @ApiBearerAuth()
+  @Roles(...ORG_EDITORS)
   @UseGuards(AuthGuard(), RolesGuard)
   async updateCorporateValue(
     @Param('valueId') valueId: string,
@@ -242,6 +364,7 @@ export class OrganizationalController {
 
   @Delete('corporate-values/:valueId')
   @ApiBearerAuth()
+  @Roles(...ORG_EDITORS)
   @UseGuards(AuthGuard(), RolesGuard)
   async deleteCorporateValue(@Param('valueId') valueId: string) {
     await this._organizationalUC.deleteCorporateValue(valueId);
@@ -253,6 +376,7 @@ export class OrganizationalController {
 
   @Post('corporate-values/:valueId/upload-image')
   @ApiBearerAuth()
+  @Roles(...ORG_EDITORS)
   @UseGuards(AuthGuard(), RolesGuard)
   @UseInterceptors(FileInterceptor('file', IMAGE_UPLOAD_OPTIONS))
   async uploadCorporateValueImage(
@@ -273,6 +397,7 @@ export class OrganizationalController {
 
   @Delete('corporate-values/:valueId/image')
   @ApiBearerAuth()
+  @Roles(...ORG_EDITORS)
   @UseGuards(AuthGuard(), RolesGuard)
   async deleteCorporateValueImage(@Param('valueId') valueId: string) {
     const publicId =

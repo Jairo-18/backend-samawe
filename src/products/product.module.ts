@@ -3,6 +3,7 @@ import { ProductService } from './services/product.service';
 import { CrudProductUC } from './useCases/crudProductUC.uc';
 import { ProductUC } from './useCases/productUC.uc';
 import { ProductController } from './controllers/product.controller';
+import { ProductPublicController } from './controllers/product-public.controller';
 import { ProductImageService } from './services/productImage.service';
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
@@ -13,7 +14,8 @@ import { SharedModule } from './../shared/shared.module';
     SharedModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
-  controllers: [ProductController],
+  // El público primero: sus rutas `public/...` no deben caer en `:id`.
+  controllers: [ProductPublicController, ProductController],
   providers: [
     ProductUC,
     CrudProductUC,

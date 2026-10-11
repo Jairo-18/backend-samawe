@@ -217,6 +217,7 @@ export class CrudAccommodationService {
 
   async paginatedPublicList(
     params: ParamsPaginationDto,
+    organizationalId: string,
   ): Promise<ResponsePaginationDto<AccommodationPublicListItem>> {
     const skip = (params.page - 1) * params.perPage;
     const order = params.order ?? 'ASC';
@@ -235,6 +236,9 @@ export class CrudAccommodationService {
       .createQueryBuilder('accommodation')
       .select('accommodation.accommodationId', 'accommodationId')
       .addSelect(`"accommodation"."name"->>'es'`, 'acc_name_sort')
+      // Solo los del hotel del sitio (host): sin esto el listado público
+      // mezclaba los hospedajes de todas las organizaciones.
+      .where('accommodation.organizationalId = :organizationalId', { organizationalId })
       .orderBy('acc_name_sort', order);
 
     const itemCount = await idQuery.clone().getCount();
@@ -317,6 +321,7 @@ export class CrudAccommodationService {
    */
   async publicDetail(
     accommodationId: number,
+    organizationalId: string,
   ): Promise<AccommodationPublicDetail> {
     const a = await this._accommodationRepository
       .createQueryBuilder('accommodation')
@@ -327,6 +332,8 @@ export class CrudAccommodationService {
       .where('accommodation.accommodationId = :accommodationId', {
         accommodationId,
       })
+      // De otro hotel = no existe para este sitio (404, no se revela).
+      .andWhere('accommodation.organizationalId = :organizationalId', { organizationalId })
       .orderBy('images.position', 'ASC')
       .getOne();
 
@@ -391,7 +398,16 @@ export class CrudAccommodationService {
     accommodationId: number,
     from: Date,
     to: Date,
+    organizationalId: string,
   ): Promise<AccommodationOccupiedRange[]> {
+    const belongs = await this._accommodationRepository
+      .createQueryBuilder('accommodation')
+      .where('accommodation.accommodationId = :accommodationId', { accommodationId })
+      .andWhere('accommodation.organizationalId = :organizationalId', { organizationalId })
+      .getExists();
+    if (!belongs) {
+      throw new NotFoundException('Hospedaje no encontrado');
+    }
     const rows = await this._invoiceDetaillRepository
       .createQueryBuilder('detail')
       .select(['detail.startDate', 'detail.endDate'])

@@ -10,6 +10,24 @@ import { Server, Socket } from 'socket.io';
 import { OrderUpdate } from '../interfaces/order-socket.interface';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { DataSource } from 'typeorm';
+import { User } from '../../shared/entities/user.entity';
+
+/**
+ * Roles que siguen las órdenes en vivo (cocina, meseros, recepción, admin).
+ * Un huésped (USER) no entra: antes `server.emit` le mandaba a cualquier sesión
+ * conectada los renglones de las órdenes de TODOS.
+ */
+const ORDER_ROOM_ROLES = ['SUPERADMIN', 'ADMIN', 'EMP', 'CHE', 'MES'];
+
+/**
+ * Room de órdenes por organización. Las facturas y el staff que aún no tienen
+ * organización asignada comparten `unassigned`: con un solo hotel es el mismo
+ * comportamiento de antes, y nunca se cruza con un hotel que sí la tiene.
+ * Desaparece cuando el backfill de la fase 3 deje todo con organización.
+ */
+export const ordersRoom = (organizationalId?: string | null) =>
+  `org_${organizationalId || 'unassigned'}:orders`;
 
 @WebSocketGateway({
   cors: {
@@ -24,6 +42,7 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly _jwtService: JwtService,
     private readonly _configService: ConfigService,
+    private readonly _dataSource: DataSource,
   ) {}
 
   handleConnection(client: Socket) {
@@ -51,10 +70,11 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   /**
-   * Notifica a todos los clientes sobre un cambio en un pedido (socket + push).
+   * Cambio en una orden, a las sesiones de staff de SU organización.
+   * (Hoy nadie lo llama; antes hacía `server.emit` a todos los conectados.)
    */
-  emitOrderUpdate(orderData: OrderUpdate, targetUserIds?: string[]) {
-    this.server.emit('orderUpdated', orderData);
+  emitOrderUpdate(orderData: OrderUpdate, organizationalId: string | null) {
+    this.server.to(ordersRoom(organizationalId)).emit('orderUpdated', orderData);
   }
 
   emitToUser(userId: string, orderData: OrderUpdate) {
@@ -71,13 +91,41 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`user_${userId}`).emit('guestNotification', payload);
   }
 
-  emitInvoiceItemAdded(invoiceId: number, payload: InvoiceItemAddedPayload) {
-    this.server.emit('invoiceItemAdded', { invoiceId, ...payload });
+  /** Renglón nuevo en una orden de mesa, solo al staff de esa organización. */
+  emitInvoiceItemAdded(
+    invoiceId: number,
+    payload: InvoiceItemAddedPayload,
+    organizationalId: string | null,
+  ) {
+    this.server
+      .to(ordersRoom(organizationalId))
+      .emit('invoiceItemAdded', { invoiceId, ...payload });
   }
 
+  /**
+   * La room NO la elige el cliente: sale del usuario del token. El cliente solo
+   * dice "quiero las órdenes" y el servidor decide de qué organización, y si su
+   * rol puede verlas.
+   */
   @SubscribeMessage('joinOrders')
-  handleJoinOrders(client: Socket) {
-    client.join('orderRoom');
+  async handleJoinOrders(client: Socket) {
+    const userId = client.data?.userId as string | undefined;
+    if (!userId) return { event: 'joinRejected', data: 'Sin sesión' };
+
+    const user = await this._dataSource.getRepository(User).findOne({
+      where: { userId },
+      relations: ['roleType', 'organizational'],
+    });
+    if (!user || !ORDER_ROOM_ROLES.includes(user.roleType?.code)) {
+      return { event: 'joinRejected', data: 'Sin permiso para ver órdenes' };
+    }
+
+    // Una sesión solo está en la room de su organización.
+    const room = ordersRoom(user.organizational?.organizationalId);
+    for (const r of client.rooms) {
+      if (r !== room && r.endsWith(':orders')) client.leave(r);
+    }
+    client.join(room);
     return { event: 'joined', data: 'Joined to orders room' };
   }
 

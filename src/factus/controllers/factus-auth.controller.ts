@@ -6,11 +6,13 @@ import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import { FactusAuthService } from '../services/factus-auth.service';
+import { FactusOrganizationGuard } from '../guards/factus-organization.guard';
 
 @ApiTags('Factus - Auth')
 @ApiBearerAuth()
 @SkipApiKey()
-@UseGuards(AuthGuard(), RolesGuard)
+// FactusOrganizationGuard: solo la organización dueña de la cuenta de Factus.
+@UseGuards(AuthGuard(), RolesGuard, FactusOrganizationGuard)
 @Roles(
   RolesUser.SUPERADMIN,
   RolesUser.ADMIN,

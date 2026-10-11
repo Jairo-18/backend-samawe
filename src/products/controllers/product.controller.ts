@@ -53,6 +53,7 @@ import { ReorderProductImagesDto } from '../dtos/productImage.dto';
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
+import { TenantContext } from '../../tenant/tenant-context.service';
 
 @Controller('product')
 @ApiTags('Productos')
@@ -67,6 +68,7 @@ import { RolesUser } from '../../shared/roles/RolesUser.enum';
 )
 export class ProductController {
   constructor(
+    private readonly _tenant: TenantContext,
     private readonly _productUC: ProductUC,
     private readonly _crudProductUC: CrudProductUC,
     private readonly _productImageService: ProductImageService,
@@ -78,6 +80,9 @@ export class ProductController {
   async getPaginatedPartial(
     @Query() params: PaginatedProductSelectParamsDto,
   ): Promise<ResponsePaginationDto<PartialProductDto>> {
+    // La organización la decide el servidor (sesión), nunca el cliente: sin
+    // esto, un listado sin `organizationalId` devolvía los de todos los hoteles.
+    params.organizationalId = this._tenant.requireOrganizationalId();
     return this._crudProductUC.paginatedPartialProduct(params);
   }
 
@@ -117,6 +122,9 @@ export class ProductController {
   async getPaginatedList(
     @Query() params: PaginatedListProductsParamsDto,
   ): Promise<ResponsePaginationDto<ProductInterfacePaginatedList>> {
+    // La organización la decide el servidor (sesión), nunca el cliente: sin
+    // esto, un listado sin `organizationalId` devolvía los de todos los hoteles.
+    params.organizationalId = this._tenant.requireOrganizationalId();
     return await this._crudProductUC.paginatedList(params);
   }
 

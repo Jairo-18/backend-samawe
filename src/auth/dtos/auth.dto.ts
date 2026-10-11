@@ -1,7 +1,7 @@
 ﻿import { HttpStatus } from '@nestjs/common';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({
@@ -181,4 +181,11 @@ export class RecoveryPasswordBodyDto {
   @IsEmail()
   @IsNotEmpty()
   email: string;
+}
+
+/** Selector "Cambiar de organización" (solo administradores de plataforma). */
+export class SwitchOrganizationDto {
+  @ApiProperty({ example: 'b3f1c2d4-0000-0000-0000-000000000000' })
+  @IsUUID()
+  organizationalId: string;
 }

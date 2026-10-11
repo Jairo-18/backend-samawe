@@ -17,6 +17,31 @@ import { PhoneCodeRepository } from '../../shared/repositories/phoneCode.reposit
 import { LocalStorageService } from '../../local-storage/services/local-storage.service';
 import { TranslationService } from '../../shared/services/translation.service';
 
+/**
+ * Tablas con datos de un hotel. Una organización con filas en alguna de ellas no
+ * se puede borrar: el `DELETE` reventaba con un error de llave foránea DESPUÉS de
+ * haber borrado ya sus archivos (logo, fotos de valores corporativos).
+ */
+const ORGANIZATION_DATA_TABLES: { table: string; label: string }[] = [
+  { table: 'User', label: 'usuarios' },
+  { table: 'Invoice', label: 'facturas' },
+  { table: 'Product', label: 'productos' },
+  { table: 'Accommodation', label: 'hospedajes' },
+  { table: 'Excursion', label: 'servicios' },
+  { table: 'Recipe', label: 'recetas' },
+  { table: 'Menu', label: 'menús' },
+  { table: 'Review', label: 'reseñas' },
+];
+
+/** Resumen de uso de una organización, para el listado de plataforma. */
+export interface OrganizationStats {
+  users: number;
+  invoices: number;
+  products: number;
+  accommodations: number;
+  excursions: number;
+}
+
 const TRANSLATABLE_FIELDS: (keyof CreateOrganizationalDto)[] = [
   'description',
   'homeTitle', 'homeDescription',
@@ -100,6 +125,56 @@ export class OrganizationalService {
     });
   }
 
+  /**
+   * Todas las organizaciones con lo que muestra el listado de plataforma:
+   * datos, logo, dominios y cuánto uso tienen. Se agregan como propiedades de
+   * la propia entidad (no un objeto nuevo) para que `@Exclude()` siga quitando
+   * el refresh token de Google Business al serializar.
+   */
+  async findAllForPlatform() {
+    const orgs = await this._organizationalRepository.find({
+      relations: ['identificationType', 'personType', 'phoneCode', 'medias', 'medias.mediaType'],
+      order: { createdAt: 'ASC' },
+    });
+    if (!orgs.length) return orgs;
+
+    const manager = this._organizationalRepository.manager;
+    const domains: { organizationalId: string; hostname: string; kind: string; status: string; isPrimary: boolean }[] =
+      await manager.query(
+        `SELECT "organizationalId", hostname, kind, status, "isPrimary"
+           FROM organization_domains ORDER BY "isPrimary" DESC, hostname`,
+      );
+    const count = async (table: string) => {
+      const rows: { organizationalId: string; n: number }[] = await manager.query(
+        `SELECT "organizationalId", count(*)::int AS n FROM "${table}"
+          WHERE "organizationalId" IS NOT NULL GROUP BY "organizationalId"`,
+      );
+      return new Map(rows.map((r) => [r.organizationalId, r.n]));
+    };
+    const [users, invoices, products, accommodations, excursions] = await Promise.all([
+      count('User'),
+      count('Invoice'),
+      count('Product'),
+      count('Accommodation'),
+      count('Excursion'),
+    ]);
+
+    return orgs.map((org) =>
+      Object.assign(org, {
+        domains: domains
+          .filter((d) => d.organizationalId === org.organizationalId)
+          .map(({ organizationalId: _omit, ...d }) => d),
+        stats: {
+          users: users.get(org.organizationalId) ?? 0,
+          invoices: invoices.get(org.organizationalId) ?? 0,
+          products: products.get(org.organizationalId) ?? 0,
+          accommodations: accommodations.get(org.organizationalId) ?? 0,
+          excursions: excursions.get(org.organizationalId) ?? 0,
+        } satisfies OrganizationStats,
+      }),
+    );
+  }
+
   async findAllWithFullData() {
     return await this._organizationalRepository.find({
       relations: [
@@ -133,6 +208,23 @@ export class OrganizationalService {
         'legalRepresentative',
         'legalRepresentative.identificationType',
       ],
+    });
+
+    if (!org) {
+      throw new HttpException(
+        'Organización no encontrada',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return org;
+  }
+
+  /** El hotel por id, con lo que necesita la vista pública (medios incluidos). */
+  async findPublicById(organizationalId: string) {
+    const org = await this._organizationalRepository.findOne({
+      where: { organizationalId },
+      relations: ['identificationType', 'phoneCode', 'medias', 'medias.mediaType'],
     });
 
     if (!org) {
@@ -214,6 +306,26 @@ export class OrganizationalService {
 
   async delete(organizationalId: string) {
     await this.findOne(organizationalId);
+
+    // Antes de tocar archivos: si tiene datos, no se borra (ver
+    // ORGANIZATION_DATA_TABLES). Desactivarla es la salida para un hotel que
+    // deja de operar.
+    const manager = this._organizationalRepository.manager;
+    const inUse: string[] = [];
+    for (const { table, label } of ORGANIZATION_DATA_TABLES) {
+      const [{ n }] = await manager.query(
+        `SELECT count(*)::int AS n FROM "${table}" WHERE "organizationalId" = $1`,
+        [organizationalId],
+      );
+      if (n > 0) inUse.push(`${n} ${label}`);
+    }
+    if (inUse.length) {
+      throw new HttpException(
+        `No se puede eliminar: la organización tiene ${inUse.join(', ')}. ` +
+          'Desactívala en su lugar.',
+        HttpStatus.CONFLICT,
+      );
+    }
 
     const medias = await this._organizationalMediaRepository.find({
       where: { organizational: { organizationalId } },

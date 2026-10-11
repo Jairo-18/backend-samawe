@@ -1,8 +1,35 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Organizational } from '../../shared/entities/organizational.entity';
+import { UserRepository } from '../../shared/repositories/user.repository';
+import { RolesUser } from '../../shared/roles/RolesUser.enum';
+import {
+  createSignedState,
+  verifySignedState,
+} from '../../shared/utils/signed-state';
+
+/** Propósito de la firma: un `state` de este flujo no sirve para ningún otro. */
+const STATE_PURPOSE = 'google-business-oauth';
+/** Lo que tarda de sobra alguien en aceptar el consentimiento de Google. */
+const STATE_TTL_MS = 10 * 60 * 1000;
+/** Los mismos roles que el controller deja iniciar el flujo. */
+const ALLOWED_ROLES: string[] = [
+  RolesUser.SUPERADMIN,
+  RolesUser.ADMIN,
+  RolesUser.EMP,
+];
+
+/** Quien pide el enlace de consentimiento (sale del JWT, nunca del cliente). */
+export interface GoogleBusinessRequester {
+  userId: string;
+  organizationalId?: string | null;
+}
 
 @Injectable()
 export class GoogleBusinessService {
@@ -10,9 +37,27 @@ export class GoogleBusinessService {
     @InjectRepository(Organizational)
     private readonly _orgRepo: Repository<Organizational>,
     private readonly _configService: ConfigService,
+    private readonly _userRepository: UserRepository,
   ) {}
 
-  getOAuthUrl(organizationalId: string): string {
+  private get _stateSecret(): string {
+    return this._configService.get<string>('jwt.secret');
+  }
+
+  getOAuthUrl(
+    organizationalId: string,
+    requester: GoogleBusinessRequester,
+  ): string {
+    // Solo se puede vincular la cuenta de Google de la organización propia.
+    if (
+      !organizationalId ||
+      !requester?.organizationalId ||
+      requester.organizationalId !== organizationalId
+    ) {
+      throw new ForbiddenException(
+        'Solo puedes conectar Google Business de tu propia organización.',
+      );
+    }
     const clientId = this._configService.get<string>('google.clientId');
     const callbackUrl = this._configService.get<string>('google.businessCallbackUrl');
     const params = new URLSearchParams({
@@ -22,12 +67,43 @@ export class GoogleBusinessService {
       scope: 'https://www.googleapis.com/auth/business.manage',
       access_type: 'offline',
       prompt: 'consent',
-      state: organizationalId,
+      state: createSignedState(
+        { organizationalId, userId: requester.userId },
+        this._stateSecret,
+        STATE_PURPOSE,
+        STATE_TTL_MS,
+      ),
     });
     return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   }
 
-  async handleCallback(code: string, organizationalId: string): Promise<void> {
+  /**
+   * El callback llega de Google sin sesión: todo lo que sabemos de quién lo
+   * inició sale del `state` firmado. Se valida ANTES de canjear el código, así
+   * un `state` falso o vencido ni siquiera llega a pedir tokens.
+   */
+  async handleCallback(code: string, state: string): Promise<void> {
+    const payload = verifySignedState(state, this._stateSecret, STATE_PURPOSE);
+    if (!payload) {
+      throw new ForbiddenException('El enlace de Google Business no es válido o venció.');
+    }
+    const organizationalId = payload.o;
+
+    // El usuario pudo cambiar de organización o de rol desde que pidió el enlace.
+    const user = await this._userRepository.findOne({
+      where: { userId: payload.u },
+      relations: ['roleType', 'organizational'],
+    });
+    if (
+      !user ||
+      user.organizational?.organizationalId !== organizationalId ||
+      !ALLOWED_ROLES.includes(user.roleType?.code)
+    ) {
+      throw new ForbiddenException(
+        'El usuario ya no puede conectar Google Business de esta organización.',
+      );
+    }
+
     const clientId = this._configService.get<string>('google.clientId');
     const clientSecret = this._configService.get<string>('google.clientSecret');
     const callbackUrl = this._configService.get<string>('google.businessCallbackUrl');
