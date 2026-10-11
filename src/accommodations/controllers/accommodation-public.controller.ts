@@ -23,6 +23,8 @@ import {
   AccommodationPublicListItem,
 } from '../interface/accommodation.interface';
 import { TenantContext } from '../../tenant/tenant-context.service';
+import { OwnedBy } from '../../tenant/owned-by';
+import { Accommodation } from '../../shared/entities/accommodation.entity';
 
 class AccommodationImageSwaggerDto {
   @ApiProperty({ example: 4 })
@@ -153,6 +155,7 @@ export class AccommodationPublicController {
    * Se declara ANTES de ':id' porque Nest resuelve por orden y una ruta más
    * específica declarada después nunca se alcanzaría.
    */
+  @OwnedBy({ entity: Accommodation, param: 'id' })
   @Get(':id/availability')
   @ApiOperation({
     summary: 'Fechas ocupadas de un hospedaje (acceso público)',
@@ -189,6 +192,7 @@ export class AccommodationPublicController {
    * caigan en el comodín ':id'.
    */
   @Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
+  @OwnedBy({ entity: Accommodation, param: 'id' })
   @Get(':id')
   @ApiOperation({ summary: 'Ficha de un hospedaje (acceso público)' })
   @ApiOkResponse({ description: 'Datos públicos del hospedaje' })

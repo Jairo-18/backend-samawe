@@ -23,6 +23,11 @@ import {
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
+import { OwnedBy } from '../../tenant/owned-by';
+import { LegalItem } from '../../shared/entities/legalItem.entity';
+import { LegalItemChild } from '../../shared/entities/legalItemChild.entity';
+import { LegalSection } from '../../shared/entities/legalSection.entity';
+import { Organizational } from '../../shared/entities/organizational.entity';
 
 @Controller('legal')
 @ApiTags('Términos y Privacidad')
@@ -36,12 +41,14 @@ import { RolesUser } from '../../shared/roles/RolesUser.enum';
 export class LegalController {
   constructor(private readonly _legalUC: LegalUC) {}
 
+  @OwnedBy({ entity: Organizational, param: 'organizationalId' })
   @Get('organizational/:organizationalId')
   async getAllSections(@Param('organizationalId') organizationalId: string) {
     const data = await this._legalUC.getAllSections(organizationalId);
     return { statusCode: HttpStatus.OK, data };
   }
 
+  @OwnedBy({ entity: Organizational, param: 'organizationalId' })
   @Post('organizational/:organizationalId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
@@ -53,6 +60,7 @@ export class LegalController {
     return { statusCode: HttpStatus.CREATED, data };
   }
 
+  @OwnedBy({ entity: LegalSection, param: 'legalSectionId' })
   @Delete(':legalSectionId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
@@ -64,6 +72,7 @@ export class LegalController {
     };
   }
 
+  @OwnedBy({ entity: LegalSection, param: 'legalSectionId' })
   @Post(':legalSectionId/items')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
@@ -75,6 +84,9 @@ export class LegalController {
     return { statusCode: HttpStatus.CREATED, data };
   }
 
+  @OwnedBy(
+    { entity: LegalItem, param: 'legalItemId', via: ['legalSection'] },
+  )
   @Patch('items/:legalItemId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
@@ -89,6 +101,9 @@ export class LegalController {
     };
   }
 
+  @OwnedBy(
+    { entity: LegalItem, param: 'legalItemId', via: ['legalSection'] },
+  )
   @Delete('items/:legalItemId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
@@ -100,6 +115,9 @@ export class LegalController {
     };
   }
 
+  @OwnedBy(
+    { entity: LegalItem, param: 'legalItemId', via: ['legalSection'] },
+  )
   @Post('items/:legalItemId/children')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
@@ -111,6 +129,9 @@ export class LegalController {
     return { statusCode: HttpStatus.CREATED, data };
   }
 
+  @OwnedBy(
+    { entity: LegalItemChild, param: 'legalItemChildId', via: ['legalItem', 'legalSection'] },
+  )
   @Patch('children/:legalItemChildId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
@@ -125,6 +146,9 @@ export class LegalController {
     };
   }
 
+  @OwnedBy(
+    { entity: LegalItemChild, param: 'legalItemChildId', via: ['legalItem', 'legalSection'] },
+  )
   @Delete('children/:legalItemChildId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
@@ -136,6 +160,7 @@ export class LegalController {
     };
   }
 
+  @OwnedBy({ entity: LegalSection, param: 'legalSectionId' })
   @Patch(':legalSectionId/items/reorder')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
@@ -147,6 +172,9 @@ export class LegalController {
     return { statusCode: HttpStatus.OK };
   }
 
+  @OwnedBy(
+    { entity: LegalItem, param: 'legalItemId', via: ['legalSection'] },
+  )
   @Patch('items/:legalItemId/children/reorder')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)

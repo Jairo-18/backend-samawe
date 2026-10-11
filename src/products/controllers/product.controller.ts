@@ -54,6 +54,8 @@ import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import { TenantContext } from '../../tenant/tenant-context.service';
+import { OwnedBy } from '../../tenant/owned-by';
+import { Product } from '../../shared/entities/product.entity';
 
 @Controller('product')
 @ApiTags('Productos')
@@ -103,6 +105,7 @@ export class ProductController {
     };
   }
 
+  @OwnedBy({ entity: Product, param: 'id' })
   @Patch(':id')
   @UpdateProductDocs()
   async update(
@@ -128,6 +131,7 @@ export class ProductController {
     return await this._crudProductUC.paginatedList(params);
   }
 
+  @OwnedBy({ entity: Product, param: 'id' })
   @Get(':id')
   @FindOneProductDocs()
   async findOne(@Param('id') productId: string): Promise<GetProductDto> {
@@ -138,6 +142,7 @@ export class ProductController {
     };
   }
 
+  @OwnedBy({ entity: Product, param: 'id' })
   @Delete(':id')
   @DeleteProductDocs()
   async delete(
@@ -150,6 +155,7 @@ export class ProductController {
     };
   }
 
+  @OwnedBy({ entity: Product, param: 'id' })
   @Post(':id/images')
   @UploadImageDocs()
   @UseInterceptors(FileInterceptor('file', IMAGE_UPLOAD_OPTIONS))
@@ -173,6 +179,7 @@ export class ProductController {
     };
   }
 
+  @OwnedBy({ entity: Product, param: 'id' })
   @Get(':id/images')
   @GetImagesDocs()
   async getImages(@Param('id') productId: number) {
@@ -182,6 +189,7 @@ export class ProductController {
     };
   }
 
+  @OwnedBy({ entity: Product, param: 'id' })
   @Delete(':id/images/*publicId')
   @DeleteImageDocs()
   async deleteImage(
@@ -189,17 +197,20 @@ export class ProductController {
     @Param('publicId') publicId: string,
   ) {
     const decodedPublicId = decodeURIComponent(publicId);
-    await this._localStorageService.deleteImage(decodedPublicId);
+    // Primero el registro: confirma que la imagen es de ESTE ítem (y lanza 404
+    // si no). Antes se borraba el archivo primero, con cualquier publicId.
     await this._productImageService.removeProductImage(
       productId,
       decodedPublicId,
     );
+    await this._localStorageService.deleteImage(decodedPublicId);
     return {
       statusCode: HttpStatus.OK,
       message: 'api.product.image_deleted',
     };
   }
 
+  @OwnedBy({ entity: Product, param: 'id' })
   @Patch(':id/images/reorder')
   @ReorderImagesDocs()
   async reorderImages(

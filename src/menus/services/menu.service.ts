@@ -1,3 +1,4 @@
+import { TenantContext } from '../../tenant/tenant-context.service';
 import { In } from 'typeorm';
 import { MenuRepository } from './../../shared/repositories/menu.repository';
 import { RecipeRepository } from './../../shared/repositories/recipe.repository';
@@ -24,6 +25,7 @@ import { MenuPublicListItem } from '../interface/menu.interface';
 @Injectable()
 export class MenuService {
   constructor(
+    private readonly _tenant: TenantContext,
     private readonly _menuRepository: MenuRepository,
     private readonly _recipeRepository: RecipeRepository,
     private readonly _productRepository: ProductRepository,
@@ -44,6 +46,10 @@ export class MenuService {
       .createQueryBuilder('recipe')
       .leftJoinAndSelect('recipe.product', 'product')
       .where('product.productId IN (:...productIds)', { productIds })
+      // Solo del hotel de la petición: un id ajeno cuenta como inexistente.
+      .andWhere('product.organizationalId = :tenantOrgId', {
+        tenantOrgId: this._tenant.requireOrganizationalId(),
+      })
       .getMany();
 
     const recipeProductIds = new Set(recipes.map((r) => r.product.productId));
@@ -55,6 +61,7 @@ export class MenuService {
     if (plainProductIds.length > 0) {
       products = await this._productRepository.findBy({
         productId: In(plainProductIds),
+        organizational: { organizationalId: this._tenant.requireOrganizationalId() },
       });
 
       const foundProductIds = new Set(products.map((p) => p.productId));
@@ -252,7 +259,11 @@ export class MenuService {
       .leftJoinAndSelect('product.images', 'productImages')
       .leftJoinAndSelect('menu.products', 'directProduct')
       .leftJoinAndSelect('directProduct.images', 'directProductImages')
-      .where('menu.deletedAt IS NULL');
+      .where('menu.deletedAt IS NULL')
+      // Sitio público: el hotel del host.
+      .andWhere('menu.organizationalId = :tenantOrgId', {
+        tenantOrgId: this._tenant.requireOrganizationalId(),
+      });
 
     if (params.search) {
       qb.andWhere(`LOWER(menu.name->>'es') LIKE LOWER(:search)`, {

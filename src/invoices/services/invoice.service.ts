@@ -1,3 +1,4 @@
+import { TenantContext } from '../../tenant/tenant-context.service';
 import { User } from './../../shared/entities/user.entity';
 import { StateType } from './../../shared/entities/stateType.entity';
 import { OrdersGateway } from './../../socket/gateways/orders.gateway';
@@ -55,6 +56,7 @@ export class InvoiceService {
 
   constructor(
     private readonly _invoiceRepository: InvoiceRepository,
+    private readonly _tenant: TenantContext,
     private readonly _invoiceTypeRepository: InvoiceTypeRepository,
     private readonly _taxeTypeRepository: TaxeTypeRepository,
     private readonly _payTypeRepository: PayTypeRepository,
@@ -930,6 +932,9 @@ export class InvoiceService {
       .leftJoinAndSelect('excursion.categoryType', 'excursionCategory')
       .leftJoinAndSelect('invoiceDetails.taxeType', 'taxeType')
       .where('payType.payTypeId = :payTypeId', { payTypeId: 2 })
+      .andWhere('invoice.organizationalId = :tenantOrgId', {
+        tenantOrgId: this._tenant.requireOrganizationalId(),
+      })
       .orderBy('invoice.startDate', 'DESC');
 
     if (startDate && endDate) {

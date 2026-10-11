@@ -54,6 +54,8 @@ import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import { TenantContext } from '../../tenant/tenant-context.service';
+import { OwnedBy } from '../../tenant/owned-by';
+import { Excursion } from '../../shared/entities/excursion.entity';
 
 @Controller('excursion')
 @ApiTags('Pasadías')
@@ -102,6 +104,7 @@ export class ExcursionController {
     };
   }
 
+  @OwnedBy({ entity: Excursion, param: 'id' })
   @Patch(':id')
   @UpdateExcursionDocs()
   async update(
@@ -128,10 +131,12 @@ export class ExcursionController {
   }
 
   @Get()
-  async findAll(@Query('organizationalId') organizationalId?: string) {
-    return await this._crudExcursionUC.findAll(organizationalId);
+  async findAll() {
+    // El hotel de la petición, no el que mande el cliente (antes, sin él: todos).
+    return await this._crudExcursionUC.findAll(this._tenant.requireOrganizationalId());
   }
 
+  @OwnedBy({ entity: Excursion, param: 'id' })
   @Get(':id')
   @FindOneExcursionDocs()
   async findOne(@Param('id') excursionId: string): Promise<GetExcursionDto> {
@@ -142,6 +147,7 @@ export class ExcursionController {
     };
   }
 
+  @OwnedBy({ entity: Excursion, param: 'id' })
   @Delete(':id')
   @DeleteExcursionDocs()
   async delete(
@@ -154,6 +160,7 @@ export class ExcursionController {
     };
   }
 
+  @OwnedBy({ entity: Excursion, param: 'id' })
   @Post(':id/images')
   @UploadImageDocs()
   @UseInterceptors(FileInterceptor('file', IMAGE_UPLOAD_OPTIONS))
@@ -177,6 +184,7 @@ export class ExcursionController {
     };
   }
 
+  @OwnedBy({ entity: Excursion, param: 'id' })
   @Get(':id/images')
   @GetImagesDocs()
   async getImages(@Param('id') excursionId: number) {
@@ -187,6 +195,7 @@ export class ExcursionController {
     };
   }
 
+  @OwnedBy({ entity: Excursion, param: 'id' })
   @Delete(':id/images/*publicId')
   @DeleteImageDocs()
   async deleteImage(
@@ -194,17 +203,20 @@ export class ExcursionController {
     @Param('publicId') publicId: string,
   ) {
     const decodedPublicId = decodeURIComponent(publicId);
-    await this._localStorageService.deleteImage(decodedPublicId);
+    // Primero el registro: confirma que la imagen es de ESTE ítem (y lanza 404
+    // si no). Antes se borraba el archivo primero, con cualquier publicId.
     await this._excursionImageService.removeExcursionImage(
       excursionId,
       decodedPublicId,
     );
+    await this._localStorageService.deleteImage(decodedPublicId);
     return {
       statusCode: HttpStatus.OK,
       message: 'api.excursion.image_deleted',
     };
   }
 
+  @OwnedBy({ entity: Excursion, param: 'id' })
   @Patch(':id/images/reorder')
   @ReorderImagesDocs()
   async reorderImages(

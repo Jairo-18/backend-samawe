@@ -30,6 +30,9 @@ import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import { TenantContext } from '../../tenant/tenant-context.service';
+import { OwnedBy } from '../../tenant/owned-by';
+import { Menu } from '../../shared/entities/menu.entity';
+import { Product } from '../../shared/entities/product.entity';
 
 @Controller('menus')
 @ApiTags('Menús')
@@ -58,6 +61,7 @@ export class MenuController {
     };
   }
 
+  @OwnedBy({ entity: Menu, param: 'id' })
   @Patch(':id')
   @UpdateMenuDocs()
   async update(@Param('id') menuId: string, @Body() updateDto: UpdateMenuDto) {
@@ -78,6 +82,7 @@ export class MenuController {
     return await this._menuUC.findAllPaginated(params);
   }
 
+  @OwnedBy({ entity: Menu, param: 'id' })
   @Get(':id')
   @FindOneMenuDocs()
   async findById(@Param('id') menuId: string) {
@@ -88,6 +93,10 @@ export class MenuController {
     };
   }
 
+  @OwnedBy(
+    { entity: Menu, param: 'id' },
+    { entity: Product, param: 'productId' },
+  )
   @Delete(':id/product/:productId')
   @RemoveProductFromMenuDocs()
   async removeProduct(
@@ -105,6 +114,7 @@ export class MenuController {
     };
   }
 
+  @OwnedBy({ entity: Menu, param: 'id' })
   @Delete(':id')
   @DeleteMenuDocs()
   async delete(@Param('id') menuId: string) {

@@ -4,6 +4,8 @@ import { MenuUC } from '../useCases/menuUC.uc';
 import { PaginatedMenuParamsDto } from '../dtos/menu.dto';
 import { ResponsePaginationDto } from '../../shared/dtos/pagination.dto';
 import { MenuPublicListItem } from '../interface/menu.interface';
+import { OwnedBy } from '../../tenant/owned-by';
+import { Menu } from '../../shared/entities/menu.entity';
 
 @Controller('menus/public')
 @ApiTags('Menús Público')
@@ -23,6 +25,7 @@ export class MenuPublicController {
   }
 
   @Header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
+  @OwnedBy({ entity: Menu, param: 'id' })
   @Get(':id')
   @ApiOperation({
     summary: 'Un menú con sus platillos para su página pública (acceso público)',

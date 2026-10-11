@@ -1,3 +1,4 @@
+import { TenantContext } from '../../tenant/tenant-context.service';
 import {
   BadRequestException,
   ForbiddenException,
@@ -23,17 +24,21 @@ import { ResponsePaginationDto } from '../../shared/dtos/pagination.dto';
 @Injectable()
 export class ReviewService {
   constructor(
+    private readonly _tenant: TenantContext,
     private readonly _reviewRepository: ReviewRepository,
     private readonly _reviewReplyRepository: ReviewReplyRepository,
     private readonly _userRepository: UserRepository,
     private readonly _organizationalRepository: OrganizationalRepository,
   ) {}
 
-  async findAll(organizationalId?: string): Promise<Review[]> {
+  /**
+   * Reseñas del hotel de la petición. El `organizationalId` que mande el
+   * cliente se ignora (antes, sin él, salían las de todos los hoteles).
+   */
+  async findAll(_organizationalId?: string): Promise<Review[]> {
+    const organizationalId = this._tenant.requireOrganizationalId();
     return this._reviewRepository.find({
-      where: organizationalId
-        ? { organizational: { organizationalId } }
-        : undefined,
+      where: { organizational: { organizationalId } },
       relations: ['user', 'replies', 'replies.user', 'organizational'],
       order: { createdAt: 'DESC' },
     });
@@ -57,7 +62,11 @@ export class ReviewService {
     sort: 'newest' | 'oldest' = 'newest',
   ): Promise<ResponsePaginationDto<Review>> {
     const skip = (page - 1) * perPage;
-    const base: Record<string, any> = { organizational: { organizationalId } };
+    // El hotel de la petición; el parámetro del cliente no manda.
+    void organizationalId;
+    const base: Record<string, any> = {
+      organizational: { organizationalId: this._tenant.requireOrganizationalId() },
+    };
 
     if (filter && filter !== 'all') {
       const n = Number(filter);

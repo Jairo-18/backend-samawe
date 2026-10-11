@@ -16,6 +16,8 @@ import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import { CreateReservationDto } from '../dtos/reservation.dto';
 import { ReservationService } from '../services/reservation.service';
+import { OwnedBy } from '../../tenant/owned-by';
+import { Invoice } from '../../shared/entities/invoice.entity';
 
 const STAFF_ROLES = [RolesUser.SUPERADMIN, RolesUser.ADMIN, RolesUser.EMP];
 
@@ -48,6 +50,7 @@ export class ReservationController {
     };
   }
 
+  @OwnedBy({ entity: Invoice, param: 'invoiceId' })
   @Post(':invoiceId/reservation/confirm-payment')
   @Roles(...STAFF_ROLES)
   @ApiOperation({ summary: 'Confirma el pago de una reserva (RES → RES2)' })
@@ -58,6 +61,7 @@ export class ReservationController {
     };
   }
 
+  @OwnedBy({ entity: Invoice, param: 'invoiceId' })
   @Post(':invoiceId/reservation/extend')
   @Roles(...STAFF_ROLES)
   @ApiOperation({ summary: 'Extiende la retención de una reserva sin pagar' })

@@ -20,11 +20,18 @@ import { PersonTypeRepository } from '../../shared/repositories/personType.repos
 import { OrganizationalRepository } from '../../shared/repositories/organizational.repository';
 import {
   BadRequestException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+
+/** Roles de la plataforma: no son de ningún hotel en particular. */
+const PLATFORM_ROLE_CODES = ['SUPERADMIN', 'PLATFORM_ADMIN'];
+/** Quién puede dar el rol ADMIN de un hotel. */
+const ADMIN_GRANTORS = ['ADMIN', 'SUPERADMIN', 'PLATFORM_ADMIN'];
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { PasswordService } from './password.service';
@@ -89,26 +96,13 @@ export class UserService {
   }
 
   async create(user: CreateUserDto, creatorRole: string): Promise<{ rowId: string }> {
-    const RESTRICTED_ROLES = ['ADMIN', 'SUPERADMIN'];
-    const PRIVILEGED_CREATORS = ['ADMIN', 'SUPERADMIN'];
-
-    const targetRole = await this._roleTypeRepository.findOne({
-      where: { roleTypeId: user.roleType },
-    });
-
-    if (
-      targetRole &&
-      RESTRICTED_ROLES.includes(targetRole.code) &&
-      !PRIVILEGED_CREATORS.includes(creatorRole)
-    ) {
-      throw new HttpException(
-        'No tienes permisos para crear usuarios con este rol',
-        HttpStatus.FORBIDDEN,
-      );
-    }
+    await this.assertRoleAssignable(creatorRole, user.roleType);
+    // Duplicados DENTRO del hotel: el mismo correo, documento o teléfono puede
+    // existir en otro hotel (y buscar en todos revelaba que existe allá).
+    const sameOrg = { organizationalId: this._tenant.requireOrganizationalId() };
     if (user.email) {
       const existingUserByEmail = await this._userRepository.findOne({
-        where: { email: user.email },
+        where: { email: user.email, organizational: sameOrg },
       });
 
       if (existingUserByEmail) {
@@ -133,6 +127,7 @@ export class UserService {
       where: {
         identificationType: { identificationTypeId: user.identificationType },
         identificationNumber,
+        organizational: sameOrg,
       },
     });
 
@@ -154,6 +149,7 @@ export class UserService {
         where: {
           phoneCode: { phoneCodeId: user.phoneCode },
           phone: phoneNumber,
+          organizational: sameOrg,
         },
       });
 
@@ -243,9 +239,13 @@ export class UserService {
       user.email = user.email.toLowerCase();
     }
 
+    // Duplicados dentro del hotel del host: el mismo correo puede tener cuenta
+    // en otro hotel (antes chocaba, y si estaba sin verificar se le reenviaba
+    // el correo de verificación de la cuenta del OTRO hotel).
+    const sameOrg = { organizationalId: this._tenant.requireOrganizationalId() };
     if (user.email) {
       const existingUserByEmail = await this._userRepository.findOne({
-        where: { email: user.email },
+        where: { email: user.email, organizational: sameOrg },
       });
 
       if (existingUserByEmail) {
@@ -303,6 +303,7 @@ export class UserService {
       where: {
         identificationType: { identificationTypeId: user.identificationType },
         identificationNumber: user.identificationNumber,
+        organizational: sameOrg,
       },
     });
 
@@ -324,6 +325,7 @@ export class UserService {
         where: {
           phoneCode: { phoneCodeId: user.phoneCode },
           phone: phoneNumber,
+          organizational: sameOrg,
         },
       });
 
@@ -422,11 +424,60 @@ export class UserService {
     return { rowId: user.userId };
   }
 
+  /**
+   * Quién puede dar qué rol. Los de plataforma (SUPERADMIN, PLATFORM_ADMIN)
+   * solo un SUPERADMIN: antes un ADMIN de cualquier hotel podía crearse un
+   * superadmin y con él entrar a los demás hoteles. ADMIN, solo un ADMIN o
+   * alguien de plataforma.
+   */
+  async assertRoleAssignable(requesterRole: string, roleTypeId?: string): Promise<void> {
+    if (!roleTypeId) return;
+    const role = await this._roleTypeRepository.findOne({ where: { roleTypeId } });
+    if (!role) return; // el rol inválido lo rechaza la validación de siempre
+    const allowed = PLATFORM_ROLE_CODES.includes(role.code)
+      ? requesterRole === 'SUPERADMIN'
+      : role.code === 'ADMIN'
+        ? ADMIN_GRANTORS.includes(requesterRole)
+        : true;
+    if (!allowed) {
+      throw new ForbiddenException('No tienes permisos para asignar este rol');
+    }
+  }
+
+  /**
+   * Una cuenta de plataforma solo la toca un SUPERADMIN (o ella misma): vive en
+   * la organización de Samawe, así que un ADMIN de Samawe podía cambiarle el
+   * correo o la contraseña y quedarse con la plataforma. Responde 404, igual
+   * que un usuario de otro hotel.
+   */
+  async assertCanManageUser(
+    requester: { userId?: string; roleType?: { code?: string } },
+    targetUserId: string,
+  ): Promise<void> {
+    if (requester?.userId === targetUserId || requester?.roleType?.code === 'SUPERADMIN') return;
+    const target = await this._userRepository.findOne({
+      where: { userId: targetUserId },
+      relations: ['roleType'],
+    });
+    if (target && PLATFORM_ROLE_CODES.includes(target.roleType?.code ?? '')) {
+      throw new NotFoundException();
+    }
+  }
+
   async update(userId: string, userData: UpdateUserModel) {
     const userExist = await this.findOne(userId);
+    // Duplicados dentro del hotel del usuario editado, no en todos.
+    const target = await this._userRepository.findOne({
+      where: { userId },
+      relations: ['organizational'],
+    });
+    const sameOrg = {
+      organizationalId:
+        target?.organizational?.organizationalId ?? this._tenant.requireOrganizationalId(),
+    };
     if (userData.email) {
       const emailExist = await this._userRepository.findOne({
-        where: { userId: Not(userId), email: userData.email },
+        where: { userId: Not(userId), email: userData.email, organizational: sameOrg },
       });
 
       if (emailExist) {
@@ -445,6 +496,7 @@ export class UserService {
           identificationType: {
             identificationTypeId: userData.identificationType,
           },
+          organizational: sameOrg,
         },
       });
       if (identificationNumberExist) {
@@ -463,6 +515,7 @@ export class UserService {
           phoneCode: {
             phoneCodeId: userData.phoneCode,
           },
+          organizational: sameOrg,
         },
       });
       if (phoneExist) {

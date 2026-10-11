@@ -360,7 +360,8 @@ export class InvoiceExcelService {
       ws2.addRow([]);
     }
 
-    ws2.columns.forEach((col) => {
+    // Sin facturas la hoja queda vacía y exceljs devuelve `columns` null.
+    (ws2.columns ?? []).forEach((col) => {
       let max = 12;
       col.eachCell({ includeEmpty: false }, (cell) => {
         const len = cell.value ? cell.value.toString().length : 0;

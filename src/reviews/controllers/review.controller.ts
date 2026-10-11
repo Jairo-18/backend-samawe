@@ -31,6 +31,9 @@ import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import { Throttle } from '@nestjs/throttler';
+import { OwnedBy } from '../../tenant/owned-by';
+import { Review } from '../../shared/entities/review.entity';
+import { ReviewReply } from '../../shared/entities/reviewReply.entity';
 
 const ALL_ROLES = [
   RolesUser.SUPERADMIN,
@@ -149,6 +152,7 @@ export class ReviewController {
     };
   }
 
+  @OwnedBy({ entity: Review, param: 'id' })
   @Get(':id')
   @UseGuards(AuthGuard(), RolesGuard)
   @Roles(...ALL_ROLES)
@@ -176,6 +180,7 @@ export class ReviewController {
     };
   }
 
+  @OwnedBy({ entity: Review, param: 'id' })
   @Patch(':id')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @UseGuards(AuthGuard(), RolesGuard)
@@ -195,6 +200,7 @@ export class ReviewController {
     };
   }
 
+  @OwnedBy({ entity: Review, param: 'id' })
   @Delete(':id')
   @UseGuards(AuthGuard(), RolesGuard)
   @Roles(...ALL_ROLES)
@@ -211,6 +217,7 @@ export class ReviewController {
     };
   }
 
+  @OwnedBy({ entity: Review, param: 'id' })
   @Post(':id/replies')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @UseGuards(AuthGuard(), RolesGuard)
@@ -234,6 +241,10 @@ export class ReviewController {
     };
   }
 
+  @OwnedBy(
+    { entity: Review, param: 'reviewId' },
+    { entity: ReviewReply, param: 'replyId', via: ['review'] },
+  )
   @Patch(':reviewId/replies/:replyId')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Editar una respuesta propia' })
@@ -257,6 +268,10 @@ export class ReviewController {
     };
   }
 
+  @OwnedBy(
+    { entity: Review, param: 'reviewId' },
+    { entity: ReviewReply, param: 'replyId', via: ['review'] },
+  )
   @Delete(':reviewId/replies/:replyId')
   @ApiOperation({ summary: 'Eliminar una respuesta propia' })
   @UseGuards(AuthGuard(), RolesGuard)

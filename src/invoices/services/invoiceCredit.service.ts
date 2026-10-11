@@ -1,3 +1,4 @@
+import { TenantContext } from '../../tenant/tenant-context.service';
 import {
   BadRequestException,
   ConflictException,
@@ -85,7 +86,10 @@ export interface ReceivableRow {
  */
 @Injectable()
 export class InvoiceCreditService {
-  constructor(@InjectDataSource() private readonly _dataSource: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly _dataSource: DataSource,
+    private readonly _tenant: TenantContext,
+  ) {}
 
   async getCredit(invoiceId: number): Promise<InvoiceCreditView> {
     return this._buildView(this._dataSource.manager, invoiceId);
@@ -228,8 +232,9 @@ export class InvoiceCreditService {
          JOIN "PayType" p ON p."payTypeId" = i."payTypeId"
          JOIN "InvoiceType" t ON t."invoiceTypeId" = i."invoiceTypeId"
          LEFT JOIN "User" u ON u."userId" = i."userId"
-        WHERE p."code" = $1 AND t."code" IN ('FV', 'FVE') AND i."deletedAt" IS NULL`,
-      [CREDIT_PAY_TYPE_CODE],
+        WHERE p."code" = $1 AND t."code" IN ('FV', 'FVE') AND i."deletedAt" IS NULL
+          AND i."organizationalId" = $2`,
+      [CREDIT_PAY_TYPE_CODE, this._tenant.requireOrganizationalId()],
     );
     // Solo las facturas a crédito de arriba: leer TODOS los abonos y notas de la
     // base crece con el histórico en cada visita a la pantalla.

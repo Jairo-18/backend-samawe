@@ -54,6 +54,8 @@ import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { TenantContext } from '../../tenant/tenant-context.service';
+import { OwnedBy } from '../../tenant/owned-by';
+import { Accommodation } from '../../shared/entities/accommodation.entity';
 
 @Controller('accommodation')
 @ApiTags('Hospedajes')
@@ -103,6 +105,7 @@ export class AccommodationController {
     };
   }
 
+  @OwnedBy({ entity: Accommodation, param: 'id' })
   @Patch(':id')
   @UpdateAccommodationDocs()
   async update(
@@ -128,6 +131,7 @@ export class AccommodationController {
     return await this._crudAccommodationUC.paginatedList(params);
   }
 
+  @OwnedBy({ entity: Accommodation, param: 'id' })
   @Get(':id')
   @FindOneAccommodationDocs()
   async findOne(
@@ -140,6 +144,7 @@ export class AccommodationController {
     };
   }
 
+  @OwnedBy({ entity: Accommodation, param: 'id' })
   @Delete(':id')
   @DeleteAccommodationDocs()
   async delete(
@@ -152,6 +157,7 @@ export class AccommodationController {
     };
   }
 
+  @OwnedBy({ entity: Accommodation, param: 'id' })
   @Post(':id/images')
   @UploadImageDocs()
   @UseInterceptors(FileInterceptor('file', IMAGE_UPLOAD_OPTIONS))
@@ -176,6 +182,7 @@ export class AccommodationController {
     };
   }
 
+  @OwnedBy({ entity: Accommodation, param: 'id' })
   @Get(':id/images')
   @GetImagesDocs()
   async getImages(@Param('id') accommodationId: number) {
@@ -188,6 +195,7 @@ export class AccommodationController {
     };
   }
 
+  @OwnedBy({ entity: Accommodation, param: 'id' })
   @Delete(':id/images/*publicId')
   @DeleteImageDocs()
   async deleteImage(
@@ -195,17 +203,20 @@ export class AccommodationController {
     @Param('publicId') publicId: string,
   ) {
     const decodedPublicId = decodeURIComponent(publicId);
-    await this._localStorageService.deleteImage(decodedPublicId);
+    // Primero el registro: confirma que la imagen es de ESTE ítem (y lanza 404
+    // si no). Antes se borraba el archivo primero, con cualquier publicId.
     await this._accommodationImageService.removeAccommodationImage(
       accommodationId,
       decodedPublicId,
     );
+    await this._localStorageService.deleteImage(decodedPublicId);
     return {
       statusCode: HttpStatus.OK,
       message: 'api.accommodation.image_deleted',
     };
   }
 
+  @OwnedBy({ entity: Accommodation, param: 'id' })
   @Patch(':id/images/reorder')
   @ReorderImagesDocs()
   async reorderImages(

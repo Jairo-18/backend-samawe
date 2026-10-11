@@ -1,6 +1,8 @@
 import { Global, HttpException, Logger, Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TenantParamInterceptor } from './tenant-param.interceptor';
+import { OwnershipInterceptor } from './owned-by';
+import { TenantInsertSubscriber } from './tenant-insert.subscriber';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClsModule } from 'nestjs-cls';
 import { Request } from 'express';
@@ -82,6 +84,10 @@ export class TenantResolverModule {}
     // Con sesión, el `organizationalId` del cliente se reemplaza por el de la
     // sesión (ver el interceptor).
     { provide: APP_INTERCEPTOR, useClass: TenantParamInterceptor },
+    // Ids de la ruta de otro hotel -> 404 (ver `@OwnedBy`).
+    { provide: APP_INTERCEPTOR, useClass: OwnershipInterceptor },
+    // Inserciones sin hotel dentro de una petición -> el de la petición.
+    TenantInsertSubscriber,
   ],
   exports: [TenantContext, TenantResolverModule],
 })

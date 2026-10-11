@@ -33,6 +33,9 @@ import {
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
+import { OwnedBy } from '../../tenant/owned-by';
+import { Product } from '../../shared/entities/product.entity';
+import { Recipe } from '../../shared/entities/recipe.entity';
 
 @Controller('recipes')
 @ApiTags('Recetas')
@@ -61,6 +64,7 @@ export class RecipeController {
     };
   }
 
+  @OwnedBy({ entity: Product, param: 'productId' })
   @Patch('product/:productId')
   @UpdateRecipeDocs()
   async updateByProduct(
@@ -81,6 +85,7 @@ export class RecipeController {
     };
   }
 
+  @OwnedBy({ entity: Recipe, param: 'recipeId' })
   @Patch(':recipeId')
   @UpdateRecipeIngredientDocs()
   async updateIngredient(
@@ -103,6 +108,7 @@ export class RecipeController {
     return await this._recipeUC.findAllPaginated(params);
   }
 
+  @OwnedBy({ entity: Product, param: 'productId' })
   @Get('product/:productId')
   @FindByProductDocs()
   async findByProduct(@Param('productId') productId: string) {
@@ -123,6 +129,7 @@ export class RecipeController {
     };
   }
 
+  @OwnedBy({ entity: Product, param: 'productId' })
   @Delete('product/:productId')
   @DeleteByProductDocs()
   async deleteByProduct(@Param('productId') productId: string) {
@@ -133,6 +140,7 @@ export class RecipeController {
     };
   }
 
+  @OwnedBy({ entity: Recipe, param: 'recipeId' })
   @Delete(':recipeId')
   @DeleteIngredientDocs()
   async deleteIngredient(@Param('recipeId') recipeId: string) {

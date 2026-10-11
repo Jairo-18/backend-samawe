@@ -20,7 +20,10 @@ import {
   SetInvoiceCreditDto,
 } from '../dtos/invoiceCredit.dto';
 import { InvoiceCreditService } from '../services/invoiceCredit.service';
+import { OwnedBy } from '../../tenant/owned-by';
+import { Invoice } from '../../shared/entities/invoice.entity';
 
+@OwnedBy({ entity: Invoice, param: 'invoiceId' })
 @Controller('invoices/:invoiceId/credit')
 @ApiTags('Facturas - Crédito')
 @UseGuards(AuthGuard(), RolesGuard)

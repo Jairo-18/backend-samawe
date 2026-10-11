@@ -48,6 +48,10 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CreatedRecordResponseDto } from 'src/shared/dtos/response.dto';
 import { toPublicOrganizational } from '../mappers/organizational-public.mapper';
 import { TenantContext } from '../../tenant/tenant-context.service';
+import { OwnedBy } from '../../tenant/owned-by';
+import { CorporateValue } from '../../shared/entities/corporateValue.entity';
+import { Organizational } from '../../shared/entities/organizational.entity';
+import { OrganizationalMedia } from '../../shared/entities/organizationalMedia.entity';
 
 /**
  * Quién puede CAMBIAR la configuración del hotel (datos, marca, medios,
@@ -178,6 +182,7 @@ export class OrganizationalController {
     };
   }
 
+  @OwnedBy({ entity: Organizational, param: 'id' })
   @Get(':id/media')
   @GetMediaMapDocs()
   async getMediaMap(@Param('id') id: string) {
@@ -255,6 +260,7 @@ export class OrganizationalController {
     }
   }
 
+  @OwnedBy({ entity: Organizational, param: 'id' })
   @Post(':id/media')
   @ApiBearerAuth()
   @Roles(...ORG_EDITORS)
@@ -267,6 +273,7 @@ export class OrganizationalController {
     return await this._organizationalUC.addMedia(id, dto);
   }
 
+  @OwnedBy({ entity: Organizational, param: 'id' })
   @Post(':id/upload-media')
   @ApiBearerAuth()
   @Roles(...ORG_EDITORS)
@@ -300,6 +307,7 @@ export class OrganizationalController {
     };
   }
 
+  @OwnedBy({ entity: OrganizationalMedia, param: 'mediaId' })
   @Patch('media/:mediaId')
   @ApiBearerAuth()
   @Roles(...ORG_EDITORS)
@@ -316,6 +324,7 @@ export class OrganizationalController {
     };
   }
 
+  @OwnedBy({ entity: OrganizationalMedia, param: 'mediaId' })
   @Delete('media/:mediaId')
   @ApiBearerAuth()
   @Roles(...ORG_EDITORS)
@@ -329,12 +338,14 @@ export class OrganizationalController {
     };
   }
 
+  @OwnedBy({ entity: Organizational, param: 'id' })
   @Get(':id/corporate-values')
   async getCorporateValues(@Param('id') id: string) {
     const values = await this._organizationalUC.getCorporateValues(id);
     return { statusCode: HttpStatus.OK, data: values };
   }
 
+  @OwnedBy({ entity: Organizational, param: 'id' })
   @Post(':id/corporate-values')
   @ApiBearerAuth()
   @Roles(...ORG_EDITORS)
@@ -347,6 +358,7 @@ export class OrganizationalController {
     return { statusCode: HttpStatus.CREATED, data };
   }
 
+  @OwnedBy({ entity: CorporateValue, param: 'valueId' })
   @Patch('corporate-values/:valueId')
   @ApiBearerAuth()
   @Roles(...ORG_EDITORS)
@@ -362,6 +374,7 @@ export class OrganizationalController {
     };
   }
 
+  @OwnedBy({ entity: CorporateValue, param: 'valueId' })
   @Delete('corporate-values/:valueId')
   @ApiBearerAuth()
   @Roles(...ORG_EDITORS)
@@ -374,6 +387,7 @@ export class OrganizationalController {
     };
   }
 
+  @OwnedBy({ entity: CorporateValue, param: 'valueId' })
   @Post('corporate-values/:valueId/upload-image')
   @ApiBearerAuth()
   @Roles(...ORG_EDITORS)
@@ -395,6 +409,7 @@ export class OrganizationalController {
     return { statusCode: HttpStatus.OK, data };
   }
 
+  @OwnedBy({ entity: CorporateValue, param: 'valueId' })
   @Delete('corporate-values/:valueId/image')
   @ApiBearerAuth()
   @Roles(...ORG_EDITORS)

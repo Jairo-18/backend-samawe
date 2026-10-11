@@ -31,6 +31,14 @@ export class UserUC {
     return await this._userService.initData(userId);
   }
 
+  async assertRoleAssignable(requesterRole: string, roleTypeId?: string) {
+    return await this._userService.assertRoleAssignable(requesterRole, roleTypeId);
+  }
+
+  async assertCanManageUser(requester: any, targetUserId: string) {
+    return await this._userService.assertCanManageUser(requester, targetUserId);
+  }
+
   async update(id: string, userData: UpdateUserDto) {
     return await this._userService.update(id, userData);
   }

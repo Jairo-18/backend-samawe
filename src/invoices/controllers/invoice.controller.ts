@@ -56,6 +56,8 @@ import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import { TenantContext } from '../../tenant/tenant-context.service';
+import { OwnedBy } from '../../tenant/owned-by';
+import { InvoiceDetaill } from '../../shared/entities/invoiceDetaill.entity';
 
 const STAFF_ROLES = [
   RolesUser.SUPERADMIN,
@@ -120,6 +122,7 @@ export class InvoiceController {
   }
 
   /** Detalle propio. Antes de ':id' para que 'mine/..' no caiga en el comodín. */
+  @OwnedBy({ entity: Invoice, param: 'id' })
   @Get('mine/:id')
   async getMineOne(
     @Param('id', ParseIntPipe) invoiceId: number,
@@ -129,6 +132,7 @@ export class InvoiceController {
     return { statusCode: HttpStatus.OK, data };
   }
 
+  @OwnedBy({ entity: Invoice, param: 'id' })
   @Get(':id')
   @FindOneInvoiceDocs()
   async findOne(
@@ -143,6 +147,7 @@ export class InvoiceController {
   }
 
   @Roles(...STAFF_ROLES)
+  @OwnedBy({ entity: Invoice, param: 'id' })
   @Delete(':id')
   @DeleteInvoiceDocs()
   async remove(
@@ -157,6 +162,7 @@ export class InvoiceController {
   }
 
   @Roles(...STAFF_ROLES)
+  @OwnedBy({ entity: Invoice, param: 'invoiceId' })
   @Post('invoice/:invoiceId/details')
   @CreateDetailsDocs()
   async createDetails(
@@ -174,6 +180,7 @@ export class InvoiceController {
   }
 
   @Roles(...STAFF_ROLES)
+  @OwnedBy({ entity: Invoice, param: 'id' })
   @Patch(':id')
   @UpdateInvoiceDocs()
   async update(
@@ -189,6 +196,7 @@ export class InvoiceController {
   }
 
   @Roles(...STAFF_ROLES)
+  @OwnedBy({ entity: InvoiceDetaill, param: 'detailId' })
   @Delete('details/:detailId')
   @DeleteDetailDocs()
   async deleteDetail(
@@ -202,6 +210,10 @@ export class InvoiceController {
     };
   }
 
+  @OwnedBy(
+    { entity: Invoice, param: 'invoiceId' },
+    { entity: InvoiceDetaill, param: 'detailId' },
+  )
   @Patch('invoice/:invoiceId/detail/:detailId/toggle-payment')
   @Roles(...STAFF_ROLES)
   @ToggleDetailPaymentDocs()
@@ -228,6 +240,7 @@ export class InvoiceController {
     };
   }
 
+  @OwnedBy({ entity: Invoice, param: 'invoiceId' })
   @Patch('invoice/:invoiceId/details/toggle-payment-bulk')
   @Roles(...STAFF_ROLES)
   @Throttle({ default: { limit: 10, ttl: 60000 } })

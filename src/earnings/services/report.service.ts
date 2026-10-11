@@ -5,6 +5,7 @@ import { DebitNote } from './../../shared/entities/debitNote.entity';
 import { AdjustmentNote } from './../../shared/entities/adjustmentNote.entity';
 import { InvoiceDetaill } from './../../shared/entities/invoiceDetaill.entity';
 import { Injectable } from '@nestjs/common';
+import { TenantContext } from '../../tenant/tenant-context.service';
 import {
   PaymentTypeReport,
   CategoryDetailReport,
@@ -15,6 +16,8 @@ import { CategoryReportDto } from '../dtos/report.dto';
 @Injectable()
 export class ReportService {
   constructor(
+    // Todas las consultas filtran por el hotel de la petición (antes, ninguna).
+    private readonly _tenant: TenantContext,
     private readonly _invoiceRepository: InvoiceRepository,
     private readonly _payTypeRepository: PayTypeRepository,
   ) {}
@@ -96,6 +99,9 @@ export class ReportService {
               'invoice.createdAt >= :startDate AND invoice.createdAt <= :endDate',
               { startDate, endDate },
             )
+            .andWhere('invoice.organizationalId = :tenantOrgId', {
+              tenantOrgId: this._tenant.requireOrganizationalId(),
+            })
             .getRawOne();
         };
 
@@ -128,6 +134,9 @@ export class ReportService {
               'invoice.createdAt >= :startDate AND invoice.createdAt <= :endDate',
               { startDate, endDate },
             )
+            .andWhere('invoice.organizationalId = :tenantOrgId', {
+              tenantOrgId: this._tenant.requireOrganizationalId(),
+            })
             .getRawOne();
         };
 
@@ -189,6 +198,9 @@ export class ReportService {
       .where('invoice.createdAt BETWEEN :startDate AND :endDate', {
         startDate,
         endDate,
+      })
+      .andWhere('invoice.organizationalId = :tenantOrgId', {
+        tenantOrgId: this._tenant.requireOrganizationalId(),
       })
       .getMany();
     if (!notes.length) return result;
@@ -305,6 +317,9 @@ export class ReportService {
             qb.andWhere(`"categoryType"."name"->>'es' = :categoryName`, { categoryName });
           }
 
+          qb.andWhere('invoice.organizationalId = :tenantOrgId', {
+            tenantOrgId: this._tenant.requireOrganizationalId(),
+          });
           return qb.getRawOne();
         };
 
@@ -393,6 +408,9 @@ export class ReportService {
             qb.andWhere('product.productId IS NOT NULL');
             qb.andWhere(`"categoryType"."name"->>'es' = :categoryName`, { categoryName });
           }
+          qb.andWhere('invoice.organizationalId = :tenantOrgId', {
+            tenantOrgId: this._tenant.requireOrganizationalId(),
+          });
           const results = await qb.getRawMany();
 
           return results.map((item) => ({
@@ -523,6 +541,9 @@ export class ReportService {
       qb.andWhere('product.productId IS NOT NULL');
       qb.andWhere(`"categoryType"."name"->>'es' = :categoryName`, { categoryName });
     }
+    qb.andWhere('invoice.organizationalId = :tenantOrgId', {
+      tenantOrgId: this._tenant.requireOrganizationalId(),
+    });
     const results = await qb.getRawMany();
 
     return results.map((item) => ({

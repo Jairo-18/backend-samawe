@@ -21,6 +21,10 @@ import {
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
+import { OwnedBy } from '../../tenant/owned-by';
+import { BenefitItem } from '../../shared/entities/benefitItem.entity';
+import { BenefitSection } from '../../shared/entities/benefitSection.entity';
+import { Organizational } from '../../shared/entities/organizational.entity';
 
 @Controller('benefit-section')
 @ApiTags('Beneficios y Servicios')
@@ -34,12 +38,14 @@ import { RolesUser } from '../../shared/roles/RolesUser.enum';
 export class BenefitSectionController {
   constructor(private readonly _benefitSectionUC: BenefitSectionUC) {}
 
+  @OwnedBy({ entity: Organizational, param: 'organizationalId' })
   @Get('organizational/:organizationalId')
   async getSections(@Param('organizationalId') organizationalId: string) {
     const data = await this._benefitSectionUC.getSections(organizationalId);
     return { statusCode: HttpStatus.OK, data };
   }
 
+  @OwnedBy({ entity: Organizational, param: 'organizationalId' })
   @Post('organizational/:organizationalId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
@@ -54,6 +60,7 @@ export class BenefitSectionController {
     return { statusCode: HttpStatus.CREATED, data };
   }
 
+  @OwnedBy({ entity: BenefitSection, param: 'benefitSectionId' })
   @Patch(':benefitSectionId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
@@ -68,6 +75,7 @@ export class BenefitSectionController {
     };
   }
 
+  @OwnedBy({ entity: BenefitSection, param: 'benefitSectionId' })
   @Delete(':benefitSectionId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
@@ -79,6 +87,7 @@ export class BenefitSectionController {
     };
   }
 
+  @OwnedBy({ entity: BenefitSection, param: 'benefitSectionId' })
   @Post(':benefitSectionId/items')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
@@ -90,6 +99,9 @@ export class BenefitSectionController {
     return { statusCode: HttpStatus.CREATED, data };
   }
 
+  @OwnedBy(
+    { entity: BenefitItem, param: 'benefitItemId', via: ['benefitSection'] },
+  )
   @Patch('items/:benefitItemId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
@@ -104,6 +116,9 @@ export class BenefitSectionController {
     };
   }
 
+  @OwnedBy(
+    { entity: BenefitItem, param: 'benefitItemId', via: ['benefitSection'] },
+  )
   @Delete('items/:benefitItemId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)

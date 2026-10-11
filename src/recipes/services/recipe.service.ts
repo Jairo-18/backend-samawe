@@ -1,4 +1,5 @@
-﻿import { RecipeRepository } from './../../shared/repositories/recipe.repository';
+﻿import { TenantContext } from '../../tenant/tenant-context.service';
+import { RecipeRepository } from './../../shared/repositories/recipe.repository';
 import { ProductRepository } from './../../shared/repositories/product.repository';
 import { OrganizationalRepository } from './../../shared/repositories/organizational.repository';
 import { Recipe } from './../../shared/entities/recipe.entity';
@@ -27,6 +28,7 @@ export class RecipeService {
   private readonly logger = new Logger(RecipeService.name);
 
   constructor(
+    private readonly _tenant: TenantContext,
     private readonly _recipeRepository: RecipeRepository,
     private readonly _productRepository: ProductRepository,
     private readonly _organizationalRepository: OrganizationalRepository,
@@ -47,7 +49,10 @@ export class RecipeService {
       .leftJoinAndSelect('recipe.ingredient', 'ingredient')
       .leftJoinAndSelect('ingredient.unitOfMeasure', 'unitOfMeasure')
       .addOrderBy('images.position', 'ASC')
-      .where('product.deletedAt IS NULL');
+      .where('product.deletedAt IS NULL')
+      .andWhere('recipe.organizationalId = :tenantOrgId', {
+        tenantOrgId: this._tenant.requireOrganizationalId(),
+      });
 
     if (params.search) {
       qb.andWhere(`LOWER("product"."name"->>'es') LIKE LOWER(:search)`, {

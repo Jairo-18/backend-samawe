@@ -62,6 +62,7 @@ import { Roles } from '../../shared/decorators/roles.decorator';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { RolesUser } from '../../shared/roles/RolesUser.enum';
 import { TenantContext } from '../../tenant/tenant-context.service';
+import { OwnedBy } from '../../tenant/owned-by';
 
 const STAFF_ROLES = [
   RolesUser.SUPERADMIN,
@@ -216,6 +217,7 @@ export class UserController {
     }
   }
 
+  @OwnedBy({ entity: User, param: 'id', allowSelf: true })
   @Get(':id')
   @UseGuards(AuthGuard(), RolesGuard)
   @Roles(...ALL_ROLES)
@@ -232,6 +234,7 @@ export class UserController {
     };
   }
 
+  @OwnedBy({ entity: User, param: 'id', allowSelf: true })
   @Patch(':id')
   @UseGuards(AuthGuard(), RolesGuard)
   @Roles(...ALL_ROLES)
@@ -252,6 +255,8 @@ export class UserController {
       delete userData.isActive;
       delete userData.organizationalId;
     }
+    await this._userUC.assertCanManageUser(requester, id);
+    await this._userUC.assertRoleAssignable(requester?.roleType?.code ?? '', userData.roleType);
 
     await this._userUC.update(id, userData);
     return {
@@ -260,6 +265,7 @@ export class UserController {
     };
   }
 
+  @OwnedBy({ entity: User, param: 'id', allowSelf: true })
   @Patch(':id/avatar')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
@@ -280,6 +286,7 @@ export class UserController {
     };
   }
 
+  @OwnedBy({ entity: User, param: 'id', allowSelf: true })
   @Delete(':id/avatar')
   @ApiBearerAuth()
   @UseGuards(AuthGuard(), RolesGuard)
@@ -296,11 +303,16 @@ export class UserController {
     };
   }
 
+  @OwnedBy({ entity: User, param: 'id', allowSelf: true })
   @Delete(':id')
   @UseGuards(AuthGuard(), RolesGuard)
   @Roles(...STAFF_ROLES)
   @DeleteUserDocs()
-  async delete(@Param('id') id: string): Promise<DeleteReCordResponseDto> {
+  async delete(
+    @Param('id') id: string,
+    @GetUser() requester: any,
+  ): Promise<DeleteReCordResponseDto> {
+    await this._userUC.assertCanManageUser(requester, id);
     await this._userUC.delete(id);
     return {
       statusCode: HttpStatus.OK,
