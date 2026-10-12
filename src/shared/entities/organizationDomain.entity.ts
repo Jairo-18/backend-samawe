@@ -44,6 +44,14 @@ export class OrganizationDomain {
   @Column({ type: 'boolean', default: false })
   isPrimary: boolean;
 
+  /**
+   * Host del PANEL de la plataforma (hoy la API de Samawe): con sesión, el
+   * hotel de la petición es el del usuario (JWT), no el del host. Sin sesión
+   * (web pública) sigue siendo el del host. Ver `checkSessionTenant`.
+   */
+  @Column({ type: 'boolean', default: false })
+  isPanel: boolean;
+
   @Column('varchar', { length: 10, default: 'web' })
   kind: OrganizationDomainKind;
 

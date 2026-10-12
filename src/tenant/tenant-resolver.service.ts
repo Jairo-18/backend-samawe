@@ -52,6 +52,7 @@ export class TenantResolverService {
             organizationalId: domain.organizationalId,
             hostname,
             kind: domain.kind,
+            isPanel: domain.isPanel === true,
           }
         : null;
 

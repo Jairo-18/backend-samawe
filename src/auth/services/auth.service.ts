@@ -65,7 +65,14 @@ export class AuthService {
       homeOrganizationalId?: string | null;
       isActingOrganization?: boolean;
     };
-    if (!isPlatformManager(user)) return out;
+    if (!isPlatformManager(user)) {
+      // Host del panel: el usuario de otro hotel opera en el suyo.
+      const own = userOrganizationalId(user);
+      if (this._tenant.tenant?.isPanel && own && own !== this._tenant.organizationalId) {
+        this._tenant.actAs(own);
+      }
+      return out;
+    }
 
     const home = userOrganizationalId(user);
     const effective = effectiveOrganizationalId(user, tokenOrgId, this._tenant.tenant);
@@ -150,9 +157,34 @@ export class AuthService {
     }
   }
 
-  async signIn(credentials: Partial<UserAuthModel>) {
+  /**
+   * Hotel donde buscar la cuenta al iniciar sesión (o recuperar la contraseña).
+   * En el host del panel, el que pida el login (`hotel`, un slug): el mismo
+   * correo puede tener cuenta en varios hoteles. La contraseña es la que prueba
+   * quién es; después manda el JWT. En cualquier otro host, el del host, y
+   * `hotel` se ignora. `null` = no hay dónde buscar.
+   */
+  private async _loginOrganizationalId(hotel?: string | null): Promise<string | null> {
+    const tenant = this._tenant.tenant;
+    if (!tenant?.organizationalId) return null;
+    const slug = hotel?.trim().toLowerCase();
+    if (!tenant.isPanel || !slug) return tenant.organizationalId;
+    const org = await this._organizationalRepository.findOne({
+      where: { slug, status: true },
+    });
+    return org?.organizationalId ?? null;
+  }
+
+  async signIn(credentials: Partial<UserAuthModel> & { hotel?: string | null }) {
+    const organizationalId = await this._loginOrganizationalId(credentials.hotel);
+    if (!organizationalId) {
+      throw new UnauthorizedException(INVALID_ACCESS_DATA_MESSAGE);
+    }
+    // Correo + hotel: con el mismo correo en dos hoteles, buscar solo por
+    // correo podía traer la cuenta del otro.
     const user = await this._userService.findByParams({
       email: credentials.email,
+      organizational: { organizationalId },
     });
 
     if (!user) {
@@ -172,6 +204,11 @@ export class AuthService {
     // contraseña mala, para no revelar que el correo está registrado en otro.
     if (!this._belongsToTenant(user)) {
       throw new UnauthorizedException(INVALID_ACCESS_DATA_MESSAGE);
+    }
+    // Host del panel con cuenta de otro hotel: lo que se escriba en este
+    // login (la sesión) es de SU hotel, no del host.
+    if (organizationalId !== this._tenant.organizationalId) {
+      this._tenant.actAs(organizationalId);
     }
 
     if (user.isBanned) {
@@ -336,9 +373,11 @@ export class AuthService {
   }
 
   async recoveryPassword(body: RecoveryPasswordBodyDto) {
+    const organizationalId = await this._loginOrganizationalId(body.hotel);
+    if (!organizationalId) return;
     const user = await this._userService.findOneByParams(
       {
-        where: { email: body.email },
+        where: { email: body.email, organizational: { organizationalId } },
         relations: ['organizational', 'organizational.medias', 'organizational.medias.mediaType'],
       },
       false,

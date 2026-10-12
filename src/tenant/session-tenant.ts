@@ -68,6 +68,11 @@ export function effectiveOrganizationalId(
  * - SUPERADMIN y PLATFORM_ADMIN (administradores de plataforma) valen en
  *   cualquier host conocido: operan en la organización de su token
  *   (`effectiveOrganizationalId`).
+ * - Host del PANEL (`isPanel`): vale la sesión de un usuario de CUALQUIER hotel,
+ *   y la petición opera en el suyo (`AuthService.applyEffectiveOrganization`).
+ *   El token, si trae `orgId`, tiene que ser el de su usuario. Así un solo
+ *   panel y una sola API sirven a todos los hoteles, sin que el front adivine
+ *   a qué API mandar cada petición.
  */
 export function checkSessionTenant(
   user: SessionUserLike,
@@ -81,11 +86,19 @@ export function checkSessionTenant(
   // falta un host conocido.
   if (isPlatformManager(user)) return { ok: true };
 
+  const userOrg = userOrganizationalId(user);
+  if (tenant.isPanel) {
+    if (!userOrg) return { ok: false, reason: 'user-without-org' };
+    if (tokenOrgId && tokenOrgId !== userOrg) {
+      return { ok: false, reason: 'token-other-org' };
+    }
+    return { ok: true };
+  }
+
   if (tokenOrgId && tokenOrgId !== tenant.organizationalId) {
     return { ok: false, reason: 'token-other-org' };
   }
 
-  const userOrg = userOrganizationalId(user);
   if (!userOrg) return { ok: false, reason: 'user-without-org' };
   if (userOrg !== tenant.organizationalId) {
     return { ok: false, reason: 'user-other-org' };

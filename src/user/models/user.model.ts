@@ -106,4 +106,6 @@ export interface UserWhereModel {
   id?: string;
   identification?: string;
   email?: string;
+  /** Hotel del usuario: el mismo correo puede existir en varios. */
+  organizational?: { organizationalId: string };
 }

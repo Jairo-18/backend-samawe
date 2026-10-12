@@ -36,8 +36,9 @@ export class TenantContext {
 
   /**
    * Cambia el hotel de la petición EN CURSO a `organizationalId`. Solo lo usa la
-   * estrategia JWT, después de comprobar que el usuario es administrador de
-   * plataforma y que eligió esa organización con el selector.
+   * estrategia JWT, ya validada la sesión: un administrador de plataforma que
+   * eligió esa organización con el selector, o cualquier usuario en el host del
+   * panel (opera en SU hotel).
    */
   actAs(organizationalId: string): void {
     if (!organizationalId || !this._cls.isActive()) return;
@@ -47,6 +48,7 @@ export class TenantContext {
       organizationalId,
       hostname: current?.hostname ?? '(sin host)',
       kind: 'acting',
+      isPanel: current?.isPanel,
     });
   }
 

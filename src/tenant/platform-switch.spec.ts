@@ -48,6 +48,66 @@ describe('reglas de sesión del administrador de plataforma', () => {
   });
 });
 
+describe('host del panel (isPanel): la sesión decide el hotel', () => {
+  const panel: ResolvedTenant = { ...hostSamawe, isPanel: true };
+  const hotelHost: ResolvedTenant = {
+    organizationalId: HOTEL2,
+    hostname: 'api-crazylove.ecohotelsamawe.com',
+    kind: 'api',
+  };
+  const adminHotel2 = { userId: 'u-h2', organizationalId: HOTEL2, roleType: { code: 'ADMIN' } };
+
+  it('el admin de otro hotel vale en el panel (con su token o uno viejo sin orgId)', () => {
+    expect(checkSessionTenant(adminHotel2, HOTEL2, panel)).toEqual({ ok: true });
+    expect(checkSessionTenant(adminHotel2, undefined, panel)).toEqual({ ok: true });
+  });
+
+  it('en el panel, un token con un hotel que no es el del usuario se rechaza', () => {
+    expect(checkSessionTenant(adminHotel2, SAMAWE, panel)).toMatchObject({
+      ok: false,
+      reason: 'token-other-org',
+    });
+  });
+
+  it('un usuario sin hotel no vale ni en el panel', () => {
+    expect(checkSessionTenant({ organizationalId: null, roleType: { code: 'ADMIN' } }, undefined, panel))
+      .toMatchObject({ ok: false, reason: 'user-without-org' });
+  });
+
+  it('la API de un hotel sigue estricta: una sesión de Samawe no entra', () => {
+    expect(checkSessionTenant(admin, SAMAWE, hotelHost)).toMatchObject({ ok: false });
+  });
+
+  it('en el panel la petición opera en el hotel del usuario', () => {
+    const cls = ClsServiceManager.getClsService<TenantClsStore>();
+    return cls.run(async () => {
+      cls.set('tenant', panel);
+      const tenant = new TenantContext(cls as ClsService<TenantClsStore>);
+      const service = new AuthService(
+        {} as never, {} as never, {} as never, {} as never, {} as never, {} as never,
+        tenant, {} as never,
+      );
+      service.applyEffectiveOrganization(adminHotel2, HOTEL2);
+      expect(tenant.organizationalId).toBe(HOTEL2);
+      expect(tenant.tenant?.isPanel).toBe(true);
+    });
+  });
+
+  it('fuera del panel no cambia el hotel de un usuario normal', () => {
+    const cls = ClsServiceManager.getClsService<TenantClsStore>();
+    return cls.run(async () => {
+      cls.set('tenant', hostSamawe);
+      const tenant = new TenantContext(cls as ClsService<TenantClsStore>);
+      const service = new AuthService(
+        {} as never, {} as never, {} as never, {} as never, {} as never, {} as never,
+        tenant, {} as never,
+      );
+      service.applyEffectiveOrganization(adminHotel2, HOTEL2);
+      expect(tenant.organizationalId).toBe(SAMAWE);
+    });
+  });
+});
+
 describe('AuthService — cambio de organización', () => {
   const build = (orgs: Record<string, { organizationalId: string; slug: string; name: string }>) => {
     const cls = ClsServiceManager.getClsService<TenantClsStore>();

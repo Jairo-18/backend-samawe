@@ -1,7 +1,7 @@
 ﻿import { HttpStatus } from '@nestjs/common';
 import { BaseResponseDto } from './../../shared/dtos/response.dto';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({
@@ -23,6 +23,17 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty({ message: 'La contraseña es requerida' })
   password: string;
+
+  @ApiProperty({
+    example: 'motel-crazy-love',
+    required: false,
+    description:
+      'Slug del hotel donde buscar la cuenta. Solo cuenta en el host del panel; en otro host se ignora.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  hotel?: string;
 }
 
 export class RefreshTokenBodyDto {
@@ -181,6 +192,17 @@ export class RecoveryPasswordBodyDto {
   @IsEmail()
   @IsNotEmpty()
   email: string;
+
+  @ApiProperty({
+    example: 'motel-crazy-love',
+    required: false,
+    description:
+      'Slug del hotel donde buscar la cuenta. Solo cuenta en el host del panel; en otro host se ignora.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  hotel?: string;
 }
 
 /** Selector "Cambiar de organización" (solo administradores de plataforma). */

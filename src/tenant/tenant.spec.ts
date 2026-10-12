@@ -61,6 +61,7 @@ describe('TenantResolverService', () => {
       organizationalId: 'org-1',
       hostname: 'api.ecohotelsamawe.com',
       kind: 'api',
+      isPanel: false,
     });
   });
 

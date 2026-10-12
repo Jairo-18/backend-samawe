@@ -12,6 +12,8 @@ export interface ResolvedTenant {
    * selector; el host sigue siendo el del sitio desde el que entró.
    */
   kind: OrganizationDomainKind | 'internal' | 'acting';
+  /** Host del panel de la plataforma: la sesión decide el hotel (ver `isPanel`). */
+  isPanel?: boolean;
 }
 
 export interface TenantClsStore extends ClsStore {
