@@ -41,7 +41,8 @@ import { Organizational } from '../../shared/entities/organizational.entity';
 export class LegalController {
   constructor(private readonly _legalUC: LegalUC) {}
 
-  @OwnedBy({ entity: Organizational, param: 'organizationalId' })
+  // Lectura PÚBLICA del contenido de la organización del id (web y panel):
+  // sin @OwnedBy, sirve igual con o sin sesión de otro hotel.
   @Get('organizational/:organizationalId')
   async getAllSections(@Param('organizationalId') organizationalId: string) {
     const data = await this._legalUC.getAllSections(organizationalId);

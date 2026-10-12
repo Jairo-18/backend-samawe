@@ -182,7 +182,8 @@ export class OrganizationalController {
     };
   }
 
-  @OwnedBy({ entity: Organizational, param: 'id' })
+  // Lectura PÚBLICA del contenido de la organización del id (web y panel):
+  // sin @OwnedBy, sirve igual con o sin sesión de otro hotel.
   @Get(':id/media')
   @GetMediaMapDocs()
   async getMediaMap(@Param('id') id: string) {
@@ -338,7 +339,8 @@ export class OrganizationalController {
     };
   }
 
-  @OwnedBy({ entity: Organizational, param: 'id' })
+  // Lectura PÚBLICA del contenido de la organización del id (web y panel):
+  // sin @OwnedBy, sirve igual con o sin sesión de otro hotel.
   @Get(':id/corporate-values')
   async getCorporateValues(@Param('id') id: string) {
     const values = await this._organizationalUC.getCorporateValues(id);

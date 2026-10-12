@@ -38,7 +38,8 @@ import { Organizational } from '../../shared/entities/organizational.entity';
 export class BenefitSectionController {
   constructor(private readonly _benefitSectionUC: BenefitSectionUC) {}
 
-  @OwnedBy({ entity: Organizational, param: 'organizationalId' })
+  // Lectura PÚBLICA del contenido de la organización del id (web y panel):
+  // sin @OwnedBy, sirve igual con o sin sesión de otro hotel.
   @Get('organizational/:organizationalId')
   async getSections(@Param('organizationalId') organizationalId: string) {
     const data = await this._benefitSectionUC.getSections(organizationalId);

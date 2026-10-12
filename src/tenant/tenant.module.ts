@@ -2,6 +2,7 @@ import { Global, HttpException, Logger, Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TenantParamInterceptor } from './tenant-param.interceptor';
 import { OwnershipInterceptor } from './owned-by';
+import { PanelSessionInterceptor } from './panel-session.interceptor';
 import { TenantInsertSubscriber } from './tenant-insert.subscriber';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClsModule } from 'nestjs-cls';
@@ -81,6 +82,9 @@ export class TenantResolverModule {}
   ],
   providers: [
     TenantContext,
+    // Host del panel: una ruta pública con token opera en el hotel del token.
+    // Primero, para que los dos de abajo vean ese hotel.
+    { provide: APP_INTERCEPTOR, useClass: PanelSessionInterceptor },
     // Con sesión, el `organizationalId` del cliente se reemplaza por el de la
     // sesión (ver el interceptor).
     { provide: APP_INTERCEPTOR, useClass: TenantParamInterceptor },
