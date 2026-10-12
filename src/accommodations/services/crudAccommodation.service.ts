@@ -1,3 +1,4 @@
+import { mapAccommodationExtras } from '../../shared/mappers/entity-mappers';
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
 import { ResponsePaginationDto } from './../../shared/dtos/pagination.dto';
 import { PageMetaDto } from './../../shared/dtos/pageMeta.dto';
@@ -42,6 +43,7 @@ export class CrudAccommodationService {
       // `crudProduct.service.ts` (skip/take con una relación 1-N: TypeORM
       // pagina por ids distintos, así que la cuenta sigue siendo correcta).
       .leftJoinAndSelect('accommodation.images', 'images')
+      .leftJoinAndSelect('accommodation.rates', 'rates')
       .addSelect(`"accommodation"."name"->>'es'`, 'acc_name_sort')
       .skip(skip)
       .take(params.perPage)
@@ -174,6 +176,7 @@ export class CrudAccommodationService {
         priceBuy: accommodation.priceBuy,
         priceSale: accommodation.priceSale,
         extraPersonPrice: accommodation.extraPersonPrice,
+        ...mapAccommodationExtras(accommodation),
         categoryType: accommodation.categoryType
           ? {
               categoryTypeId: accommodation.categoryType.categoryTypeId,
@@ -262,6 +265,7 @@ export class CrudAccommodationService {
       .leftJoinAndSelect('accommodation.bedType', 'bedType')
       .leftJoinAndSelect('accommodation.stateType', 'stateType')
       .leftJoinAndSelect('accommodation.images', 'images')
+      .leftJoinAndSelect('accommodation.rates', 'rates')
       .where('accommodation.accommodationId IN (:...ids)', { ids: pageIds })
       .addOrderBy('images.position', 'ASC')
       .getMany();
@@ -282,6 +286,7 @@ export class CrudAccommodationService {
       jacuzzi: a.jacuzzi,
       priceSale: a.priceSale,
       extraPersonPrice: a.extraPersonPrice,
+      ...mapAccommodationExtras(a),
       categoryType: a.categoryType
         ? {
             categoryTypeId: a.categoryType.categoryTypeId,
@@ -329,6 +334,7 @@ export class CrudAccommodationService {
       .leftJoinAndSelect('accommodation.bedType', 'bedType')
       .leftJoinAndSelect('accommodation.stateType', 'stateType')
       .leftJoinAndSelect('accommodation.images', 'images')
+      .leftJoinAndSelect('accommodation.rates', 'rates')
       .where('accommodation.accommodationId = :accommodationId', {
         accommodationId,
       })
@@ -352,6 +358,7 @@ export class CrudAccommodationService {
       jacuzzi: a.jacuzzi,
       priceSale: a.priceSale,
       extraPersonPrice: a.extraPersonPrice,
+      ...mapAccommodationExtras(a),
       categoryType: a.categoryType
         ? {
             categoryTypeId: a.categoryType.categoryTypeId,

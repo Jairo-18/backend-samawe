@@ -6,9 +6,12 @@ import { CategoryTypeRepository } from './../../shared/repositories/categoryType
 import { TaxeTypeRepository } from './../../shared/repositories/taxeType.repository';
 import { Accommodation } from './../../shared/entities/accommodation.entity';
 import {
+  AccommodationRateDto,
   CreateAccommodationDto,
   UpdateAccommodationDto,
 } from './../dtos/accommodation.dto';
+import { AccommodationRate } from './../../shared/entities/accommodationRate.entity';
+import { TenantContext } from '../../tenant/tenant-context.service';
 import { AccommodationRepository } from './../../shared/repositories/accommodation.repository';
 import {
   mapAccommodationDetail,
@@ -39,18 +42,86 @@ export class AccommodationService {
     private readonly _localStorageService: LocalStorageService,
     private readonly _taxeTypeRepository: TaxeTypeRepository,
     private readonly _translationService: TranslationService,
+    private readonly _tenant: TenantContext,
   ) {}
+
+  /** Horas de la tarifa que equivale a `priceSale` (la que usa la facturación). */
+  private static readonly BASE_RATE_HOURS = 24;
+
+  /**
+   * Tarifas por horas del hospedaje.
+   *
+   * - Con `rates`: reemplazan a las que había. Si incluyen la de 24 h, esa es
+   *   el `priceSale` (el llamador ya lo igualó antes de guardar).
+   * - Sin `rates`: la de 24 h sigue al `priceSale`; si el hospedaje no tiene
+   *   ninguna tarifa (alta de un hotel como Samawe), se crea esa sola.
+   */
+  private async _saveRates(
+    accommodation: Accommodation,
+    rates: AccommodationRateDto[] | undefined,
+  ): Promise<void> {
+    const repo = this._accommodationRepository.manager.getRepository(AccommodationRate);
+    const accommodationId = accommodation.accommodationId;
+    const organizational = { organizationalId: this._tenant.requireOrganizationalId() };
+
+    if (rates) {
+      await repo
+        .createQueryBuilder()
+        .delete()
+        .where('"accommodationId" = :accommodationId', { accommodationId })
+        .execute();
+      if (rates.length) {
+        await repo.save(
+          rates.map((r) => repo.create({ hours: r.hours, price: r.price, accommodation: { accommodationId }, organizational })),
+        );
+      }
+      return;
+    }
+
+    const existing = await repo.find({ where: { accommodation: { accommodationId } } });
+    const base = existing.find((r) => r.hours === AccommodationService.BASE_RATE_HOURS);
+    if (base) {
+      if (Number(base.price) !== Number(accommodation.priceSale)) {
+        base.price = accommodation.priceSale;
+        await repo.save(base);
+      }
+    } else if (!existing.length) {
+      await repo.save(
+        repo.create({
+          hours: AccommodationService.BASE_RATE_HOURS,
+          price: accommodation.priceSale ?? 0,
+          accommodation: { accommodationId },
+          organizational,
+        }),
+      );
+    }
+  }
+
+  /** Horas repetidas en las tarifas -> 400. Devuelve el precio de la de 24 h, si viene. */
+  private _validateRates(rates: AccommodationRateDto[] | undefined): number | undefined {
+    if (!rates) return undefined;
+    const hours = rates.map((r) => r.hours);
+    if (new Set(hours).size !== hours.length) {
+      throw new BadRequestException('Hay dos tarifas con las mismas horas');
+    }
+    return rates.find((r) => r.hours === AccommodationService.BASE_RATE_HOURS)?.price;
+  }
 
   async create(
     createAccommodationDto: CreateAccommodationDto,
   ): Promise<Accommodation> {
+    // Código único DENTRO del hotel: otro hotel puede usar el mismo.
     const codeExist = await this._accommodationRepository.findOne({
-      where: { code: createAccommodationDto.code },
+      where: {
+        code: createAccommodationDto.code,
+        organizational: { organizationalId: this._tenant.requireOrganizationalId() },
+      },
     });
 
     if (codeExist) {
       throw new HttpException('El código ya está en uso', HttpStatus.CONFLICT);
     }
+    const basePrice = this._validateRates(createAccommodationDto.rates);
 
     try {
       const {
@@ -59,8 +130,10 @@ export class AccommodationService {
         stateTypeId,
         organizationalId,
         taxeTypeId,
+        rates,
         ...accommodationData
       } = createAccommodationDto;
+      if (basePrice !== undefined) accommodationData.priceSale = basePrice;
 
       const categoryType = await this._categoryTypeRepository.findOne({
         where: { categoryTypeId },
@@ -122,8 +195,11 @@ export class AccommodationService {
         ...(taxeType && { taxeType }),
       });
 
-      return await this._accommodationRepository.save(newAccommodation);
+      const saved = await this._accommodationRepository.save(newAccommodation);
+      await this._saveRates(saved, rates);
+      return saved;
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       console.error('Error creando hospedaje:', error);
       throw new BadRequestException('No se pudo crear el hospedaje');
     }
@@ -147,9 +223,13 @@ export class AccommodationService {
       throw new NotFoundException(`Hospedaje con ID ${id} no encontrado`);
     }
 
+    const basePrice = this._validateRates(updateAccommodationDto.rates);
     if (updateAccommodationDto.code) {
       const codeExist = await this._accommodationRepository.findOne({
-        where: { code: updateAccommodationDto.code },
+        where: {
+          code: updateAccommodationDto.code,
+          organizational: { organizationalId: this._tenant.requireOrganizationalId() },
+        },
       });
       if (codeExist && codeExist.code !== accommodation.code) {
         throw new ConflictException(
@@ -222,7 +302,8 @@ export class AccommodationService {
       }
     }
 
-    const { taxeTypeId: _t, name: rawName, description: rawDesc, ...updateData } = updateAccommodationDto;
+    const { taxeTypeId: _t, name: rawName, description: rawDesc, rates, ...updateData } = updateAccommodationDto;
+    if (basePrice !== undefined) updateData.priceSale = basePrice;
     if (rawName) updateData['name'] = await this._translationService.toTranslatedField(rawName);
     // `!== undefined` y no un truthy: la descripción SÍ se puede dejar vacía, y
     // con el truthy el borrado se ignoraba en silencio (el campo volvía a salir
@@ -230,8 +311,13 @@ export class AccommodationService {
     // un string vacío, así que esto no llama a Google Translate.
     if (rawDesc !== undefined) updateData['description'] = await this._translationService.toTranslatedField(rawDesc);
     Object.assign(accommodation, updateData);
+    // Las tarifas se escriben aparte: que `save` no intente sincronizar la
+    // relación con lo que trajo el `findOne`.
+    delete (accommodation as Partial<Accommodation>).rates;
 
-    return await this._accommodationRepository.save(accommodation);
+    const saved = await this._accommodationRepository.save(accommodation);
+    await this._saveRates(saved, rates);
+    return saved;
   }
 
   async findOne(accommodationId: string): Promise<AccommodationDetailDto> {

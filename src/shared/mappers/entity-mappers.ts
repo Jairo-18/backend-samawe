@@ -66,7 +66,24 @@ export function mapProductDetail(product: Product): ProductDetailDto {
   };
 }
 
-export interface AccommodationDetailDto {
+/** Parqueaderos y tarifas por horas de un hospedaje, con las tarifas ordenadas. */
+export interface AccommodationExtras {
+  hasMotorcycleParking: boolean;
+  hasCarParking: boolean;
+  rates: { hours: number; price: number }[];
+}
+
+export function mapAccommodationExtras(a: Accommodation): AccommodationExtras {
+  return {
+    hasMotorcycleParking: !!a.hasMotorcycleParking,
+    hasCarParking: !!a.hasCarParking,
+    rates: (a.rates ?? [])
+      .map((r) => ({ hours: r.hours, price: Number(r.price) }))
+      .sort((x, y) => x.hours - y.hours),
+  };
+}
+
+export interface AccommodationDetailDto extends AccommodationExtras {
   accommodationId: number;
   code: string;
   name: Record<string, string>;
@@ -138,6 +155,7 @@ export function mapAccommodationDetail(
         publicId: img.publicId,
       })) ?? [],
     organizationalId: accommodation.organizational?.organizationalId ?? null,
+    ...mapAccommodationExtras(accommodation),
   };
 }
 

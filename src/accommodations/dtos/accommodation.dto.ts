@@ -15,9 +15,27 @@ import {
   IsBoolean,
   IsObject,
   Min,
+  Max,
+  IsArray,
+  ArrayMaxSize,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { TranslatedInput } from '../../shared/types/translated-field.type';
+
+/** Una tarifa por horas de estadía: `{ hours: 4, price: 60000 }`. */
+export class AccommodationRateDto {
+  @ApiProperty({ example: 4, description: 'Horas de estadía que cubre la tarifa (1 a 72)' })
+  @IsInt()
+  @Min(1)
+  @Max(72)
+  hours: number;
+
+  @ApiProperty({ example: 60000, description: 'Precio de esa estadía, impuesto incluido' })
+  @IsNumber()
+  @Min(0)
+  price: number;
+}
 
 export class CreateAccommodationDto {
   @ApiProperty({ example: 1, description: 'ID del hospedaje', required: false })
@@ -95,6 +113,30 @@ export class CreateAccommodationDto {
   @Min(0)
   @IsOptional()
   extraPersonPrice?: number;
+
+  @ApiProperty({ example: false, description: 'Tiene parqueadero de moto', required: false })
+  @IsBoolean()
+  @IsOptional()
+  hasMotorcycleParking?: boolean;
+
+  @ApiProperty({ example: false, description: 'Tiene parqueadero de carro', required: false })
+  @IsBoolean()
+  @IsOptional()
+  hasCarParking?: boolean;
+
+  @ApiProperty({
+    type: [AccommodationRateDto],
+    required: false,
+    description:
+      'Tarifas por horas (reemplazan las existentes). La de 24 h se sincroniza con priceSale; ' +
+      'si no se manda ninguna, queda solo la de 24 h con el priceSale.',
+  })
+  @IsArray()
+  @ArrayMaxSize(24)
+  @ValidateNested({ each: true })
+  @Type(() => AccommodationRateDto)
+  @IsOptional()
+  rates?: AccommodationRateDto[];
 
   @ApiProperty({
     example: 1,
@@ -208,6 +250,30 @@ export class UpdateAccommodationDto {
   @Min(0)
   @IsOptional()
   extraPersonPrice?: number;
+
+  @ApiProperty({ example: false, description: 'Tiene parqueadero de moto', required: false })
+  @IsBoolean()
+  @IsOptional()
+  hasMotorcycleParking?: boolean;
+
+  @ApiProperty({ example: false, description: 'Tiene parqueadero de carro', required: false })
+  @IsBoolean()
+  @IsOptional()
+  hasCarParking?: boolean;
+
+  @ApiProperty({
+    type: [AccommodationRateDto],
+    required: false,
+    description:
+      'Tarifas por horas (reemplazan las existentes). La de 24 h se sincroniza con priceSale; ' +
+      'si no se manda ninguna, queda solo la de 24 h con el priceSale.',
+  })
+  @IsArray()
+  @ArrayMaxSize(24)
+  @ValidateNested({ each: true })
+  @Type(() => AccommodationRateDto)
+  @IsOptional()
+  rates?: AccommodationRateDto[];
 
   @ApiProperty({
     example: 1,

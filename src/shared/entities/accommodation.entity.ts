@@ -15,6 +15,7 @@ import { BedType } from './bedType.entity';
 import { StateType } from './stateType.entity';
 import { Organizational } from './organizational.entity';
 import { TaxeType } from './taxeType.entity';
+import { AccommodationRate } from './accommodationRate.entity';
 
 @Entity({ name: 'Accommodation' })
 export class Accommodation {
@@ -67,6 +68,13 @@ export class Accommodation {
   @Column('decimal', { precision: 10, scale: 2, default: 0 })
   extraPersonPrice: number;
 
+  // Parqueaderos (Crazy Love). Samawe no los maneja: los existentes quedan en false.
+  @Column({ type: 'boolean', default: false })
+  hasMotorcycleParking: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  hasCarParking: boolean;
+
   @ManyToOne(() => StateType, (stateType) => stateType.accommodation)
   @JoinColumn({ name: 'stateTypeId' })
   stateType: StateType;
@@ -84,6 +92,10 @@ export class Accommodation {
     eager: true,
   })
   images: AccommodationImage[];
+
+  /** Tarifas por horas de estadía (ver `AccommodationRate`). */
+  @OneToMany(() => AccommodationRate, (rate) => rate.accommodation, { eager: true })
+  rates: AccommodationRate[];
 
   @ManyToOne(() => TaxeType, { nullable: true, eager: false })
   @JoinColumn({ name: 'taxeTypeId' })

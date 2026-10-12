@@ -1,4 +1,5 @@
-﻿import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
+﻿import { TenantContext } from '../../tenant/tenant-context.service';
+import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { StateTypeRepository } from './../../shared/repositories/stateType.repository';
 import { OrganizationalRepository } from './../../shared/repositories/organizational.repository';
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
@@ -27,6 +28,7 @@ import { TranslationService } from '../../shared/services/translation.service';
 @Injectable()
 export class ExcursionService {
   constructor(
+    private readonly _tenant: TenantContext,
     private readonly _excursionRepository: ExcursionRepository,
     private readonly _categoryTypeRepository: CategoryTypeRepository,
     private readonly _stateTypeRepository: StateTypeRepository,
@@ -39,7 +41,8 @@ export class ExcursionService {
 
   async create(createExcursionDto: CreateExcursionDto): Promise<Excursion> {
     const codeExist = await this._excursionRepository.findOne({
-      where: { code: createExcursionDto.code },
+      // Código único dentro del hotel: otro hotel puede usar el mismo.
+      where: { code: createExcursionDto.code, organizational: { organizationalId: this._tenant.requireOrganizationalId() } },
     });
 
     if (codeExist) {
@@ -133,7 +136,8 @@ export class ExcursionService {
 
     if (updateExcursionDto.code) {
       const codeExist = await this._excursionRepository.findOne({
-        where: { code: updateExcursionDto.code },
+        // Código único dentro del hotel: otro hotel puede usar el mismo.
+        where: { code: updateExcursionDto.code, organizational: { organizationalId: this._tenant.requireOrganizationalId() } },
       });
       if (codeExist && codeExist.code !== excursion.code) {
         throw new ConflictException(

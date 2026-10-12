@@ -1,4 +1,5 @@
-﻿import {
+﻿import { AccommodationExtras } from '../../shared/mappers/entity-mappers';
+import {
   StateTypeClean,
   CategoryTypeClean,
   BedTypeClean,
@@ -11,7 +12,7 @@ export interface AccommodationImage {
   publicId: string;
 }
 
-export interface AccommodationInterfacePaginatedList {
+export interface AccommodationInterfacePaginatedList extends AccommodationExtras {
   accommodationId: number;
   code?: string;
   name: Record<string, string>;
@@ -52,7 +53,7 @@ export interface AccommodationComplete {
   images?: AccommodationImage[];
 }
 
-export interface AccommodationPublicListItem {
+export interface AccommodationPublicListItem extends AccommodationExtras {
   accommodationId: number;
   name: Record<string, string>;
   description?: Record<string, string>;

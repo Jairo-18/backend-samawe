@@ -1,4 +1,5 @@
-﻿import { RecipeRepository } from './../../shared/repositories/recipe.repository';
+﻿import { TenantContext } from '../../tenant/tenant-context.service';
+import { RecipeRepository } from './../../shared/repositories/recipe.repository';
 import { InvoiceDetaillRepository } from './../../shared/repositories/invoiceDetaill.repository';
 import { CategoryTypeRepository } from './../../shared/repositories/categoryType.repository';
 import { OrganizationalRepository } from './../../shared/repositories/organizational.repository';
@@ -24,6 +25,7 @@ import { TranslationService } from '../../shared/services/translation.service';
 @Injectable()
 export class ProductService {
   constructor(
+    private readonly _tenant: TenantContext,
     private readonly _productRepository: ProductRepository,
     private readonly _categoryTypeRepository: CategoryTypeRepository,
     private readonly _invoiceDetaillRepository: InvoiceDetaillRepository,
@@ -37,7 +39,8 @@ export class ProductService {
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     const codeExist = await this._productRepository.findOne({
-      where: { code: createProductDto.code },
+      // Código único dentro del hotel: otro hotel puede usar el mismo.
+      where: { code: createProductDto.code, organizational: { organizationalId: this._tenant.requireOrganizationalId() } },
     });
 
     if (codeExist) {
@@ -132,7 +135,8 @@ export class ProductService {
 
     if (updateProductDto.code) {
       const codeExist = await this._productRepository.findOne({
-        where: { code: updateProductDto.code },
+        // Código único dentro del hotel: otro hotel puede usar el mismo.
+        where: { code: updateProductDto.code, organizational: { organizationalId: this._tenant.requireOrganizationalId() } },
       });
 
       if (codeExist && codeExist.productId !== id) {

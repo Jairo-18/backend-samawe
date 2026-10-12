@@ -64,6 +64,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { GeneralInvoiceDetaillService } from './services/generalInvoiceDetaill.service';
 import { Notification } from './entities/notification.entity';
 import { AccommodationImage } from './entities/accommodationImage.entity';
+import { AccommodationRate } from './entities/accommodationRate.entity';
 import { ExcursionImage } from './entities/escursionImage.entity';
 import { DiscountTypeRepository } from './repositories/discount.repository';
 import { DiscountType } from './entities/discountType.entity';
@@ -194,6 +195,7 @@ export class SharedModule {
           User,
           ProductImage,
           AccommodationImage,
+          AccommodationRate,
           ExcursionImage,
           DiscountType,
           UnitOfMeasure,
