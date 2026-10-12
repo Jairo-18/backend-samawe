@@ -5,7 +5,7 @@ import { ClsModule } from 'nestjs-cls';
 import request from 'supertest';
 import { IsOptional, IsString } from 'class-validator';
 import { TenantContext } from './tenant-context.service';
-import { TenantParamInterceptor } from './tenant-param.interceptor';
+import { AcceptsClientOrganization, TenantParamInterceptor } from './tenant-param.interceptor';
 
 /**
  * Con sesión, el `organizationalId` que manda el cliente se reemplaza por el de
@@ -47,6 +47,11 @@ class ProbeController {
   many(@Body() b: { details: { organizationalId?: string }[] }) {
     return b;
   }
+  @Post('switch')
+  @AcceptsClientOrganization()
+  switch(@Body() b: CreateDto) {
+    return b;
+  }
 }
 
 describe('TenantParamInterceptor (app Nest real)', () => {
@@ -76,6 +81,14 @@ describe('TenantParamInterceptor (app Nest real)', () => {
       .get('/list?organizationalId=org-ajena&search=x')
       .set('x-test-user', '1');
     expect(res.body).toEqual({ organizationalId: SESSION_ORG, search: 'x' });
+  });
+
+  it('una ruta marcada (@AcceptsClientOrganization) conserva la organización elegida', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/switch')
+      .set('x-test-user', '1')
+      .send({ name: 'p', organizationalId: 'org-elegida' });
+    expect(res.body).toEqual({ name: 'p', organizationalId: 'org-elegida' });
   });
 
   it('con sesión, el body de otra organización se reemplaza', async () => {

@@ -1,3 +1,4 @@
+import { AcceptsClientOrganization } from '../../tenant/tenant-param.interceptor';
 import {
   LoginDto,
   RecoveryPasswordBodyDto,
@@ -102,6 +103,9 @@ export class AuthController {
    * suya). Devuelve tokens nuevos; el front los guarda y recarga el panel.
    */
   @Post('/switch-organization')
+  // El `organizationalId` del body es la organización ELEGIDA: no se cambia por
+  // la de la sesión (el servicio exige rol de plataforma y que exista).
+  @AcceptsClientOrganization()
   @UseGuards(AuthGuard(), RolesGuard)
   @Roles(RolesUser.SUPERADMIN, RolesUser.PLATFORM_ADMIN)
   async switchOrganization(

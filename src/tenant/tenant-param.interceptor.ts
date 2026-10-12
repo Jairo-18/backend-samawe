@@ -3,11 +3,22 @@ import {
   ExecutionContext,
   Injectable,
   NestInterceptor,
+  SetMetadata,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { TenantContext } from './tenant-context.service';
 
 const FIELD = 'organizationalId';
+
+const CLIENT_ORGANIZATION_KEY = 'tenant:client-organization';
+/**
+ * La ruta RECIBE a propósito una organización del cliente y la valida ella
+ * misma: no se reemplaza por la de la sesión. Hoy solo `switch-organization`
+ * (superadmin eligiendo a qué organización entrar): con el reemplazo, el
+ * cambio siempre volvía a la propia y "Entrar" no hacía nada.
+ */
+export const AcceptsClientOrganization = () => SetMetadata(CLIENT_ORGANIZATION_KEY, true);
 
 /**
  * Con sesión, el `organizationalId` que mande el cliente NO se respeta: se
@@ -30,10 +41,21 @@ const FIELD = 'organizationalId';
  */
 @Injectable()
 export class TenantParamInterceptor implements NestInterceptor {
-  constructor(private readonly _tenant: TenantContext) {}
+  constructor(
+    private readonly _tenant: TenantContext,
+    private readonly _reflector: Reflector,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     if (context.getType() !== 'http') return next.handle();
+    if (
+      this._reflector.getAllAndOverride<boolean>(CLIENT_ORGANIZATION_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ])
+    ) {
+      return next.handle();
+    }
     const req = context.switchToHttp().getRequest();
     const organizationalId = this._tenant.organizationalId;
     if (req?.user && organizationalId) {
