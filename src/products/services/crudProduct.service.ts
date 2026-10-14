@@ -29,8 +29,15 @@ export class CrudProductService {
       .addSelect(`"Product"."name"->>'es'`, 'prod_name_sort')
       .skip(skip)
       .take(params.perPage)
-      .orderBy('prod_name_sort', 'ASC')
-      .addOrderBy('images.position', 'ASC');
+      .orderBy('prod_name_sort', 'ASC');
+    // ⚠️ Sin `addOrderBy('images.position')`: con skip/take, TypeORM pagina
+    // con un `SELECT DISTINCT` de ids que incluye las columnas del ORDER BY;
+    // ordenar por una columna de `images` metía una fila por FOTO, así que un
+    // ítem con varias fotos ocupaba varios cupos de la página. Las páginas
+    // salían cortas y repetidas y, como TypeORM 0.3 no cuenta cuando la
+    // página viene incompleta (total = skip + filas), el paginador se rompía.
+    // Pasó con Crazy Love al subir varias fotos por producto. Las fotos se
+    // ordenan en memoria, abajo.
 
     if (params.name) {
       query.andWhere(
@@ -134,6 +141,8 @@ export class CrudProductService {
     }
 
     const [entities, itemCount] = await query.getManyAndCount();
+    // Fotos en el orden que armó el usuario (ver la nota del ORDER BY).
+    for (const e of entities) e.images?.sort((a, b) => a.position - b.position);
 
     const products: ProductInterfacePaginatedList[] = entities.map(
       (product) => {
